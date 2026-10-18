@@ -134,10 +134,10 @@ Campos com os limites que o servidor aplica (valores fora da faixa são ajustado
 `GET /api/live` abre um WebSocket (sem autenticação, só leitura). Sempre que uma estação envia, ou é criada, alterada ou removida, o servidor manda a todos os conectados um aviso curto:
 
 ```json
-{"t":"update","id":"usina"}
+{"t":"update","id":"usina","ts":1792355899000}
 ```
 
-O aviso não traz dados: o site então busca o que mudou pelas rotas normais (`/api/stations`, `/readings`, `/events`). O cliente pode mandar o texto `ping` e recebe `pong` (respondido pela plataforma, sem acordar o objeto). Quem implementa o Durable Object é [`worker/src/hub.ts`](../worker/src/hub.ts), com a API de hibernação: conexões paradas não gastam tempo de execução. O limite é de 200 conexões simultâneas.
+O `ts` é a hora do servidor em ms (o site a usa para corrigir o relógio das idades sem gastar requisição). O aviso não traz dados: o site então busca o que mudou pelas rotas normais (`/api/stations`, `/readings`, `/events`). O cliente pode mandar o texto `ping` e recebe `pong` (respondido pela plataforma, sem acordar o objeto). Quem implementa o Durable Object é [`worker/src/hub.ts`](../worker/src/hub.ts), com a API de hibernação: conexões paradas não gastam tempo de execução. O limite é de 200 conexões simultâneas.
 
 No plano gratuito da Cloudflare, cada 20 mensagens do WebSocket contam como 1 requisição (limite de 100 mil por dia). Em *Ajustes → Atualização dos dados* o site escolhe entre tempo real e consulta periódica e define a consulta de segurança (padrão 60 s) que cobre uma conexão que caia sem aviso.
 

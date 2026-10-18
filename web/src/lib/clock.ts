@@ -6,8 +6,10 @@
 let offsetMs = 0
 let synced = false
 
-export function syncServerTime(dateHeader: string | null) {
-  const t = dateHeader ? Date.parse(dateHeader) : NaN
+export const syncServerTime = (dateHeader: string | null) => syncServerMs(dateHeader ? Date.parse(dateHeader) : NaN)
+
+/** Hora do servidor em ms, como vem nos avisos do WebSocket (resolução de 1 ms, sem custo de requisição). */
+export function syncServerMs(t: number) {
   if (!Number.isFinite(t)) return
   const off = t - Date.now()
   // o cabeçalho tem resolução de 1 s e chega depois do pedido: só corrige quando a diferença é maior que isso, para a contagem não oscilar

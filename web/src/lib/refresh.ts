@@ -1,4 +1,5 @@
 import { useSyncExternalStore } from 'react'
+import { syncServerMs } from './clock'
 import { getPrefs, subscribePrefs } from './prefs'
 
 /**
@@ -62,7 +63,8 @@ function connect() {
     lastSeen = Date.now()
     if (e.data === 'pong') return
     try {
-      const m = JSON.parse(String(e.data)) as { t?: string; id?: string | null }
+      const m = JSON.parse(String(e.data)) as { t?: string; id?: string | null; ts?: number }
+      if (typeof m.ts === 'number') syncServerMs(m.ts) // o relógio do servidor vem de graça nos avisos
       if (m.t === 'update') emit(m.id ?? null)
     } catch { /* mensagem desconhecida */ }
   }
