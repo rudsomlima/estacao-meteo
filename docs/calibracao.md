@@ -4,6 +4,8 @@ Cada estação precisa de quatro ajustes. Faça nesta ordem.
 
 ## 1. Direção da biruta
 
+> **Sem cabo:** com Wi-Fi já salvo e `bench_min` maior que 0, a estação abre o **modo bancada** ao ligar. Abra a página local (`http://estacao-xxxx.local` ou o IP do log), toque em *Calibrar a biruta*, gire-a duas vezes, aponte para o norte e toque em *Mostrar o ângulo do norte*. Os passos abaixo valem para o caminho pela porta serial.
+
 O QMC5883L lê o campo do ímã da biruta. O firmware converte em ângulo com `atan2` e usa a média vetorial das amostras.
 
 1. Monte a biruta com o ímã A (5×2 mm, face **S voltada ao eixo**) e ligue a estação ao USB. Use o ambiente `esp32c3`.

@@ -1,10 +1,12 @@
-import { ArrowRight, X } from 'lucide-react'
+import { ArrowRight, Settings, Star, X } from 'lucide-react'
 import { useMemo } from 'react'
 import { useReadings } from '../hooks/useNetwork'
 import { go } from '../hooks/useRoute'
 import { batteryColor } from '../lib/colors'
 import { batteryPct, CHEMS } from '../lib/battery'
-import { ago, compass16, isOnline, kmh } from '../lib/derive'
+import { ago, compass16, isOnline } from '../lib/derive'
+import { makeMain, toggleFavorite, usePrefs } from '../lib/prefs'
+import { useFmt } from '../lib/units'
 import type { Source, Station } from '../types'
 
 function Spark({ values, color }: { values: number[]; color: string }) {
@@ -21,6 +23,10 @@ function Spark({ values, color }: { values: number[]; color: string }) {
 
 export default function StationPanel({ station: s, source, onClose }: { station: Station; source: Source; onClose: () => void }) {
   const { readings } = useReadings(s.id, source, 24)
+  const f = useFmt()
+  const prefs = usePrefs()
+  const fav = prefs.favorites.includes(s.id)
+  const main = prefs.favorites[0] === s.id
   const l = s.latest
   const on = isOnline(s)
   const chem = CHEMS[s.config.battery_chem]
@@ -35,16 +41,16 @@ export default function StationPanel({ station: s, source, onClose }: { station:
       {l ? (
         <>
           <div className="mt-2 flex items-end justify-between gap-3">
-            <div className="font-display text-5xl font-extrabold leading-none tracking-tight">{l.temp.toFixed(1)}<span className="text-xl font-medium text-ink-2">°C</span></div>
+            <div className="font-display text-5xl font-extrabold leading-none tracking-tight">{f.tempV(l.temp)}<span className="text-xl font-medium text-ink-2">{f.tempUnit}</span></div>
             <span className={`num rounded-full px-2 py-0.5 text-[11px] ${on ? 'bg-ok/15 text-ok' : 'bg-bad/15 text-bad'}`}>{on ? 'online' : 'sem sinal'} · {ago(l.ts)}</span>
           </div>
           <Spark values={temps} color="#38bdf8" />
           <dl className="num grid grid-cols-[1fr_auto] gap-x-4 gap-y-1.5 text-sm">
-            <dt className="text-ink-3">Vento</dt><dd>{Math.round(kmh(l.wind))} km/h {compass16(l.dir)}</dd>
-            <dt className="text-ink-3">Rajada</dt><dd>{Math.round(kmh(l.gust))} km/h</dd>
+            <dt className="text-ink-3">Vento</dt><dd>{f.wind(l.wind)} {compass16(l.dir)}</dd>
+            <dt className="text-ink-3">Rajada</dt><dd>{f.wind(l.gust)}</dd>
             <dt className="text-ink-3">Umidade</dt><dd>{Math.round(l.hum)}%</dd>
-            <dt className="text-ink-3">Chuva 24 h</dt><dd>{(s.day?.rain ?? 0).toFixed(1)} mm</dd>
-            <dt className="text-ink-3">Pressão</dt><dd>{l.pres.toFixed(0)} hPa</dd>
+            <dt className="text-ink-3">Chuva 24 h</dt><dd>{f.rain(s.day?.rain ?? 0)}</dd>
+            <dt className="text-ink-3">Pressão</dt><dd>{f.pres(l.pres)}</dd>
             <dt className="text-ink-3">Bateria</dt>
             <dd className="flex items-center gap-2">
               <span className="h-2 w-14 overflow-hidden rounded-full bg-line"><i className="block h-full" style={{ width: `${pct}%`, background: batteryColor(pct) }} /></span>
@@ -59,6 +65,19 @@ export default function StationPanel({ station: s, source, onClose }: { station:
       <button onClick={() => go(`s/${s.id}`)} className="mt-4 flex w-full items-center justify-center gap-2 rounded-xl bg-blue px-4 py-2.5 text-sm font-semibold text-white">
         Abrir estação <ArrowRight className="h-4 w-4" aria-hidden />
       </button>
+      <div className="mt-2 grid grid-cols-2 gap-2">
+        <button
+          onClick={() => (fav && !main ? makeMain(s.id) : toggleFavorite(s.id))}
+          aria-pressed={fav}
+          title={main ? 'Estação principal. Clique para tirar dos favoritos' : fav ? 'Favorita. Clique para tornar a principal' : 'Adicionar aos favoritos'}
+          className="flex items-center justify-center gap-1.5 rounded-xl border border-line px-3 py-2 text-xs hover:bg-card-hover"
+        >
+          <Star className={`h-3.5 w-3.5 ${fav ? 'fill-warn text-warn' : ''}`} aria-hidden /> {main ? 'Principal' : fav ? 'Favorita' : 'Favoritar'}
+        </button>
+        <button onClick={() => go(`s/${s.id}/config`)} className="flex items-center justify-center gap-1.5 rounded-xl border border-line px-3 py-2 text-xs hover:bg-card-hover">
+          <Settings className="h-3.5 w-3.5" aria-hidden /> Configurações
+        </button>
+      </div>
     </aside>
   )
 }

@@ -1,0 +1,4 @@
+# Copie para .dev.vars (que o git ignora). Em produção use: npx wrangler secret put ADMIN_TOKEN
+ADMIN_TOKEN=admin-troque
+# Só para os testes: o npm run smoke sobe um Telegram falso nesta porta. Em produção NÃO defina.
+TELEGRAM_API=http://127.0.0.1:8799

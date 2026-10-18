@@ -1,4 +1,5 @@
 #include "sensors.h"
+#include "usblink.h"
 #include <Adafruit_BME280.h>
 #include <Wire.h>
 #include "config.h"

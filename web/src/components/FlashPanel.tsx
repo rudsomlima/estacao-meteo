@@ -1,0 +1,114 @@
+import { Cpu, TriangleAlert } from 'lucide-react'
+import { useEffect, useRef, useState } from 'react'
+import { ADDRESS_APP, ADDRESS_FULL, flash } from '../lib/flash'
+import { askForPort, describePort, usbSupported, type Port } from '../lib/usb'
+
+interface Item { file: string; title: string; note: string; size: number; server: string | null }
+
+/** Grava o firmware numa placa em branco pelo navegador, sem instalar nada. */
+export default function FlashPanel() {
+  const [items, setItems] = useState<Item[]>([])
+  const [pick, setPick] = useState('')
+  const [custom, setCustom] = useState<{ name: string; data: Uint8Array } | null>(null)
+  const [kind, setKind] = useState<'full' | 'app'>('full')
+  const [erase, setErase] = useState(false)
+  const [port, setPort] = useState<Port | null>(null)
+  const [busy, setBusy] = useState(false)
+  const [pct, setPct] = useState(0)
+  const [log, setLog] = useState<string[]>([])
+  const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null)
+  const fileRef = useRef<HTMLInputElement>(null)
+
+  useEffect(() => {
+    fetch('/firmware/manifest.json')
+      .then((r) => (r.ok ? (r.json() as Promise<Item[]>) : []))
+      .then((m) => { if (Array.isArray(m)) { setItems(m); setPick(m[0]?.file ?? '') } })
+      .catch(() => undefined)
+  }, [])
+
+  if (!usbSupported()) return <p className="text-sm text-ink-2">Este navegador não tem Web Serial. Use o Chrome, o Edge ou o Opera.</p>
+
+  const choose = async () => { const p = await askForPort(); if (p) setPort(p) }
+
+  const run = async () => {
+    if (!port) return
+    setBusy(true)
+    setMsg(null)
+    setLog([])
+    setPct(0)
+    try {
+      let name: string, data: Uint8Array, address: number
+      if (custom) { name = custom.name; data = custom.data; address = kind === 'full' ? ADDRESS_FULL : ADDRESS_APP }
+      else {
+        const it = items.find((i) => i.file === pick)
+        if (!it) throw new Error('Escolha uma imagem.')
+        const r = await fetch(`/firmware/${it.file}`)
+        if (!r.ok) throw new Error('Não foi possível baixar a imagem.')
+        name = it.file; data = new Uint8Array(await r.arrayBuffer()); address = ADDRESS_FULL
+      }
+      if (data[0] !== 0xe9) throw new Error('Este arquivo não parece uma imagem de ESP32 (não começa com 0xE9).')
+      const chip = await flash(port, { name, data, address }, {
+        eraseAll: erase,
+        onProgress: setPct,
+        onLog: (l) => setLog((cur) => [...cur.slice(-40), l]),
+      })
+      setMsg({ ok: true, text: `Firmware gravado em ${chip}. A placa reiniciou${erase ? ' (flash apagada: ela volta sem Wi-Fi nem chave)' : ''}.` })
+      setTimeout(() => window.dispatchEvent(new Event('meteo:usb-probe')), 3000)
+    } catch (e) {
+      setMsg({ ok: false, text: `${e instanceof Error ? e.message : 'Falhou.'} Se a placa não entrou em modo de gravação, segure BOOT, aperte RESET e tente de novo.` })
+    }
+    setBusy(false)
+  }
+
+  const selected = custom ? null : items.find((i) => i.file === pick)
+
+  return (
+    <div className="grid gap-4">
+      <p className="text-sm text-ink-2">Grava o firmware numa placa nova, ou atualiza por cabo. Tudo acontece no navegador. Depois de gravar, a placa é reconhecida sozinha e você já pode configurá-la.</p>
+
+      <div className="flex flex-wrap items-center gap-3">
+        <button onClick={choose} disabled={busy} className="flex items-center gap-2 rounded-xl border border-line px-4 py-2.5 text-sm hover:bg-card-hover disabled:opacity-50"><Cpu className="h-4 w-4" aria-hidden /> {port ? 'Trocar placa' : 'Escolher a placa'}</button>
+        {port && <span className="num text-sm text-ok">{describePort(port)}</span>}
+      </div>
+
+      <fieldset className="grid gap-2" disabled={busy}>
+        <legend className="mb-1 text-sm text-ink-2">Imagem</legend>
+        {items.length === 0 && !custom && (
+          <p className="text-xs text-ink-3">Nenhuma imagem publicada neste site. Gere com <span className="num">python firmware/tools/make_factory.py --server https://seu-site</span> e publique de novo, ou escolha um arquivo abaixo.</p>
+        )}
+        {!custom && items.map((i) => (
+          <label key={i.file} className={`flex cursor-pointer items-start gap-2 rounded-xl border p-3 text-sm ${pick === i.file ? 'border-cyan' : 'border-line'}`}>
+            <input type="radio" name="img" checked={pick === i.file} onChange={() => setPick(i.file)} className="mt-1" />
+            <span>
+              <b>{i.title}</b> <span className="num text-xs text-ink-3">{Math.round(i.size / 1024)} KB</span><br />
+              <span className="text-xs text-ink-2">{i.note}</span>
+              {i.server && <><br /><span className="num text-xs text-ink-3">site embutido: {i.server}</span></>}
+            </span>
+          </label>
+        ))}
+        {custom && (
+          <div className="rounded-xl border border-cyan p-3 text-sm">
+            <b className="num">{custom.name}</b> <span className="num text-xs text-ink-3">{Math.round(custom.data.length / 1024)} KB</span>
+            <div className="mt-2 flex flex-wrap gap-3 text-xs text-ink-2">
+              <label className="flex items-center gap-1.5"><input type="radio" checked={kind === 'full'} onChange={() => setKind('full')} /> imagem completa (a partir de 0x0)</label>
+              <label className="flex items-center gap-1.5"><input type="radio" checked={kind === 'app'} onChange={() => setKind('app')} /> só o aplicativo (0x10000)</label>
+            </div>
+            <button onClick={() => { setCustom(null); if (fileRef.current) fileRef.current.value = '' }} className="mt-2 text-xs text-ink-3 underline">usar uma imagem do site</button>
+          </div>
+        )}
+        <div>
+          <button onClick={() => fileRef.current?.click()} className="rounded-lg border border-line px-3 py-1.5 text-xs hover:bg-card-hover">Escolher outro arquivo .bin</button>
+          <input ref={fileRef} type="file" accept=".bin" className="hidden" onChange={async (e) => { const f = e.target.files?.[0]; if (f) setCustom({ name: f.name, data: new Uint8Array(await f.arrayBuffer()) }) }} />
+        </div>
+        <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={erase} onChange={(e) => setErase(e.target.checked)} /> Apagar toda a flash antes (remove Wi-Fi, chave e calibração salvos)</label>
+      </fieldset>
+
+      <div className="flex flex-wrap items-center gap-3">
+        <button onClick={run} disabled={busy || !port || (!custom && !selected)} className="rounded-xl bg-blue px-4 py-2.5 text-sm font-semibold text-white disabled:opacity-50">{busy ? `Gravando… ${pct}%` : 'Gravar firmware'}</button>
+        {busy && <div className="h-2 w-40 overflow-hidden rounded-full bg-line" role="progressbar" aria-valuenow={pct} aria-valuemin={0} aria-valuemax={100}><i className="block h-full bg-cyan" style={{ width: `${pct}%` }} /></div>}
+      </div>
+      {msg && <p role="status" className={`flex items-start gap-1.5 text-sm ${msg.ok ? 'text-ok' : 'text-bad'}`}>{!msg.ok && <TriangleAlert className="mt-0.5 h-4 w-4 shrink-0" aria-hidden />}{msg.text}</p>}
+      {log.length > 0 && <pre className="num max-h-40 overflow-auto rounded-lg border border-line bg-bg p-3 text-[11px] text-ink-3">{log.join('\n')}</pre>}
+    </div>
+  )
+}

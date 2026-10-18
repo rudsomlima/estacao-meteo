@@ -1,6 +1,7 @@
 import { motion } from 'motion/react'
 import { useMemo, useState } from 'react'
-import { dewPoint, kmh } from '../lib/derive'
+import { dewPoint } from '../lib/derive'
+import { useFmt } from '../lib/units'
 import type { Reading } from '../types'
 import Chart, { type Pt } from './Chart'
 import Reveal, { SectionHead } from './Reveal'
@@ -40,6 +41,7 @@ function Card({ title, sub, children, className = '' }: { title: string; sub?: s
 
 export default function Trends({ readings }: { readings: Reading[] }) {
   const [hours, setHours] = useState(24)
+  const f = useFmt()
   const rs = useMemo(() => {
     const end = readings[readings.length - 1].ts
     return readings.filter((r) => r.ts >= end - hours * 3600)
@@ -69,26 +71,26 @@ export default function Trends({ readings }: { readings: Reading[] }) {
       </div>
 
       <div className="mt-8 grid gap-4 lg:grid-cols-2">
-        <Card title="Temperatura" sub="°C">
-          <Chart unit="°C" series={[
-            { label: 'ar', color: '#fb923c', points: pts(rs, (r) => r.temp), fill: true },
-            { label: 'orvalho', color: '#38bdf8', points: pts(rs, (r) => dewPoint(r.temp, r.hum)) },
+        <Card title="Temperatura" sub={f.tempUnit}>
+          <Chart unit={f.tempUnit} series={[
+            { label: 'ar', color: '#fb923c', points: pts(rs, (r) => f.tempNum(r.temp)), fill: true },
+            { label: 'orvalho', color: '#38bdf8', points: pts(rs, (r) => f.tempNum(dewPoint(r.temp, r.hum))) },
           ]} />
         </Card>
         <Card title="Umidade" sub="%">
           <Chart unit="%" decimals={0} series={[{ label: 'umidade', color: '#38bdf8', points: pts(rs, (r) => r.hum), fill: true }]} />
         </Card>
-        <Card title="Vento" sub="km/h · média e rajada">
-          <Chart unit="km/h" decimals={0} zeroBase series={[
-            { label: 'rajada', color: '#f87171', points: pts(rs, (r) => kmh(r.gust)) },
-            { label: 'média', color: '#60a5fa', points: pts(rs, (r) => kmh(r.wind)), fill: true },
+        <Card title="Vento" sub={`${f.windUnit} · média e rajada`}>
+          <Chart unit={f.windUnit} decimals={f.windUnit === 'm/s' ? 1 : 0} zeroBase series={[
+            { label: 'rajada', color: '#f87171', points: pts(rs, (r) => f.windNum(r.gust)) },
+            { label: 'média', color: '#60a5fa', points: pts(rs, (r) => f.windNum(r.wind)), fill: true },
           ]} />
         </Card>
-        <Card title="Pressão" sub="hPa · queda rápida indica mau tempo">
-          <Chart unit="hPa" series={[{ label: 'pressão', color: '#a78bfa', points: pts(rs, (r) => r.pres), fill: true }]} />
+        <Card title="Pressão" sub={`${f.presUnit} · queda rápida indica mau tempo`}>
+          <Chart unit={f.presUnit} decimals={f.presUnit === 'inHg' ? 2 : 1} series={[{ label: 'pressão', color: '#a78bfa', points: pts(rs, (r) => f.presNum(r.pres)), fill: true }]} />
         </Card>
-        <Card title="Chuva" sub={`${rainTotal.toFixed(1)} mm no período`}>
-          <Chart unit="mm" decimals={1} zeroBase series={[{ label: 'chuva', color: '#38bdf8', bar: true, points: bucketRain(rs, hours) }]} />
+        <Card title="Chuva" sub={`${f.rain(rainTotal)} no período`}>
+          <Chart unit={f.rainUnit} decimals={f.rainUnit === 'pol' ? 2 : 1} zeroBase series={[{ label: 'chuva', color: '#38bdf8', bar: true, points: bucketRain(rs, hours).map((p) => ({ t: p.t, v: f.rainNum(p.v) })) }]} />
         </Card>
         <Card title="De onde vem o vento" sub="tempo em cada direção">
           <WindRose readings={rs} />

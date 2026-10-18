@@ -1,14 +1,18 @@
-import { useMemo, type ReactNode } from 'react'
-import Energy from './components/Energy'
+import { useEffect, useMemo, type ReactNode } from 'react'
+import Analyses from './components/Analyses'
+import GlobalSettings from './components/GlobalSettings'
+import StationSettings from './components/StationSettings'
 import Hero from './components/Hero'
 import MapPage from './components/MapPage'
 import Navbar from './components/Navbar'
+import UsbDevice from './components/UsbDevice'
 import TechCard from './components/TechCard'
 import Trends from './components/Trends'
 import { useLenis } from './hooks/useLenis'
 import { useNetwork, useReadings } from './hooks/useNetwork'
 import { go, useRoute } from './hooks/useRoute'
 import { isOnline } from './lib/derive'
+import { getPrefs } from './lib/prefs'
 import type { Reading, Station } from './types'
 
 type Net = ReturnType<typeof useNetwork>
@@ -94,7 +98,7 @@ function SettingsPage({ id, net }: { id: string; net: Net }) {
                 <h1 className="mt-1 font-display text-4xl font-extrabold tracking-tight sm:text-5xl">Configurações</h1>
                 <p className="mt-2 max-w-2xl text-ink-2">Parte técnica da estação: consumo e autonomia, estado dos sensores, bateria e a configuração que ela baixa a cada envio.</p>
               </div>
-              <Energy standalone readings={readings} station={station} source={net.source} onSave={net.save} onNewKey={net.newKey} />
+              <StationSettings readings={readings} station={station} source={net.source} onSave={net.save} onNewKey={net.newKey} />
             </main>
           </>
         )
@@ -103,16 +107,35 @@ function SettingsPage({ id, net }: { id: string; net: Net }) {
   )
 }
 
-export default function App() {
+function Routes({ net }: { net: Net }) {
   useLenis()
-  const net = useNetwork()
   const route = useRoute()
   const online = useMemo(() => net.stations.filter((s) => isOnline(s)).length, [net.stations])
+
+  // "abrir na estação principal": só na primeira visita à página inicial, para o botão Voltar ainda levar ao mapa
+  useEffect(() => {
+    const p = getPrefs()
+    if (!net.loading && p.openMain && p.favorites[0] && route.page === 'map' && !sessionStorage.getItem('meteo.opened')) {
+      sessionStorage.setItem('meteo.opened', '1')
+      if (net.stations.some((s) => s.id === p.favorites[0])) go(`s/${p.favorites[0]}`)
+    }
+  }, [net.loading]) // eslint-disable-line react-hooks/exhaustive-deps
 
   if (net.loading) return <div className="grid min-h-svh place-items-center text-sm text-ink-3">Carregando estações…</div>
 
   if (route.page === 'station') return <StationPage id={route.id} net={net} />
   if (route.page === 'settings') return <SettingsPage id={route.id} net={net} />
+  if (route.page === 'config' || route.page === 'analyses') {
+    const cfg = route.page === 'config'
+    return (
+      <>
+        <Navbar mode={route.page} title={cfg ? 'Ajustes' : 'Análises'} source={net.source} status={null} back={{ to: '', label: 'Rede' }} />
+        <main>
+          {cfg ? <GlobalSettings stations={net.stations} source={net.source} /> : <Analyses stations={net.stations} source={net.source} />}
+        </main>
+      </>
+    )
+  }
 
   return (
     <>
@@ -126,6 +149,16 @@ export default function App() {
       <footer className="border-t border-line px-4 py-8 text-center text-xs text-ink-3">
         Mapa © OpenStreetMap contributors · Estação meteorológica ESP32-C3
       </footer>
+    </>
+  )
+}
+
+export default function App() {
+  const net = useNetwork()
+  return (
+    <>
+      <Routes net={net} />
+      <UsbDevice stations={net.stations} source={net.source} />
     </>
   )
 }

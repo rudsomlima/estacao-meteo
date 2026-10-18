@@ -13,9 +13,12 @@ export const DEFAULT_CONFIG: StationConfig = {
   slow_below_v: CHEMS.li.slow_below_v,
   slow_factor: 3,
   critical_v: CHEMS.li.critical_v,
+  charge_above_v: 0,
+  charge_interval_min: 5,
   send_every: 3,
   continuous_wind: 0,
   urgent_gust_kmh: 0,
+  bench_min: 2,
   battery_chem: 'li',
   battery_mah: 3000,
   version: 1,
@@ -88,6 +91,9 @@ export function demoStation(id: string, now = Date.now() / 1000): Station {
   return {
     id: d.id, name: d.name, city: d.city, lat: d.lat, lon: d.lon, alt: d.alt,
     config: { ...DEFAULT_CONFIG, battery_chem: d.chem, battery_mah: d.mah, slow_below_v: c.slow_below_v, critical_v: c.critical_v },
+    cfg_applied: 1,
+    last_seen: hist[hist.length - 1].ts,
+    fw_version: '0.2.0',
     latest: hist[hist.length - 1],
     day: {
       rain: round(hist.reduce((s, r) => s + r.rain, 0)),

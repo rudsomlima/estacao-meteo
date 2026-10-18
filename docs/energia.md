@@ -56,7 +56,12 @@ Calculado com 80% da capacidade nominal. Nos perfis de menor consumo a **autodes
 | **Economizar abaixo de X V** | Abaixo dessa tensão o intervalo é multiplicado. |
 | **Hibernar abaixo de X V** | Abaixo dessa tensão a estação só dorme por 1 h, para proteger a célula. |
 
-Ao trocar a química da bateria, os dois limites de tensão recebem valores sugeridos para ela.
+| **Carregando acima de X V** | Com painel solar, a tensão alta indica carga. A estação usa o intervalo curto (`charge_interval_min`) enquanto há energia sobrando. 0 desliga. |
+| **Modo bancada (minutos)** | Wi-Fi ligado por esse tempo a cada boot a frio. Em campo, 0. |
+
+Ao trocar a química da bateria, os dois limites de tensão recebem valores sugeridos para ela. A passagem entre normal, lento e hibernação tem histerese de 0,05 V, para não alternar quando a tensão oscila no limite.
+
+Uma atualização de firmware pelo ar baixa até 1,6 MB com o Wi-Fi ligado: conta como alguns envios de uma vez. A estação adia a atualização se a bateria estiver baixa.
 
 ## O que mais gasta sem você perceber
 

@@ -22,15 +22,16 @@ const r = (x, d = 1) => Math.round(x * 10 ** d) / 10 ** d
 
 const now = Math.floor(Date.now() / 1000)
 const step = 600
-const out = ['DELETE FROM readings;', 'DELETE FROM stations;']
+const out = ['DELETE FROM readings;', 'DELETE FROM events;', 'DELETE FROM alert_state;', 'DELETE FROM firmware_chunks;', 'DELETE FROM firmware;', 'DELETE FROM stations;']
 
 STATIONS.forEach((s, si) => {
   const cfg = {
     interval_min: 10, wind_window_s: 8, gust_window_s: 3, samples: 8, wifi_timeout_s: 10, mm_per_tip: 0.2, k_wind: 0.42, dir_offset: 0,
-    slow_below_v: SLOW[s.chem], slow_factor: 3, critical_v: CRIT[s.chem], send_every: 3, continuous_wind: 0, urgent_gust_kmh: 0, battery_chem: s.chem, battery_mah: s.mah, version: 1,
+    slow_below_v: SLOW[s.chem], slow_factor: 3, critical_v: CRIT[s.chem], charge_above_v: 0, charge_interval_min: 5,
+    send_every: 3, continuous_wind: 0, urgent_gust_kmh: 0, bench_min: 2, battery_chem: s.chem, battery_mah: s.mah, version: 1,
   }
   out.push(
-    `INSERT INTO stations (id,name,city,lat,lon,alt,key_hash,config,created_at) VALUES (${q(s.id)},${q(s.name)},${q(s.city)},${s.lat},${s.lon},${s.alt},${q(sha('dev-key-' + s.id))},${q(JSON.stringify(cfg))},${now});`,
+    `INSERT INTO stations (id,name,city,lat,lon,alt,key_hash,config,created_at,cfg_applied,last_seen,fw_version) VALUES (${q(s.id)},${q(s.name)},${q(s.city)},${s.lat},${s.lon},${s.alt},${q(sha('dev-key-' + s.id))},${q(JSON.stringify(cfg))},${now},1,${now - (s.offlineHours ?? 0) * 3600},'0.1.0');`,
   )
   const end = now - (s.offlineHours ?? 0) * 3600
   const rows = []

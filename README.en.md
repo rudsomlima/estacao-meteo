@@ -15,6 +15,14 @@ A **low-power ESP32-C3 weather station** designed for battery and solar operatio
 - **Charts** (6 h, 24 h, 7 days), wind rose and trends.
 - **Energy and telemetry:** voltage, Wi-Fi signal, sleep cycle and a **live autonomy estimate**.
 - **Remote configuration:** the station pulls its settings on every upload. Battery chemistry and capacity are set per station (Li-ion, LiFePO4, LiPo, 2×AA).
+- **Config status:** the site shows whether the station has applied the saved version (pending → applied).
+- **Diagnostics:** unexpected reboots, firmware updates and bench-mode sessions show up on the site.
+- **Telegram alerts:** station offline, low battery, strong gust and rain, with editable messages. One alert per state change, not per reading.
+- **Analysis:** compare up to 3 stations and browse a monthly summary with a temperature calendar.
+- **Site settings:** units (km/h, m/s, kn, mph; °C/°F; mm/in; hPa/inHg/mmHg), favorite stations, fullscreen map, CSV export and settings backup.
+- **Over-the-air firmware updates** published from the site, verified with SHA-256 (no automatic rollback).
+- **Bench mode:** at power-on the station opens a local page for a configurable number of minutes to view sensors and calibrate the vane without a serial cable.
+- **Signed requests:** the admin token never travels (HMAC with a 2-minute window), and stations can upload over HTTP with signatures instead of HTTPS (forgery protection, not eavesdropping protection).
 - **Efficient firmware:** deep sleep, wind counting in light sleep, batched uploads, fast Wi-Fi reconnect, urgent gust alerts and a captive Wi-Fi portal for first setup.
 - **Professional-grade wind data:** a continuous mode that reports the mean, gust and vector-averaged direction for the whole period.
 

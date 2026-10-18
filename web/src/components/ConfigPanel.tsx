@@ -1,7 +1,8 @@
 import { Check, Copy, KeyRound, RefreshCw, Save, TriangleAlert } from 'lucide-react'
+import PairingCode from './PairingCode'
 import { useState } from 'react'
 import type { SaveResult } from '../hooks/useNetwork'
-import { store } from '../lib/api'
+import { useToken } from '../hooks/useToken'
 import { CHEMS, CHEM_KEYS } from '../lib/battery'
 import type { BatteryChem, Source, Station, StationConfig } from '../types'
 
@@ -20,6 +21,9 @@ const FIELDS: Field[] = [
   { key: 'slow_below_v', label: 'Economizar abaixo de', hint: 'Abaixo dessa tensão a estação espaça os envios.', min: 1.8, max: 4.2, step: 0.01, unit: 'V', digits: 2 },
   { key: 'slow_factor', label: 'Espaçar envios por', hint: 'Multiplica o intervalo quando a bateria está baixa.', min: 1, max: 6, step: 1, unit: '×' },
   { key: 'critical_v', label: 'Hibernar abaixo de', hint: 'Abaixo dessa tensão a estação só dorme por 1 h, para proteger a bateria.', min: 1.5, max: 4, step: 0.01, unit: 'V', digits: 2 },
+  { key: 'charge_above_v', label: 'Considerar "carregando" acima de', hint: 'Com o painel solar dando carga (tensão alta), a estação usa o intervalo curto abaixo. Zero desliga.', min: 0, max: 4.5, step: 0.05, unit: 'V', digits: 2 },
+  { key: 'charge_interval_min', label: 'Intervalo enquanto carrega', hint: 'Sobra energia: pode medir mais vezes.', min: 1, max: 60, step: 1, unit: 'min' },
+  { key: 'bench_min', label: 'Modo bancada ao ligar', hint: 'Minutos com uma página local para ver as leituras e calibrar a biruta sem cabo. Zero desliga.', min: 0, max: 30, step: 1, unit: 'min' },
 ]
 
 interface Props {
@@ -34,7 +38,7 @@ interface Props {
 const input = 'num rounded-lg border border-line bg-bg px-3 py-2 text-sm font-normal'
 
 export default function ConfigPanel({ station, source, onChange, onSave, onNewKey, dirty }: Props) {
-  const [token, setToken] = useState(() => store.get('meteo.token'))
+  const [token, setToken] = useToken()
   const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null)
   const [busy, setBusy] = useState(false)
   const [key, setKey] = useState('')
@@ -48,14 +52,12 @@ export default function ConfigPanel({ station, source, onChange, onSave, onNewKe
   const submit = async (e: React.FormEvent) => {
     e.preventDefault()
     setBusy(true)
-    store.set('meteo.token', token)
     const r = await onSave(station, token)
     setMsg({ ok: r.ok, text: r.message })
     setBusy(false)
   }
 
   const rotate = async () => {
-    store.set('meteo.token', token)
     const r = await onNewKey(station.id, token)
     setMsg({ ok: r.ok, text: r.message })
     if (r.key) { setKey(r.key); setCopied(false) }
@@ -66,7 +68,7 @@ export default function ConfigPanel({ station, source, onChange, onSave, onNewKe
   }
 
   return (
-    <form onSubmit={submit} className="rounded-2xl border border-line bg-card p-4 sm:p-5">
+    <form onSubmit={submit}>
       <div className="grid gap-5">
         <fieldset className="grid gap-3 sm:grid-cols-2">
           <legend className="mb-2 font-display text-lg font-semibold">Bateria</legend>
@@ -147,6 +149,8 @@ export default function ConfigPanel({ station, source, onChange, onSave, onNewKe
             </p>
           )}
         </div>
+
+        {source === 'api' && <PairingCode id={station.id} name={station.name} token={token} />}
 
         {key && (
           <div className="flex items-center gap-2 rounded-lg border border-line bg-bg p-3">

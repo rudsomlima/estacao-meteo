@@ -4,9 +4,14 @@ export type Route =
   | { page: 'map'; id: null }
   | { page: 'station'; id: string }
   | { page: 'settings'; id: string }
+  | { page: 'config'; id: null }
+  | { page: 'analyses'; id: null }
 
 function parse(): Route {
-  const m = location.hash.replace(/^#\/?/, '').match(/^s\/([a-z0-9-]+)(\/config)?/)
+  const hash = location.hash.replace(/^#\/?/, '')
+  if (hash.startsWith('config')) return { page: 'config', id: null }
+  if (hash.startsWith('analises')) return { page: 'analyses', id: null }
+  const m = hash.match(/^s\/([a-z0-9-]+)(\/config)?/)
   if (!m) return { page: 'map', id: null }
   return m[2] ? { page: 'settings', id: m[1] } : { page: 'station', id: m[1] }
 }

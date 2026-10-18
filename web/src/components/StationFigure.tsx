@@ -2,6 +2,8 @@ import { useEffect, useRef } from 'react'
 import { CHEMS, batteryPct } from '../lib/battery'
 import { mix } from '../lib/colors'
 import { compass16, dayStats, dewPoint, kmh, trend } from '../lib/derive'
+import { getPrefs } from '../lib/prefs'
+import { makeFmt, type Fmt } from '../lib/units'
 import type { Reading, Station } from '../types'
 import './figure.css'
 
@@ -14,6 +16,7 @@ interface Live {
   ws: number; gust: number; wd: number; rain: number; temp: number; hum: number
   pct: number; vbat: number; chem: Station['config']['battery_chem']; mah: number
   dayRain: number; dv: number; ts: number; intervalS: number; name: string
+  f: Fmt
 }
 
 type Mode = 'wide' | 'tall'
@@ -24,10 +27,10 @@ const LAY = {
 
 // pontos de ligação em coordenadas locais da estação (y negativo = para cima)
 const CO = [
-  { id: 'anemo', a: [-85, -446], t: 'Anemômetro', s: 'Velocidade do vento (m/s ou km/h)', v: (L: Live) => `${Math.round(L.ws)} km/h`, x: (L: Live) => `${(L.ws / 3.6).toFixed(1)} m/s · rajada ${Math.round(L.gust)} km/h` },
+  { id: 'anemo', a: [-85, -446], t: 'Anemômetro', s: 'Velocidade do vento', v: (L: Live) => L.f.wind(L.ws / 3.6), x: (L: Live) => `rajada ${L.f.wind(L.gust / 3.6)}` },
   { id: 'vane', a: [85, -440], t: 'Veleta', s: 'Direção do vento (°)', v: (L: Live) => `${compass16(L.wd)} ${Math.round(L.wd)}°`, x: () => 'de onde o vento vem' },
-  { id: 'shield', a: [-84, -300], t: 'Sensor de temperatura e umidade do ar', s: '(°C e %)', v: (L: Live) => `${L.temp.toFixed(1)}°C · ${Math.round(L.hum)}%`, x: (L: Live) => `ponto de orvalho ${dewPoint(L.temp, L.hum).toFixed(1)}°C` },
-  { id: 'rain', a: [84, -292], t: 'Pluviômetro', s: 'Precipitação (mm)', v: (L: Live) => `${L.rain.toFixed(1)} mm/h`, x: (L: Live) => `hoje ${L.dayRain.toFixed(1)} mm` },
+  { id: 'shield', a: [-84, -300], t: 'Sensor de temperatura e umidade do ar', s: 'Temperatura e umidade', v: (L: Live) => `${L.f.temp(L.temp)} · ${Math.round(L.hum)}%`, x: (L: Live) => `ponto de orvalho ${L.f.temp(dewPoint(L.temp, L.hum))}` },
+  { id: 'rain', a: [84, -292], t: 'Pluviômetro', s: 'Precipitação', v: (L: Live) => L.f.rainRate(L.rain), x: (L: Live) => `hoje ${L.f.rain(L.dayRain)}` },
   { id: 'solar', a: [-88, -158], t: 'Painel solar', s: 'Alimentação do sistema',
     v: (L: Live) => (L.dv > 0.02 ? 'carregando' : L.dv < -0.02 ? 'descarregando' : 'estável'),
     x: (L: Live) => `${L.dv >= 0 ? '+' : ''}${L.dv.toFixed(2)} V em 3 h` },
@@ -54,7 +57,7 @@ export default function StationFigure({ station, readings }: { station: Station;
   live.current = {
     ws: kmh(now.wind), gust: kmh(now.gust), wd: now.dir, rain: st.rainHour, temp: now.temp, hum: now.hum,
     pct: batteryPct(now.vbat, station.config.battery_chem), vbat: now.vbat, chem: station.config.battery_chem, mah: station.config.battery_mah,
-    dayRain: st.rainDay, dv: trend(readings, (r) => r.vbat, 3), ts: now.ts, intervalS: station.config.interval_min * 60, name: station.name,
+    dayRain: st.rainDay, dv: trend(readings, (r) => r.vbat, 3), ts: now.ts, intervalS: station.config.interval_min * 60, name: station.name, f: makeFmt(getPrefs()),
   }
 
   useEffect(() => {

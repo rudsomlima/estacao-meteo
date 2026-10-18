@@ -5,6 +5,7 @@ dist/
 .env
 .pio/
 wr.log
+preview.log
 wrangler.log
 seed.sql
 web/public/maplibre/
@@ -15,3 +16,4 @@ Thumbs.db
 # Remova estas linhas só depois de confirmar que pode redistribuir.
 *.stl
 *.3mf
+web/public/firmware/

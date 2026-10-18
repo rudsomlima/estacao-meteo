@@ -4,6 +4,8 @@ import { useEffect, useRef } from 'react'
 import { batteryColor, rainColor, tempColor, windColor } from '../lib/colors'
 import { batteryPct } from '../lib/battery'
 import { compass16, isOnline, kmh } from '../lib/derive'
+import { getPrefs, usePrefs } from '../lib/prefs'
+import { makeFmt } from '../lib/units'
 import type { Station } from '../types'
 
 maplibregl.setWorkerUrl('/maplibre/maplibre-gl-worker.mjs')
@@ -38,13 +40,14 @@ const STYLE: maplibregl.StyleSpecification = {
 }
 
 function pin(s: Station, layer: Layer) {
+  const f = makeFmt(getPrefs())
   const on = isOnline(s)
   const l = s.latest
   let text = 'sem sinal', color = '#64748b'
   if (l && on) {
-    if (layer === 'wind') { text = `${Math.round(kmh(l.wind))} km/h ${compass16(l.dir)}`; color = windColor(kmh(l.wind)) }
-    else if (layer === 'temp') { text = `${l.temp.toFixed(0)}°`; color = tempColor(l.temp) }
-    else if (layer === 'rain') { const mm = s.day?.rain ?? 0; text = `${mm.toFixed(1)} mm`; color = rainColor(mm) }
+    if (layer === 'wind') { text = `${f.wind(l.wind)} ${compass16(l.dir)}`; color = windColor(kmh(l.wind)) }
+    else if (layer === 'temp') { text = f.tempShort(l.temp); color = tempColor(l.temp) }
+    else if (layer === 'rain') { const mm = s.day?.rain ?? 0; text = f.rain(mm); color = rainColor(mm) }
     else { const p = batteryPct(l.vbat, s.config.battery_chem); text = `${p}%`; color = batteryColor(p) }
   } else if (l) { text = 'sem sinal'; color = '#64748b' }
   else { text = 'sem dados' }
@@ -58,6 +61,7 @@ export default function MapView({ stations, selectedId, layer, pickMode, onSelec
   const markers = useRef(new Map<string, { m: maplibregl.Marker; el: HTMLButtonElement }>())
   const live = useRef({ stations, layer, pickMode, onSelect, onPick })
   const fitted = useRef(false)
+  const prefs = usePrefs()
   live.current = { stations, layer, pickMode, onSelect, onPick }
 
   // ---- mapa
@@ -114,7 +118,7 @@ export default function MapView({ stations, selectedId, layer, pickMode, onSelec
         m.fitBounds(b, { padding: narrow ? { top: 110, bottom: 150, left: 40, right: 40 } : { top: 90, bottom: 90, left: 60, right: 340 }, maxZoom: 9, duration: 0 })
       }
     }
-  }, [stations, layer, selectedId])
+  }, [stations, layer, selectedId, prefs.wind, prefs.temp, prefs.rain])
 
   // ---- partículas de vento (campo interpolado entre as estações)
   useEffect(() => {

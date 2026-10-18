@@ -31,9 +31,10 @@ jobs:
       - name: Testes da API (Worker local + D1 local)
         run: |
           cd worker
+          cp .dev.vars.example .dev.vars
           npm run db:local
           npm run seed:local
-          nohup npx wrangler dev --port 8787 > wrangler.log 2>&1 &
+          nohup npx wrangler dev --port 8787 --test-scheduled > wrangler.log 2>&1 &
           for i in $(seq 1 40); do curl -sf http://127.0.0.1:8787/api/stations > /dev/null && break; sleep 1; done
           npm run smoke
       - name: Log do Worker (em caso de falha)

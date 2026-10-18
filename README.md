@@ -18,6 +18,17 @@ Estação meteorológica **de baixo consumo com ESP32-C3**, feita para rodar a b
 - **Gráficos** de 6 h, 24 h e 7 dias, rosa dos ventos e tendências.
 - **Energia e telemetria:** tensão, sinal do Wi-Fi, ciclo de sono e **autonomia estimada** que se atualiza enquanto você mexe na configuração.
 - **Configuração remota:** a estação baixa a configuração a cada envio. Bateria definida por estação (Li-ion, LiFePO4, LiPo ou 2× AA, com capacidade).
+- **Estado da configuração:** o site mostra se a estação já aplicou a versão salva (pendente → aplicada).
+- **Diagnóstico:** reinícios fora do sono de rotina, atualizações de firmware e modo bancada aparecem no site.
+- **Alertas no Telegram:** estação sem dados, bateria baixa, rajada forte e chuva, com mensagens editáveis. Avisa uma vez quando o estado muda, não a cada leitura.
+- **Análises:** compare até 3 estações e veja o resumo mensal com calendário por temperatura.
+- **Ajustes do site:** unidades (km/h, m/s, nós, mph; °C/°F; mm/pol; hPa/inHg/mmHg), estações favoritas, mapa em tela cheia, exportar CSV e salvar/restaurar ajustes.
+- **Gravação do firmware pelo navegador:** o site grava a placa pelo cabo USB (Web Serial), sem PlatformIO nem driver.
+- **Instalação remota por código:** o site gera um código de pareamento; quem instala só escolhe o Wi-Fi no celular e digita o código, sem copiar chave nem usar computador.
+- **Reconhecimento por USB:** ao plugar o ESP32, o site (Chrome/Edge) o reconhece, diz qual estação é e grava Wi-Fi, endereço e chave sem digitar no portal.
+- **Atualização de firmware pelo ar (OTA)** publicada pelo site, com conferência de SHA-256.
+- **Modo bancada:** ao ligar, a estação abre por alguns minutos (configurável) uma página local para ver os sensores e calibrar a biruta sem cabo serial.
+- **Pedidos assinados:** o token do administrador nunca viaja (HMAC com janela de 2 minutos), e a estação pode enviar por HTTP assinado em vez de HTTPS.
 - **Firmware econômico:** deep sleep, contagem de vento em light sleep, envio em lote, reconexão Wi-Fi rápida, rajada urgente e portal Wi-Fi para o primeiro uso.
 - **Dado no padrão dos equipamentos profissionais:** modo contínuo com média, rajada e direção vetorial do período inteiro.
 

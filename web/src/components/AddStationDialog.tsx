@@ -1,4 +1,5 @@
 import { Check, Copy, MapPin, X } from 'lucide-react'
+import PairingCode from './PairingCode'
 import { useEffect, useState } from 'react'
 import type { SaveResult } from '../hooks/useNetwork'
 import { store, type StationEdit } from '../lib/api'
@@ -74,18 +75,27 @@ export default function AddStationDialog({ open, picked, onClose, onPickMap, onC
 
         {key ? (
           <div className="mt-4 grid gap-4 text-sm">
-            <p className="text-ink-2">Copie a chave agora. Ela não é mostrada de novo (dá para gerar outra na configuração da estação).</p>
-            <div className="flex items-center gap-2 rounded-lg border border-line bg-bg p-3">
+            <p className="text-ink-2">Quem for instalar só precisa do código abaixo: a placa busca a chave sozinha e ninguém copia chave nenhuma.</p>
+            <PairingCode id={slug(name)} name={name.trim()} token={token} auto />
+            <details className="rounded-lg border border-line p-3 text-ink-2">
+              <summary className="cursor-pointer text-xs">Configurar à mão, com a chave (avançado)</summary>
+              <p className="mt-2 text-xs">Copie a chave agora. Ela não é mostrada de novo. Se usar o código, esta chave é trocada por outra e deixa de valer.</p>
+            <div className="mt-2 flex items-center gap-2 rounded-lg border border-line bg-bg p-3">
               <code className="num min-w-0 flex-1 break-all text-cyan">{key}</code>
               <button onClick={copy} className="flex shrink-0 items-center gap-1.5 rounded-lg border border-line px-3 py-1.5 text-xs hover:bg-card-hover">
                 {copied ? <Check className="h-3.5 w-3.5 text-ok" aria-hidden /> : <Copy className="h-3.5 w-3.5" aria-hidden />}{copied ? 'Copiada' : 'Copiar'}
               </button>
             </div>
-            <ol className="grid list-decimal gap-1.5 pl-5 text-ink-2">
-              <li>Grave o firmware no ESP32-C3 e ligue.</li>
+            <ol className="mt-3 grid list-decimal gap-1.5 pl-5 text-xs">
               <li>Conecte no Wi-Fi <b className="num text-ink">EstacaoMeteo-XXXX</b> pelo celular.</li>
-              <li>Escolha sua rede e informe o endereço do site: <b className="num break-all text-ink">{location.origin}</b></li>
-              <li>Cole a chave acima em <b className="text-ink">Chave do dispositivo</b> e salve.</li>
+              <li>Escolha a rede e informe o endereço do site: <b className="num break-all text-ink">{location.origin}</b></li>
+              <li>Cole a chave em <b className="text-ink">Chave do dispositivo</b> e o ID <b className="num text-ink">{slug(name)}</b>.</li>
+            </ol>
+            </details>
+            <ol className="grid list-decimal gap-1.5 pl-5 text-ink-2">
+              <li>Ligue a placa (com o firmware já gravado).</li>
+              <li>Conecte o celular no Wi-Fi <b className="num text-ink">EstacaoMeteo-XXXX</b>.</li>
+              <li>Escolha a rede do local e digite o código de pareamento. Pronto.</li>
             </ol>
             <button onClick={close} className="rounded-xl bg-blue px-4 py-2.5 font-semibold text-white">Concluir</button>
           </div>

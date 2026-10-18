@@ -2,7 +2,8 @@ import { Battery, Droplets, Gauge, MapPin, Thermometer, Waves, Wind } from 'luci
 import { motion } from 'motion/react'
 import { useMemo } from 'react'
 import { batteryPct, CHEMS } from '../lib/battery'
-import { beaufort, compass16, dayStats, dewPoint, feelsLike, kmh, trend } from '../lib/derive'
+import { beaufort, compass16, dayStats, dewPoint, feelsLike, trend } from '../lib/derive'
+import { useFmt } from '../lib/units'
 import type { Reading, Station } from '../types'
 import StationFigure from './StationFigure'
 
@@ -20,6 +21,7 @@ function Tile({ icon: Icon, label, value, sub }: { icon: typeof Wind; label: str
 
 export default function Hero({ readings, station }: { readings: Reading[]; station: Station }) {
   const config = station.config
+  const f = useFmt()
   const now = readings[readings.length - 1]
   const day = useMemo(() => dayStats(readings), [readings])
   const dPres = trend(readings, (r) => r.pres, 3)
@@ -43,10 +45,10 @@ export default function Hero({ readings, station }: { readings: Reading[]; stati
         </p>
         <div className="mt-2 flex flex-wrap items-end gap-x-10 gap-y-3">
           <h1 className="font-display font-extrabold leading-[0.9] tracking-[-0.045em]" style={{ fontSize: 'clamp(4rem, 12vw, 8.5rem)' }}>
-            {now.temp.toFixed(1)}<span className="align-top text-[0.34em] font-medium text-ink-2">°C</span>
+            {f.tempV(now.temp)}<span className="align-top text-[0.34em] font-medium text-ink-2">{f.tempUnit}</span>
           </h1>
           <p className="max-w-md pb-2 text-base text-ink-2 sm:text-lg">
-            Vento de <b className="text-ink">{compass16(now.dir)}</b> a <b className="num text-ink">{kmh(now.wind).toFixed(0)} km/h</b> ({bf.name.toLowerCase()}).{' '}
+            Vento de <b className="text-ink">{compass16(now.dir)}</b> a <b className="num text-ink">{f.wind(now.wind)}</b> ({bf.name.toLowerCase()}).{' '}
             {outlook}
           </p>
         </div>
@@ -57,14 +59,14 @@ export default function Hero({ readings, station }: { readings: Reading[]; stati
       </motion.div>
 
       <div className="mt-4 grid grid-cols-2 gap-2.5 sm:grid-cols-4 lg:grid-cols-8">
-        <Tile icon={Thermometer} label="Mín / Máx" value={`${day.tMin.toFixed(0)}° / ${day.tMax.toFixed(0)}°`} sub={`sensação ${feels.toFixed(0)}°`} />
-        <Tile icon={Droplets} label="Umidade" value={`${now.hum.toFixed(0)}%`} sub={`orvalho ${dew.toFixed(1)}°`} />
-        <Tile icon={Gauge} label="Pressão" value={`${now.pres.toFixed(0)} hPa`} sub={`${dPres >= 0 ? '↑' : '↓'} ${Math.abs(dPres).toFixed(1)} em 3 h`} />
-        <Tile icon={Wind} label="Rajada" value={`${kmh(now.gust).toFixed(0)} km/h`} sub={`máx hoje ${kmh(day.gustMax).toFixed(0)}`} />
+        <Tile icon={Thermometer} label="Mín / Máx" value={`${f.tempShort(day.tMin)} / ${f.tempShort(day.tMax)}`} sub={`sensação ${f.tempShort(feels)}`} />
+        <Tile icon={Droplets} label="Umidade" value={`${now.hum.toFixed(0)}%`} sub={`orvalho ${f.tempShort(dew)}`} />
+        <Tile icon={Gauge} label="Pressão" value={f.pres(now.pres)} sub={`${dPres >= 0 ? '↑' : '↓'} ${Math.abs(f.presNum(dPres)).toFixed(f.presUnit === 'inHg' ? 2 : 1)} em 3 h`} />
+        <Tile icon={Wind} label="Rajada" value={f.wind(now.gust)} sub={`máx hoje ${f.windV(day.gustMax)}`} />
         <Tile icon={Waves} label="Beaufort" value={`${bf.n}`} sub={bf.name} />
-        <Tile icon={Droplets} label="Chuva hoje" value={`${day.rainDay.toFixed(1)} mm`} sub={`${day.rainHour.toFixed(1)} mm na última hora`} />
+        <Tile icon={Droplets} label="Chuva hoje" value={f.rain(day.rainDay)} sub={`${f.rain(day.rainHour)} na última hora`} />
         <Tile icon={Battery} label="Bateria" value={`${now.vbat.toFixed(2)} V`} sub={`${pct}% · ${CHEMS[config.battery_chem].label}`} />
-        <Tile icon={Wind} label="Média hoje" value={`${kmh(day.windAvg).toFixed(0)} km/h`} sub="vento" />
+        <Tile icon={Wind} label="Média hoje" value={f.wind(day.windAvg)} sub="vento" />
       </div>
     </section>
   )

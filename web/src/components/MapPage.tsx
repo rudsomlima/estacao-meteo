@@ -1,11 +1,13 @@
-import { Plus } from 'lucide-react'
-import { lazy, Suspense, useMemo, useState } from 'react'
+import { Maximize2, Minimize2, Plus, Star } from 'lucide-react'
+import { lazy, Suspense, useEffect, useMemo, useRef, useState } from 'react'
 import type { SaveResult } from '../hooks/useNetwork'
 import { go } from '../hooks/useRoute'
 import { type StationEdit } from '../lib/api'
 import { batteryPct, CHEMS } from '../lib/battery'
 import { batteryColor, windColor } from '../lib/colors'
 import { ago, compass16, isOnline, kmh } from '../lib/derive'
+import { toggleFavorite, usePrefs } from '../lib/prefs'
+import { useFmt } from '../lib/units'
 import type { Source, Station } from '../types'
 import AddStationDialog from './AddStationDialog'
 import type { Layer } from './MapView'
@@ -23,17 +25,52 @@ interface Props {
 }
 
 export default function MapPage({ stations, source, onCreate }: Props) {
-  const [layer, setLayer] = useState<Layer>('wind')
+  const prefs = usePrefs()
+  const f = useFmt()
+  const [layer, setLayer] = useState<Layer>(prefs.layer)
+  const box = useRef<HTMLElement>(null)
+  const fallback = useRef(false)
+  const [full, setFull] = useState(false)
   const [selected, setSelected] = useState<string | null>(null)
   const [adding, setAdding] = useState(false)
   const [picking, setPicking] = useState(false)
   const [picked, setPicked] = useState<{ lat: number; lon: number } | null>(null)
   const sel = stations.find((s) => s.id === selected) ?? null
   const online = useMemo(() => stations.filter((s) => isOnline(s)).length, [stations])
+  const rows = useMemo(() => [...stations].sort((a, b) => {
+    const fa = prefs.favorites.indexOf(a.id), fb = prefs.favorites.indexOf(b.id)
+    return (fa < 0 ? 999 : fa) - (fb < 0 ? 999 : fb)
+  }), [stations, prefs.favorites])
+
+  // tela cheia: usa a API do navegador e, se ela não existir (iPhone), cobre a janela com CSS
+  useEffect(() => {
+    const on = () => { if (!document.fullscreenElement && !fallback.current) setFull(false) }
+    document.addEventListener('fullscreenchange', on)
+    return () => document.removeEventListener('fullscreenchange', on)
+  }, [])
+  useEffect(() => {
+    if (!full) return
+    const esc = (e: KeyboardEvent) => { if (e.key === 'Escape') toggleFull() }
+    window.addEventListener('keydown', esc)
+    return () => window.removeEventListener('keydown', esc)
+  })
+  function toggleFull() {
+    if (full) {
+      if (document.fullscreenElement) void document.exitFullscreen().catch(() => undefined)
+      fallback.current = false
+      setFull(false)
+      return
+    }
+    const el = box.current
+    if (el?.requestFullscreen) {
+      fallback.current = false
+      el.requestFullscreen().then(() => setFull(true)).catch(() => { fallback.current = true; setFull(true) })
+    } else { fallback.current = true; setFull(true) }
+  }
 
   return (
     <>
-      <section id="mapa" className="relative h-[calc(100svh-56px)] min-h-[540px] overflow-hidden" style={{ marginTop: 56 }}>
+      <section ref={box} id="mapa" className={full && fallback.current ? 'fixed inset-0 z-[60] bg-bg' : 'relative h-[calc(100svh-56px)] min-h-[540px] overflow-hidden bg-bg'} style={full && fallback.current ? undefined : { marginTop: 56 }}>
         <Suspense fallback={<div className="grid h-full place-items-center text-sm text-ink-3">Carregando mapa…</div>}>
           <MapView
             stations={stations}
@@ -64,6 +101,16 @@ export default function MapPage({ stations, source, onCreate }: Props) {
         </div>
 
         <button
+          onClick={toggleFull}
+          aria-label={full ? 'Sair da tela cheia' : 'Mapa em tela cheia'}
+          title={full ? 'Sair da tela cheia' : 'Tela cheia'}
+          className="glass absolute right-3 top-3 z-10 grid h-9 w-9 place-items-center rounded-lg hover:border-line-hover sm:right-4 sm:top-4"
+          style={sel ? { display: 'none' } : undefined}
+        >
+          {full ? <Minimize2 className="h-4 w-4" aria-hidden /> : <Maximize2 className="h-4 w-4" aria-hidden />}
+        </button>
+
+        <button
           onClick={() => setAdding(true)}
           className="glass absolute bottom-20 left-3 z-10 flex items-center gap-1.5 rounded-xl px-3.5 py-2 text-sm font-medium hover:border-line-hover sm:bottom-4 sm:left-auto sm:right-[68px] sm:top-auto"
           style={sel ? { display: undefined } : undefined}
@@ -73,7 +120,7 @@ export default function MapPage({ stations, source, onCreate }: Props) {
 
         {layer === 'wind' && (
           <div className="glass num pointer-events-none absolute bottom-3 left-3 z-10 hidden items-center gap-2 rounded-lg px-3 py-1.5 text-[11px] text-ink-2 sm:flex">
-            0<i className="block h-2 w-36 rounded-full" style={{ background: 'linear-gradient(90deg,#3b82f6,#38bdf8,#4ade80,#fbbf24,#fb923c,#ef4444)' }} />60 km/h
+            0<i className="block h-2 w-36 rounded-full" style={{ background: 'linear-gradient(90deg,#3b82f6,#38bdf8,#4ade80,#fbbf24,#fb923c,#ef4444)' }} />{f.wind(60 / 3.6)}
           </div>
         )}
 
@@ -111,20 +158,25 @@ export default function MapPage({ stations, source, onCreate }: Props) {
           <table className="w-full min-w-[820px] border-collapse text-sm">
             <thead>
               <tr className="text-left text-[11px] uppercase tracking-[0.1em] text-ink-3">
-                {['Estação', 'Temperatura', 'Vento', 'Chuva 24 h', 'Bateria', 'Última leitura'].map((h) => <th key={h} className="border-b border-line px-4 py-3 font-semibold">{h}</th>)}
+                {['', 'Estação', 'Temperatura', 'Vento', 'Chuva 24 h', 'Bateria', 'Última leitura'].map((h) => <th key={h} className="border-b border-line px-4 py-3 font-semibold">{h}</th>)}
               </tr>
             </thead>
             <tbody>
-              {stations.map((s) => {
+              {rows.map((s) => {
                 const l = s.latest, on = isOnline(s)
                 const pct = l ? batteryPct(l.vbat, s.config.battery_chem) : 0
                 return (
                   <tr key={s.id} tabIndex={0} onClick={() => go(`s/${s.id}`)} onKeyDown={(e) => e.key === 'Enter' && go(`s/${s.id}`)}
                     className={`num cursor-pointer border-b border-line last:border-0 hover:bg-card-hover ${on ? '' : 'opacity-60'}`}>
+                    <td className="w-10 pl-4">
+                      <button onClick={(e) => { e.stopPropagation(); toggleFavorite(s.id) }} aria-pressed={prefs.favorites.includes(s.id)} aria-label={`Favoritar ${s.name}`} className="rounded p-1 hover:bg-card-hover">
+                        <Star className={`h-4 w-4 ${prefs.favorites.includes(s.id) ? 'fill-warn text-warn' : 'text-ink-3'}`} aria-hidden />
+                      </button>
+                    </td>
                     <td className="px-4 py-3"><b className="font-sans font-semibold">{s.name}</b><div className="text-xs text-ink-3">{s.city}</div></td>
-                    <td className="px-4 py-3">{l ? `${l.temp.toFixed(1)}°` : '—'}</td>
-                    <td className="px-4 py-3">{l ? <span style={{ color: windColor(kmh(l.wind)) }}>{Math.round(kmh(l.wind))} km/h {compass16(l.dir)}</span> : '—'}</td>
-                    <td className="px-4 py-3">{s.day ? `${s.day.rain.toFixed(1)} mm` : '—'}</td>
+                    <td className="px-4 py-3">{l ? f.temp(l.temp) : '—'}</td>
+                    <td className="px-4 py-3">{l ? <span style={{ color: windColor(kmh(l.wind)) }}>{f.wind(l.wind)} {compass16(l.dir)}</span> : '—'}</td>
+                    <td className="px-4 py-3">{s.day ? f.rain(s.day.rain) : '—'}</td>
                     <td className="px-4 py-3">
                       {l ? (
                         <span className="flex items-center gap-2">

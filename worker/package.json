@@ -3,7 +3,8 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "wrangler dev --port 8787",
+    "dev": "wrangler dev --port 8787 --test-scheduled",
+    "dev:lan": "wrangler dev --port 8787 --ip 0.0.0.0 --test-scheduled",
     "db:local": "wrangler d1 execute estacao-meteo --local --file=schema.sql",
     "db:reset-local": "wrangler d1 execute estacao-meteo --local --file=reset.sql && npm run db:local",
     "seed:local": "node scripts/seed.mjs && wrangler d1 execute estacao-meteo --local --file=seed.sql",

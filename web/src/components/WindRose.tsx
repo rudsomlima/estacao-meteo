@@ -1,10 +1,12 @@
 import type { Reading } from '../types'
 import { kmh, windRose } from '../lib/derive'
+import { useFmt } from '../lib/units'
 
 const COLORS = ['#3b82f6', '#38bdf8', '#4ade80', '#fbbf24', '#fb923c', '#f87171']
 const colorFor = (kmhAvg: number) => COLORS[Math.min(COLORS.length - 1, Math.floor(kmhAvg / 8))]
 
 export default function WindRose({ readings }: { readings: Reading[] }) {
+  const f = useFmt()
   const bins = windRose(readings)
   const max = Math.max(0.001, ...bins.map((b) => b.freq))
   const R = 92, C = 120
@@ -24,7 +26,7 @@ export default function WindRose({ readings }: { readings: Reading[] }) {
         {[0, 90, 180, 270].map((d) => { const [x, y] = pt(d, R); return <line key={d} x1={C} y1={C} x2={x} y2={y} stroke="#1d2529" /> })}
         {bins.map((b, i) => b.freq > 0 && (
           <path key={i} d={wedge(i, 6 + Math.sqrt(b.freq / max) * (R - 6))} fill={colorFor(kmh(b.avg))} opacity="0.9">
-            <title>{`${(b.freq * 100).toFixed(0)} % do tempo, média ${kmh(b.avg).toFixed(0)} km/h`}</title>
+            <title>{`${(b.freq * 100).toFixed(0)} % do tempo, média ${f.wind(b.avg)}`}</title>
           </path>
         ))}
         {[['N', 0], ['L', 90], ['S', 180], ['O', 270]].map(([t, d]) => {
@@ -33,8 +35,8 @@ export default function WindRose({ readings }: { readings: Reading[] }) {
         })}
       </svg>
       <div className="num flex flex-wrap items-center justify-center gap-x-3 gap-y-1 text-[11px] text-ink-3">
-        {COLORS.map((c, i) => <span key={c} className="flex items-center gap-1"><i className="inline-block h-2 w-2 rounded-full" style={{ background: c }} />{i * 8}{i === COLORS.length - 1 ? '+' : ''}</span>)}
-        <span>km/h</span>
+        {COLORS.map((c, i) => <span key={c} className="flex items-center gap-1"><i className="inline-block h-2 w-2 rounded-full" style={{ background: c }} />{Math.round(f.windNum((i * 8) / 3.6))}{i === COLORS.length - 1 ? '+' : ''}</span>)}
+        <span>{f.windUnit}</span>
       </div>
     </div>
   )

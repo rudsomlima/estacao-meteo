@@ -3,7 +3,9 @@
 #include "config.h"
 
 extern Settings cfg;
-extern String wifiSsid, wifiPass, serverUrl, deviceKey;
+extern String wifiSsid, wifiPass, serverUrl, deviceKey, stationId;
+/** Código de pareamento digitado no portal, ainda não trocado pela chave (veja claimKey em net.h). */
+extern String claimCode;
 extern float calCx, calCy, calSx, calSy;
 
 void loadAll();

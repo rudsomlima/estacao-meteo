@@ -1,7 +1,8 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { ApiError, createStation, fetchReadings, fetchStations, rotateKey, store, updateStation, type StationEdit } from '../lib/api'
+import { ApiError, createStation, fetchDaily, fetchEvents, fetchFirmware, fetchReadings, fetchStations, rotateKey, store, updateStation, type StationEdit } from '../lib/api'
+import { aggregateDaily, localTzMinutes } from '../lib/daily'
 import { demoHistory, demoNetwork, demoNext } from '../lib/demo'
-import type { Reading, Source, Station } from '../types'
+import type { DailyRow, FirmwareInfo, Reading, Source, Station, StationEvent } from '../types'
 
 const POLL_MS = 30_000
 const DEMO_TICK_MS = 6_000
@@ -53,8 +54,11 @@ export function useNetwork() {
     const edit: StationEdit = { name: s.name, city: s.city, lat: s.lat, lon: s.lon, alt: s.alt, config: s.config }
     if (sourceRef.current === 'demo') {
       store.set('meteo.demo.' + s.id, JSON.stringify(edit))
-      setStations((prev) => prev.map((p) => (p.id === s.id ? { ...p, ...s } : p)))
-      return { ok: true, message: 'Salvo só neste navegador (modo demonstração).' }
+      const next = { ...s, config: { ...s.config, version: s.config.version + 1 } }
+      setStations((prev) => prev.map((p) => (p.id === s.id ? { ...p, ...next } : p)))
+      // na demonstração a "estação" confirma a versão depois de alguns segundos, para mostrar o fluxo pendente → aplicada
+      window.setTimeout(() => setStations((prev) => prev.map((p) => (p.id === s.id ? { ...p, cfg_applied: next.config.version } : p))), 8000)
+      return { ok: true, message: `Versão ${next.config.version} salva neste navegador (modo demonstração).` }
     }
     try {
       const saved = await updateStation(s.id, edit, token)
@@ -138,4 +142,88 @@ export function useReadings(id: string | null, source: Source, hours = HISTORY_H
   }, [id, source, hours])
 
   return { readings, loading }
+}
+
+/** Leituras de várias estações de uma vez (comparação). Devolve um mapa id → leituras. */
+export function useMultiReadings(ids: string[], source: Source, hours: number) {
+  const [data, setData] = useState<Record<string, Reading[]>>({})
+  const [loading, setLoading] = useState(false)
+  const key = ids.join(',')
+
+  useEffect(() => {
+    if (!ids.length) { setData({}); return }
+    let alive = true
+    setLoading(true)
+    Promise.all(
+      ids.map(async (id) => {
+        try {
+          return [id, source === 'api' ? await fetchReadings(id, hours) : demoHistory(id, hours)] as const
+        } catch {
+          return [id, [] as Reading[]] as const
+        }
+      }),
+    ).then((rows) => { if (alive) { setData(Object.fromEntries(rows)); setLoading(false) } })
+    return () => { alive = false }
+  }, [key, source, hours]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  return { data, loading }
+}
+
+/** Um resumo por dia (para o calendário e o resumo do mês). */
+export function useDaily(id: string | null, source: Source, days = 365) {
+  const [rows, setRows] = useState<DailyRow[]>([])
+  const [loading, setLoading] = useState(false)
+
+  useEffect(() => {
+    if (!id) { setRows([]); return }
+    let alive = true
+    setLoading(true)
+    const tz = localTzMinutes()
+    const run = source === 'api' ? fetchDaily(id, days, tz) : Promise.resolve(aggregateDaily(demoHistory(id, days * 24), tz))
+    run.then((r) => { if (alive) setRows(r) }).catch(() => { if (alive) setRows([]) }).finally(() => { if (alive) setLoading(false) })
+    return () => { alive = false }
+  }, [id, source, days])
+
+  return { rows, loading }
+}
+
+const DEMO_EVENTS = (): StationEvent[] => {
+  const now = Math.floor(Date.now() / 1000)
+  return [
+    { ts: now - 3 * 3600, kind: 'boot', reason: 1, count: 12, wake: 'power-on' },
+    { ts: now - 3 * 3600 + 40, kind: 'bench', minutes: 2, ip: '192.168.0.57' },
+    { ts: now - 26 * 3600, kind: 'boot', reason: 3, count: 11, wake: 'timer' },
+  ]
+}
+
+/** Eventos do firmware (reinícios, atualizações, modo bancada). */
+export function useEvents(id: string | null, source: Source) {
+  const [events, setEvents] = useState<StationEvent[]>([])
+
+  useEffect(() => {
+    if (!id) return
+    let alive = true
+    const load = () => (source === 'api' ? fetchEvents(id, 50).catch(() => [] as StationEvent[]) : Promise.resolve(DEMO_EVENTS()))
+      .then((e) => { if (alive) setEvents(e) })
+    load()
+    const t = window.setInterval(load, POLL_MS)
+    return () => { alive = false; clearInterval(t) }
+  }, [id, source])
+
+  return events
+}
+
+export function useFirmware(id: string | null, source: Source) {
+  const [info, setInfo] = useState<FirmwareInfo | null>(null)
+  const [tick, setTick] = useState(0)
+
+  useEffect(() => {
+    if (!id) return
+    if (source !== 'api') { setInfo({ published: null, installed: '0.2.0' }); return }
+    let alive = true
+    fetchFirmware(id).then((i) => { if (alive) setInfo(i) }).catch(() => { if (alive) setInfo(null) })
+    return () => { alive = false }
+  }, [id, source, tick])
+
+  return { info, reload: () => setTick((t) => t + 1) }
 }

@@ -44,12 +44,14 @@ sequenceDiagram
     participant S as Estação
 
     U->>B: muda o intervalo e clica em Salvar
-    B->>W: PUT /api/stations/serra (Bearer ADMIN_TOKEN)
+    B->>W: PUT /api/stations/serra (assinado com ADMIN_TOKEN)
     W->>W: valida limites e sobe a versão
     Note over S: no próximo envio
     S->>W: POST /api/ingest (cfg = versão que tem)
     W-->>S: config nova (versão diferente)
     S->>S: salva na flash e aplica
+    S->>W: próximo envio (cfg = versão nova)
+    W->>W: marca a configuração como aplicada
 ```
 
 ## Decisões

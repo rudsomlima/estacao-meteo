@@ -9,6 +9,10 @@
 | Conecta ao Wi-Fi mas não envia | Endereço do site errado (precisa de `https://` e sem barra no final) ou o Worker fora do ar. Veja o log serial: `POST 401` é chave errada, `POST 422` é campo fora da faixa, `POST -1` é falha de conexão ou de TLS. |
 | Aparece como "atrasada" | Já passou de 2,5 intervalos sem leitura. Com envio em lote, o intervalo efetivo é `intervalo × enviar a cada`. Ajuste ou aguarde o próximo envio. |
 | Aparece como "sem sinal" no mapa | Mesmo critério acima. Cheque Wi-Fi e bateria. |
+| Configuração fica **pendente** | A estação ainda não enviou depois de você salvar. Ela informa a versão que tem a cada envio; com envio em lote pode levar `intervalo × enviar a cada` minutos. |
+| Código de pareamento recusado | Vale 24 h e uma vez, e gerar outro cancela o anterior. Gere um novo e refaça o portal (segure BOOT ao ligar). Depois de 20 erros em 10 min, o servidor bloqueia novas tentativas por um tempo. |
+| Pareamento não conclui | Só funciona com endereço `https://`. Veja o log serial: `pareamento: http 403` é código errado, `http -1` é falha de conexão. |
+| `POST 401` em modo HTTP | Assinatura inválida: ID da estação ou chave errados no portal, ou o relógio do navegador/servidor muito fora (só vale para o token de administrador). Se a resposta for `nonce`, a estação tenta de novo sozinha. |
 
 ## Leituras estranhas
 
@@ -26,6 +30,16 @@
 | Bateria com % errada | O tipo ou o divisor estão errados. Confira em *Configuração → Bateria* e meça a tensão com um multímetro. |
 | Pressão muito diferente da previsão | A estação mede a pressão no **nível dela**, não no do mar. |
 
+## Diagnóstico e alertas
+
+| Sintoma | O que verificar |
+|---|---|
+| Vários eventos `boot` fora do horário | Queda de tensão (bateria ou regulador), travamento ou watchdog. Veja *Configurações → Diagnóstico* e a tensão ao redor desses horários. |
+| Atualização pelo ar não acontece | A estação só atualiza depois de um envio bem-sucedido, com a versão publicada **diferente** da instalada, e com bateria acima da crítica. Veja os eventos `ota_fail` e se `FW_VERSION` mudou antes de compilar. |
+| Telegram não avisa | Token do bot ou ID da conversa errados (use *Detectar*; mande antes uma mensagem ao bot), alertas desligados, ou a estação fora da lista monitorada. Use *Testar*. |
+| Telegram avisa de novo e de novo | Não deveria: ele avisa na mudança de nível. Se acontecer com bateria, confira se a tensão oscila no limite; a histerese é de 5 pontos percentuais. |
+| Modo bancada não abre | Precisa de Wi-Fi já salvo, `bench_min` maior que 0 e o botão BOOT solto ao ligar. Só abre em boot a frio (ligar a bateria ou o botão RESET). |
+
 ## Consumo alto
 
 1. Meça. Veja [energia.md](energia.md#como-medir-de-verdade).
@@ -41,6 +55,7 @@
 | Reinicia em loop | Queda de tensão no Wi-Fi: adicione 470 µF e confira o regulador (pico de ~350 mA). |
 | Não entra no monitor serial | Use `esp32c3` (USB CDC ligado) e mantenha o cabo conectado ao acordar. No ambiente `lowpower` a serial USB não existe. |
 | `pio run` falha ao baixar pacotes | Primeira compilação baixa ~500 MB de toolchain. Tente de novo com boa conexão. |
+| A gravação pelo site falha ao conectar | Troque o cabo (precisa ser de dados), feche o monitor serial e a IDE e, se a placa for com ponte CH340/CP210x, segure BOOT, aperte RESET e tente de novo. Só Chrome, Edge e Opera têm Web Serial. |
 | Mudei o modo de vento no site e nada mudou | A estação só aplica a configuração quando envia. Com envio em lote isso pode levar `intervalo × enviar a cada` minutos. Para testar, ponha *Enviar a cada* em 1. |
 
 ## Site e API
@@ -49,7 +64,7 @@
 |---|---|
 | Etiqueta "demonstração" | A API não respondeu. Em desenvolvimento, rode o Worker (`npm run dev` na pasta `worker`). |
 | Mapa sem fundo | O provedor de tiles bloqueou ou exige chave. Veja [implantacao.md](implantacao.md#mapa). |
-| `Token de administrador incorreto` | O segredo `ADMIN_TOKEN` do Worker é outro. Redefina com `wrangler secret put ADMIN_TOKEN`. |
+| `Token de administrador incorreto` | O segredo `ADMIN_TOKEN` do Worker é outro, ou o relógio do computador está com mais de 2 minutos de diferença (o pedido é assinado com a hora). Redefina com `wrangler secret put ADMIN_TOKEN`. |
 | `wrangler dev` trava ou fica sem resposta (Windows) | Há processos antigos presos. Feche todos os `workerd`/`node` do wrangler, apague `worker/.wrangler` e suba de novo. Pastas do OneDrive podem prender arquivos do banco local. |
 
 Não achou? Abra uma issue com o log serial (se for do firmware) e o que você já tentou.

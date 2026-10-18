@@ -1,7 +1,7 @@
 /*
   Estação meteorológica ESP32-C3 — firmware de baixo consumo.
 
-  Dois modos de vento, escolhidos no site (Configuração > "Contar vento o tempo todo"):
+  Dois modos de vento, escolhidos no site (Configurações > "Contar o vento o tempo todo"):
 
     janela      (padrão)  Deep sleep entre ciclos (~10 µA). A cada intervalo acorda, mede o vento por alguns
                           segundos em light sleep, lê o BME280 e guarda a leitura. A chuva acorda o chip por GPIO.
@@ -12,9 +12,15 @@
   Nos dois modos as leituras vão para um lote na memória RTC e são enviadas de N em N ("send_every"), ou na hora
   se houver rajada acima do limite. Cada leitura segue com a idade em segundos.
 
+  Bateria: três estados com histerese de 0,05 V (normal, economia e crítico) e um estado "carregando".
+  Eventos (reinício, falha de atualização, modo bancada) vão junto com as leituras para o diagnóstico no site.
+  Atualização pelo ar: quando o servidor oferece uma versão diferente, baixa, confere o SHA-256 e reinicia.
+
   Primeiro uso: sem rede salva a estação abre o ponto de acesso "EstacaoMeteo-XXXX" (portal cativo).
   Para reabrir o portal depois, segure o botão BOOT ao ligar.
-  Calibração da biruta: ao ligar, o monitor serial espera 6 s por 'c' (calibrar) ou 'n' (mostrar ângulo do norte).
+  Modo bancada: ao ligar (e depois do portal), abre uma página local por `bench_min` minutos com as leituras ao vivo
+  e a calibração da biruta, sem cabo serial.
+  Calibração pela serial: ao ligar, o monitor espera 6 s por 'c' (calibrar) ou 'n' (mostrar ângulo do norte).
 */
 #include <Arduino.h>
 #include <Wire.h>
@@ -22,9 +28,12 @@
 #include <esp_sleep.h>
 #include <sys/time.h>
 
+#include "bench.h"
 #include "config.h"
+#include "events.h"
 #include "log.h"
 #include "net.h"
+#include "ota.h"
 #include "sensors.h"
 #include "settings.h"
 #include "types.h"
@@ -37,6 +46,9 @@ RTC_DATA_ATTR static Sample rtcBuf[MAX_BATCH];
 RTC_DATA_ATTR static uint8_t rtcCount = 0;
 RTC_DATA_ATTR static time_t rtcNextDue = 0;
 RTC_DATA_ATTR static uint8_t rtcFails = 0;
+RTC_DATA_ATTR static uint32_t rtcBootCount = 0;
+RTC_DATA_ATTR static uint8_t rtcLevel = 0;      // 0 normal, 1 economia, 2 crítico
+RTC_DATA_ATTR static bool rtcCharging = false;
 
 static bool coldBoot = false;
 
@@ -54,6 +66,34 @@ static bool coldBoot = false;
   while (true) {}
 }
 
+// ---------------- bateria com histerese ----------------
+/**
+ * Entra em economia abaixo de `slowBelowV` e só volta a normal acima de `slowBelowV + 0,05`; o mesmo para o crítico.
+ * Sem a folga, uma tensão parada na fronteira faria a estação trocar de estado a cada ciclo.
+ * "Carregando" (painel solar dando carga) vale acima de `chargeAboveV`, com a mesma folga para sair.
+ */
+static void updateLevel(float vbat) {
+  const float h = 0.05f;
+  if (rtcLevel == 2) { if (vbat > cfg.criticalV + h) rtcLevel = 1; }
+  else if (vbat < cfg.criticalV) rtcLevel = 2;
+  if (rtcLevel == 1) { if (vbat > cfg.slowBelowV + h) rtcLevel = 0; }
+  else if (rtcLevel == 0 && vbat < cfg.slowBelowV) rtcLevel = 1;
+
+  if (cfg.chargeAboveV > 0) {
+    if (rtcCharging) { if (vbat < cfg.chargeAboveV - h) rtcCharging = false; }
+    else if (vbat >= cfg.chargeAboveV) rtcCharging = true;
+  } else {
+    rtcCharging = false;
+  }
+}
+
+static uint32_t nextInterval() {
+  const uint32_t base = (uint32_t)cfg.intervalMin * 60;
+  if (rtcCharging) return min<uint32_t>(base, (uint32_t)cfg.chargeIntervalMin * 60);  // sobra energia: mede mais
+  if (rtcLevel >= 1) return base * max<uint8_t>(1, cfg.slowFactor);
+  return base;
+}
+
 // ---------------- lote de leituras ----------------
 static void pushSample(const Sample &s) {
   if (rtcCount == MAX_BATCH) {
@@ -63,12 +103,6 @@ static void pushSample(const Sample &s) {
     rtcCount--;
   }
   rtcBuf[rtcCount++] = s;
-}
-
-static uint32_t nextInterval(float vbat) {
-  uint32_t s = (uint32_t)cfg.intervalMin * 60;
-  if (vbat < cfg.slowBelowV) s *= max<uint8_t>(1, cfg.slowFactor);
-  return s;
 }
 
 /** Mede o vento, lê o ambiente e guarda a leitura. Devolve true se a rajada passou do limite de urgência. */
@@ -87,7 +121,7 @@ static bool measureAndStore(float vbat, uint16_t windSeconds) {
 
 /** Envia o lote quando completa N leituras, quando há urgência, no primeiro boot ou quando o lote enche. */
 static void sendIfDue(bool urgent) {
-  const bool missing = wifiSsid.isEmpty() || serverUrl.isEmpty() || deviceKey.isEmpty();
+  const bool missing = wifiSsid.isEmpty() || serverUrl.isEmpty() || (deviceKey.isEmpty() && claimCode.isEmpty()) || (signedMode() && stationId.isEmpty());
   const bool forcePortal = coldBoot && digitalRead(PIN_BOOT) == LOW;
   const bool due = urgent || coldBoot || rtcCount >= cfg.sendEvery || rtcCount >= MAX_BATCH;
   const bool wasCold = coldBoot;
@@ -95,34 +129,46 @@ static void sendIfDue(bool urgent) {
   if (!due || (missing && !wasCold)) return;
 
   setCpuFrequencyMhz(160);
-  const bool connected = (missing || forcePortal) ? runPortal() : wifiConnect(cfg.wifiTimeoutS * 1000UL);
+  const bool viaPortal = missing || forcePortal;
+  const bool connected = viaPortal ? runPortal() : wifiConnect(cfg.wifiTimeoutS * 1000UL);
   if (!connected) {
     rtcFails++;
     LOG("sem Wi-Fi (%u falhas seguidas), %u leituras aguardam\n", rtcFails, rtcCount);
     netOff();
     return;
   }
+  if (!claimKey()) {  // ainda sem chave: o código não foi trocado
+    rtcFails++;
+    netOff();
+    return;
+  }
+  if (viaPortal) benchRun(cfg.benchMin);  // acabou de configurar: aproveita para calibrar sem cabo
+
+  const float vbat = rtcCount ? rtcBuf[rtcCount - 1].vbat : 0;
   const PostResult r = postBatch(rtcBuf, rtcCount);
-  netOff();
   if (r.ok) {
     rtcCount = 0;
     rtcFails = 0;
-    if (r.modeChanged) { LOG("modo de vento mudou: reiniciando\n"); ESP.restart(); }
+    clearEvents();
+    if (r.modeChanged) { netOff(); LOG("modo de vento mudou: reiniciando\n"); ESP.restart(); }
+    otaMaybeUpdate(r.ota, vbat);  // reinicia sozinha se atualizar
   } else {
-    rtcFails++;  // as leituras ficam no lote e vão no próximo envio
+    rtcFails++;  // as leituras e os eventos ficam guardados e vão no próximo envio
   }
+  netOff();
 }
 
 // ---------------- modo janela: deep sleep entre ciclos ----------------
 [[noreturn]] static void windowCycle() {
   const float vbat = batteryVolts();
-  LOG("bateria %.2f V\n", vbat);
-  if (vbat > 1.0f && vbat < cfg.criticalV) sleepFor(3600, false);  // protege a célula
+  updateLevel(vbat);
+  LOG("bateria %.2f V (nivel %u%s)\n", vbat, rtcLevel, rtcCharging ? ", carregando" : "");
+  if (vbat > 1.0f && rtcLevel == 2) sleepFor(3600, false);  // protege a célula
 
   const bool urgent = measureAndStore(vbat, cfg.windWindowS);
   sendIfDue(urgent);
 
-  const uint32_t interval = nextInterval(vbat);
+  const uint32_t interval = nextInterval();
   const uint32_t used = millis() / 1000;
   const uint32_t rest = interval > used + 5 ? interval - used : 5;
   rtcNextDue = time(nullptr) + rest;
@@ -132,10 +178,11 @@ static void sendIfDue(bool urgent) {
 // ---------------- modo contínuo: light sleep o tempo todo ----------------
 static void continuousCycle() {
   const float vbat = batteryVolts();
-  LOG("bateria %.2f V\n", vbat);
-  if (vbat > 1.0f && vbat < cfg.criticalV) sleepFor(3600, false);
+  updateLevel(vbat);
+  LOG("bateria %.2f V (nivel %u%s)\n", vbat, rtcLevel, rtcCharging ? ", carregando" : "");
+  if (vbat > 1.0f && rtcLevel == 2) sleepFor(3600, false);
 
-  const uint32_t interval = min<uint32_t>(nextInterval(vbat), MAX_WIND_SECONDS);
+  const uint32_t interval = min<uint32_t>(nextInterval(), MAX_WIND_SECONDS);
   const bool urgent = measureAndStore(vbat, (uint16_t)interval);  // o vento é medido pelo intervalo inteiro
   sendIfDue(urgent);
 }
@@ -156,6 +203,12 @@ void setup() {
   }
 
   coldBoot = cause == ESP_SLEEP_WAKEUP_UNDEFINED;
+  rtcBootCount++;
+  const esp_reset_reason_t reason = esp_reset_reason();
+  if (reason != ESP_RST_DEEPSLEEP) {  // acordar do sono é rotina; os outros motivos (queda de tensão, watchdog...) interessam
+    pushEvent(EV_BOOT, (int32_t)reason, (int32_t)rtcBootCount, coldBoot ? "power-on" : "timer");
+  }
+
   Wire.begin(PIN_SDA, PIN_SCL);
   Wire.setClock(100000);
   if (coldBoot) {
@@ -165,6 +218,12 @@ void setup() {
     rtcRainTips = 0;
     rtcCount = 0;
     serialTools();
+    // modo bancada ao ligar (só com Wi-Fi já configurado; no primeiro uso ele abre depois do portal)
+    if (cfg.benchMin > 0 && !wifiSsid.isEmpty() && digitalRead(PIN_BOOT) == HIGH) {
+      setCpuFrequencyMhz(160);
+      if (wifiConnect(cfg.wifiTimeoutS * 1000UL)) benchRun(cfg.benchMin);
+      netOff();
+    }
   }
   rainAttach();
 
