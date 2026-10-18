@@ -55,5 +55,6 @@ struct Settings {
   uint8_t  sendEvery     = 3;       // envia a cada N leituras (lote)
   uint8_t  continuousWind = 0;      // 1 = conta o vento o ciclo todo em light sleep (exige Hall de baixa corrente)
   uint8_t  urgentGustKmh = 0;       // 0 = desligado; acima disso envia na hora
+  uint8_t  wifiTxSave    = 0;       // 1 = reduz sozinha a potência de transmissão do Wi-Fi quando o sinal é bom
   uint32_t version       = 0;       // 0 = nunca recebeu configuração; o servidor manda a atual
 };

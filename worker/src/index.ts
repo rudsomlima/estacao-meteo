@@ -94,7 +94,7 @@ async function signedJson(auth: DeviceAuth, body: unknown) {
 
 // ---------------- configuração ----------------
 function cleanConfig(input: Record<string, unknown>, base: Config): Config {
-  const out: Config = { ...base }
+  const out: Config = { ...DEFAULT_CONFIG, ...base } // estações antigas não têm os campos novos
   for (const [k, [lo, hi]] of Object.entries(LIMITS)) {
     const v = input[k]
     if (typeof v === 'number' && Number.isFinite(v)) {

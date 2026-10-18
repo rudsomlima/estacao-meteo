@@ -62,6 +62,7 @@ bool applyRemoteConfig(JsonObjectConst c) {
   cfg.sendEvery = constrain((int)(c["send_every"] | cfg.sendEvery), 1, (int)MAX_BATCH);
   cfg.continuousWind = c["continuous_wind"] | cfg.continuousWind;
   cfg.urgentGustKmh = c["urgent_gust_kmh"] | cfg.urgentGustKmh;
+  cfg.wifiTxSave = c["wifi_tx_save"] | cfg.wifiTxSave;
   cfg.version = c["version"] | cfg.version;
   saveSettings();
   return cfg.continuousWind != oldMode;

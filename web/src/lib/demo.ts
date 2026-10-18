@@ -18,6 +18,7 @@ export const DEFAULT_CONFIG: StationConfig = {
   send_every: 3,
   continuous_wind: 0,
   urgent_gust_kmh: 0,
+  wifi_tx_save: 0,
   bench_min: 2,
   battery_chem: 'li',
   battery_mah: 3000,

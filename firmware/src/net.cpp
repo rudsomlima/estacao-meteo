@@ -19,6 +19,8 @@ RTC_DATA_ATTR static uint8_t rtcBssid[6];
 RTC_DATA_ATTR static int32_t rtcChannel = 0;
 RTC_DATA_ATTR static uint32_t rtcIp = 0, rtcGw = 0, rtcMask = 0, rtcDns = 0;
 RTC_DATA_ATTR static char rtcNonce[24] = "";
+RTC_DATA_ATTR static int8_t rtcRssi = 0;        // sinal da última conexão (0 = desconhecido)
+RTC_DATA_ATTR static uint8_t rtcTxHold = 0;     // conexões seguintes na potência máxima, depois de uma falha com potência reduzida
 
 static bool waitConnected(uint32_t ms) {
   const uint32_t t = millis();
@@ -26,9 +28,26 @@ static bool waitConnected(uint32_t ms) {
   return WiFi.status() == WL_CONNECTED;
 }
 
+/**
+ * Potência de transmissão. Com `wifiTxSave` ligado escolhe pelo sinal da última conexão: quanto mais forte, menos potência.
+ * Sem histórico, com sinal fraco ou logo depois de uma falha, usa a máxima. O RSSI é o que a estação ouve do roteador, e o
+ * caminho de volta tende a ser parecido; por isso as faixas têm folga.
+ */
+static wifi_power_t pickTxPower() {
+  if (!cfg.wifiTxSave || rtcRssi == 0 || rtcTxHold > 0) return WIFI_POWER_19_5dBm;
+  if (rtcRssi >= -50) return WIFI_POWER_8_5dBm;
+  if (rtcRssi >= -60) return WIFI_POWER_11dBm;
+  if (rtcRssi >= -70) return WIFI_POWER_15dBm;
+  return WIFI_POWER_19_5dBm;
+}
+
 bool wifiConnect(uint32_t timeoutMs) {
   WiFi.persistent(false);
   WiFi.mode(WIFI_STA);
+  const wifi_power_t tx = pickTxPower();
+  WiFi.setTxPower(tx);
+  if (rtcTxHold > 0) rtcTxHold--;
+  LOG("wifi: potencia %d (x0,25 dBm)\n", (int)WiFi.getTxPower());
   const bool fast = rtcChannel > 0 && rtcIp != 0;
   if (fast) {
     // pula a varredura de canais e o DHCP: poupa ~1,5 s de rádio ligado
@@ -45,7 +64,16 @@ bool wifiConnect(uint32_t timeoutMs) {
     WiFi.begin(wifiSsid.c_str(), wifiPass.c_str());
     ok = waitConnected(timeoutMs);
   }
+  if (!ok && tx != WIFI_POWER_19_5dBm) {  // a potência reduzida não bastou: volta à máxima e só tenta reduzir depois de alguns envios
+    rtcTxHold = 6;
+    WiFi.disconnect();
+    WiFi.setTxPower(WIFI_POWER_19_5dBm);
+    WiFi.begin(wifiSsid.c_str(), wifiPass.c_str());
+    ok = waitConnected(timeoutMs);
+    LOG("wifi: potencia reduzida falhou, tentando na maxima: %s\n", ok ? "ok" : "falhou");
+  }
   if (ok) {
+    rtcRssi = (int8_t)WiFi.RSSI();
     memcpy(rtcBssid, WiFi.BSSID(), 6);
     rtcChannel = WiFi.channel();
     rtcIp = (uint32_t)WiFi.localIP(); rtcGw = (uint32_t)WiFi.gatewayIP();

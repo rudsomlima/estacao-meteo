@@ -127,7 +127,7 @@ Campos com os limites que o servidor aplica (valores fora da faixa são ajustado
 | `k_wind` | 0,05 a 3 | `continuous_wind` | 0 ou 1 |
 | `dir_offset` | 0 a 359,99 | `urgent_gust_kmh` | 0 a 200 |
 | `battery_mah` | 100 a 100000 | `bench_min` | 0 a 30 (minutos do modo bancada; 0 desliga) |
-| `battery_chem` | `li`, `lfp`, `lipo`, `aa` | | |
+| `battery_chem` | `li`, `lfp`, `lipo`, `aa` | `wifi_tx_save` | 0 ou 1 (reduz a potência do Wi-Fi quando o sinal é bom) |
 
 ## Tempo real (WebSocket)
 

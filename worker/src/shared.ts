@@ -15,7 +15,7 @@ export interface Config {
   mm_per_tip: Num; k_wind: Num; dir_offset: Num
   slow_below_v: Num; slow_factor: Num; critical_v: Num
   charge_above_v: Num; charge_interval_min: Num
-  send_every: Num; continuous_wind: Num; urgent_gust_kmh: Num; bench_min: Num
+  send_every: Num; continuous_wind: Num; urgent_gust_kmh: Num; bench_min: Num; wifi_tx_save: Num
   battery_chem: 'li' | 'lfp' | 'lipo' | 'aa'; battery_mah: Num
   version: Num
 }
@@ -25,7 +25,7 @@ export const DEFAULT_CONFIG: Config = {
   mm_per_tip: 0.2, k_wind: 0.42, dir_offset: 0,
   slow_below_v: 3.55, slow_factor: 3, critical_v: 3.2,
   charge_above_v: 0, charge_interval_min: 5,
-  send_every: 3, continuous_wind: 0, urgent_gust_kmh: 0, bench_min: 2,
+  send_every: 3, continuous_wind: 0, urgent_gust_kmh: 0, bench_min: 2, wifi_tx_save: 0,
   battery_chem: 'li', battery_mah: 3000, version: 1,
 }
 
@@ -39,9 +39,9 @@ export const LIMITS: Record<string, [Num, Num]> = {
   mm_per_tip: [0.01, 5], k_wind: [0.05, 3], dir_offset: [0, 359.99],
   slow_below_v: [1.8, 4.2], slow_factor: [1, 12], critical_v: [1.5, 4.0], battery_mah: [100, 100000],
   charge_above_v: [0, 5], charge_interval_min: [1, 60],
-  send_every: [1, 12], continuous_wind: [0, 1], urgent_gust_kmh: [0, 200], bench_min: [0, 30],
+  send_every: [1, 12], continuous_wind: [0, 1], urgent_gust_kmh: [0, 200], bench_min: [0, 30], wifi_tx_save: [0, 1],
 }
-export const INTEGER_FIELDS = ['send_every', 'continuous_wind', 'urgent_gust_kmh', 'bench_min', 'charge_interval_min']
+export const INTEGER_FIELDS = ['send_every', 'continuous_wind', 'wifi_tx_save', 'urgent_gust_kmh', 'bench_min', 'charge_interval_min']
 
 export const READING_RANGES: Record<string, [Num, Num]> = {
   temp: [-60, 90], hum: [0, 100], pres: [300, 1100], wind: [0, 120], gust: [0, 150],

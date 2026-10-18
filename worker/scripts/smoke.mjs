@@ -136,8 +136,8 @@ check('assinatura antiga (10 min) é recusada', r.status === 401)
 const id = 'smoke-' + Math.random().toString(36).slice(2, 7)
 r = await admin('POST', '/api/stations', { body: { id, name: 'Teste', lat: -23, lon: -46, battery_chem: 'aa', continuous_wind: 1, send_every: 99, bench_min: 99, charge_above_v: 4.1 } })
 check('cria estação e devolve a chave uma vez', r.status === 201 && typeof r.json.key === 'string' && r.json.config.continuous_wind === 1 && r.json.config.send_every === 12 && r.json.config.bench_min === 30 && r.json.config.charge_above_v === 4.1, r.text)
-r = await admin('PUT', `/api/stations/${id}`, { body: { name: 'Teste 2', config: { interval_min: 15, urgent_gust_kmh: 60 } } })
-check('atualiza e sobe a versão da configuração', r.status === 200 && r.json.config.version === 2 && r.json.config.urgent_gust_kmh === 60, r.text)
+r = await admin('PUT', `/api/stations/${id}`, { body: { name: 'Teste 2', config: { interval_min: 15, urgent_gust_kmh: 60, wifi_tx_save: 1 } } })
+check('atualiza e sobe a versão da configuração', r.status === 200 && r.json.config.version === 2 && r.json.config.urgent_gust_kmh === 60 && r.json.config.wifi_tx_save === 1, r.text)
 
 // ================= OTA
 const fw = randomBytes(150_000)

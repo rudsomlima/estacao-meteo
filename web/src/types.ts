@@ -33,6 +33,7 @@ export interface StationConfig {
   continuous_wind: number // 1 = conta o vento o ciclo todo em light sleep
   urgent_gust_kmh: number // 0 = desligado; acima disso envia na hora
   bench_min: number // minutos do modo bancada ao ligar (0 = desligado)
+  wifi_tx_save?: number // 1 = a estação reduz sozinha a potência de transmissão do Wi-Fi quando o sinal é bom
   battery_chem: BatteryChem
   battery_mah: number
   version: number

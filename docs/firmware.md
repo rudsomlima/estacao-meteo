@@ -58,6 +58,19 @@ flowchart TD
 - **Bateria baixa:** abaixo de *Economizar abaixo de* o intervalo é multiplicado. Abaixo de *Hibernar abaixo de*, dorme 1 h.
 - **BME280 sem resposta:** a leitura do ciclo é descartada (o servidor exige todos os campos).
 
+## Potência do Wi-Fi (`wifi_tx_save`)
+
+O Wi-Fi é o maior consumo da estação. Com `wifi_tx_save` = 1, antes de conectar a estação escolhe a potência de transmissão pelo sinal da **última conexão**:
+
+| Sinal (RSSI) | Potência |
+|---|---|
+| mais forte que -50 dBm | 8,5 dBm |
+| -50 a -60 dBm | 11 dBm |
+| -60 a -70 dBm | 15 dBm |
+| mais fraco que -70 dBm, ou sem histórico | 19,5 dBm (máxima) |
+
+O RSSI é o que a estação ouve do roteador; o caminho de volta tende a ser parecido, por isso as faixas têm folga. Se a conexão falhar com potência reduzida, a estação tenta de novo na máxima, e só volta a reduzir depois de 6 conexões. A economia estimada no modelo de energia do site é de cerca de 10 % no consumo do Wi-Fi; meça no seu local.
+
 ## Medição
 
 | Grandeza | Como é medida |
@@ -81,6 +94,7 @@ O ESP32 manda a versão da configuração que tem (`cfg`). Se o servidor tiver u
 | `samples` | 8 | Amostras do BME280 por leitura. |
 | `send_every` | 3 | Envia a cada N leituras (1 a 12). |
 | `urgent_gust_kmh` | 0 | Envia na hora se a rajada passar disso (0 desliga). |
+| `wifi_tx_save` | 0 | 1 = reduz sozinha a potência de transmissão do Wi-Fi quando o sinal é bom (veja abaixo). |
 | `continuous_wind` | 0 | 1 = modo contínuo. |
 | `wifi_timeout_s` | 10 | Tempo máximo para conectar. |
 | `mm_per_tip` | 0,2 | Chuva por basculada. |

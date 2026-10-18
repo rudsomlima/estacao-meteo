@@ -98,6 +98,21 @@ export default function ConfigPanel({ station, source, onChange, onSave, onNewKe
           </span>
         </label>
 
+        <label className="flex items-start gap-3 rounded-xl border border-line bg-bg p-3 text-sm">
+          <input
+            type="checkbox"
+            className="mt-1 h-4 w-4"
+            checked={cfg.wifi_tx_save === 1}
+            onChange={(e) => setCfg({ wifi_tx_save: e.target.checked ? 1 : 0 })}
+          />
+          <span>
+            <b className="font-medium">Reduzir a potência do Wi-Fi automaticamente</b>
+            <span className="mt-0.5 block text-xs text-ink-3">
+              Com o sinal bom, a estação transmite com menos potência e gasta menos a cada envio (o Wi-Fi é o maior consumo). Ela decide pelo sinal do último envio: quanto mais forte, menor a potência. Se não conseguir conectar, volta à potência máxima e só tenta reduzir de novo depois de alguns envios. Com sinal fraco não muda nada.
+            </span>
+          </span>
+        </label>
+
         {FIELDS.map((f) => {
           const id = `cfg-${f.key}`
           const v = cfg[f.key] as number
