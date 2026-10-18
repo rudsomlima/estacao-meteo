@@ -25,6 +25,8 @@ const PORTAL = [
 ]
 
 interface Props {
+  /** true quando está na página de Configurações (sem borda e fundo de seção, com menos respiro no topo) */
+  standalone?: boolean
   readings: Reading[]
   station: Station
   source: Source
@@ -32,7 +34,7 @@ interface Props {
   onNewKey: (id: string, token: string) => Promise<SaveResult>
 }
 
-export default function Energy({ readings, station, source, onSave, onNewKey }: Props) {
+export default function Energy({ standalone = false, readings, station, source, onSave, onNewKey }: Props) {
   const [draft, setDraft] = useState(station)
   const [synced, setSynced] = useState(station)
   if (station !== synced) { setSynced(station); setDraft(station) } // chegou dado novo do servidor
@@ -50,8 +52,8 @@ export default function Energy({ readings, station, source, onSave, onNewKey }: 
   const awake = est.total - est.phases.filter((p) => p.key === 'sleep' || p.key === 'lsleep').reduce((s, p) => s + p.seconds, 0)
 
   return (
-    <section className="border-t border-line bg-[#090d0f]">
-      <div className="mx-auto max-w-7xl px-4 py-24 sm:px-6">
+    <section className={standalone ? '' : 'border-t border-line bg-[#090d0f]'}>
+      <div className={`mx-auto max-w-7xl px-4 sm:px-6 ${standalone ? 'pb-24 pt-6' : 'py-24'}`}>
         <SectionHead id="energia" kicker="Energia e telemetria" title="Quanto a bateria aguenta">
           A estação dorme quase o tempo todo. Mude os valores à direita e veja a estimativa se ajustar antes de salvar.
         </SectionHead>

@@ -44,7 +44,7 @@ Fica em light sleep o ciclo inteiro, conta cada pulso e, no fim do intervalo, en
 | Contínuo, envio a cada leitura | ≈ 0,80 mA | ~125 dias |
 | Janela, com ESP-NOW e gateway (ideia futura) | ≈ 0,05 a 0,1 mA | > 1 ano |
 
-Calculado com 80% da capacidade nominal. Nos perfis de menor consumo a **autodescarga da bateria** (algo como 2% ao mês) e o frio passam a pesar mais que o chip, e o painel solar vale a pena. O site calcula a autonomia ao vivo conforme você mexe na configuração (aba *Energia*).
+Calculado com 80% da capacidade nominal. Nos perfis de menor consumo a **autodescarga da bateria** (algo como 2% ao mês) e o frio passam a pesar mais que o chip, e o painel solar vale a pena. O site calcula a autonomia ao vivo conforme você mexe na configuração (página *Configurações* da estação).
 
 ## Botões de economia no site
 

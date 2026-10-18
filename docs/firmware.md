@@ -66,7 +66,7 @@ flowchart TD
 
 ## Configuração remota
 
-O ESP32 manda a versão da configuração que tem (`cfg`). Se o servidor tiver uma mais nova, devolve a nova e o ESP32 salva na flash. Edite pela aba *Configuração* da estação no site.
+O ESP32 manda a versão da configuração que tem (`cfg`). Se o servidor tiver uma mais nova, devolve a nova e o ESP32 salva na flash. Edite em *Configurações* da estação, no site (`#/s/<id>/config`).
 
 | Campo | Padrão | O que faz |
 |---|---|---|

@@ -1,10 +1,14 @@
 import { useEffect, useState } from 'react'
 
-export type Route = { page: 'map'; id: null } | { page: 'station'; id: string }
+export type Route =
+  | { page: 'map'; id: null }
+  | { page: 'station'; id: string }
+  | { page: 'settings'; id: string }
 
 function parse(): Route {
-  const m = location.hash.replace(/^#\/?/, '').match(/^s\/([a-z0-9-]+)/)
-  return m ? { page: 'station', id: m[1] } : { page: 'map', id: null }
+  const m = location.hash.replace(/^#\/?/, '').match(/^s\/([a-z0-9-]+)(\/config)?/)
+  if (!m) return { page: 'map', id: null }
+  return m[2] ? { page: 'settings', id: m[1] } : { page: 'station', id: m[1] }
 }
 
 export const go = (path: string) => { location.hash = '#/' + path }
