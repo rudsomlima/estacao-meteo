@@ -46,8 +46,9 @@ export default function StationSettings({ readings, station, source, onSave, onN
 
   const now = readings[readings.length - 1]
   const est = useMemo(() => cycle(draft.config), [draft.config])
-  const last7 = readings.map((r) => ({ t: r.ts, v: r.vbat }))
-  const rssi = readings.slice(-144).map((r) => ({ t: r.ts, v: r.rssi }))
+  const real = readings.filter((r) => Number.isFinite(r.temp))  // sem leitura de sensor não há o que desenhar
+  const last7 = real.map((r) => ({ t: r.ts, v: r.vbat }))
+  const rssi = real.slice(-144).map((r) => ({ t: r.ts, v: r.rssi }))
   const strip = (s: Station) => JSON.stringify({ ...s, latest: null, day: null, config: { ...s.config, version: 0 }, cfg_applied: 0, last_seen: null })
   const dirty = strip(draft) !== strip(station)
   const sensors = SENSORS(now)
@@ -87,8 +88,8 @@ export default function StationSettings({ readings, station, source, onSave, onN
             <dl className="num mt-4 grid grid-cols-2 gap-y-1.5 text-sm">
               <dt className="text-ink-3">Corrente média</dt><dd className="text-right">{est.avg.toFixed(3)} mA</dd>
               <dt className="text-ink-3">Bateria</dt><dd className="text-right">{chem.label} · {draft.config.battery_mah} mAh</dd>
-              <dt className="text-ink-3">Tensão agora</dt><dd className="text-right">{now.vbat.toFixed(2)} V · {batteryPct(now.vbat, draft.config.battery_chem)}%</dd>
-              <dt className="text-ink-3">Último sinal</dt><dd className="flex items-center justify-end gap-1.5"><Wifi className="h-3.5 w-3.5" aria-hidden />{now.rssi} dBm</dd>
+              <dt className="text-ink-3">Tensão agora</dt><dd className="text-right">{now.vbat > 1 ? `${now.vbat.toFixed(2)} V · ${batteryPct(now.vbat, draft.config.battery_chem)}%` : '—'}</dd>
+              <dt className="text-ink-3">Último sinal</dt><dd className="flex items-center justify-end gap-1.5"><Wifi className="h-3.5 w-3.5" aria-hidden />{now.rssi < 0 ? `${now.rssi} dBm` : '—'}</dd>
             </dl>
             <p className="mt-4 text-xs text-ink-3">Estimativa por folha de dados. Meça a corrente de sono com um multímetro de µA e ajuste os valores em <span className="num">lib/energy.ts</span>.</p>
           </Panel>

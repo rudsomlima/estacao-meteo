@@ -19,7 +19,7 @@ import type { Reading, Station } from './types'
 type Net = ReturnType<typeof useNetwork>
 
 /** Carrega a estação e as leituras e mostra uma página de erro ou de espera quando não há o que mostrar. */
-function StationGate({ id, net, children }: { id: string; net: Net; children: (station: Station, readings: Reading[]) => ReactNode }) {
+function StationGate({ id, net, allowEmpty, children }: { id: string; net: Net; allowEmpty?: boolean; children: (station: Station, readings: Reading[]) => ReactNode }) {
   const { stations, source } = net
   const station = stations.find((s) => s.id === id)
   const { readings, loading } = useReadings(station ? id : null, source)
@@ -36,13 +36,14 @@ function StationGate({ id, net, children }: { id: string; net: Net; children: (s
     )
   }
   if (loading) return <div className="grid min-h-svh place-items-center text-sm text-ink-3">Carregando leituras…</div>
-  if (!readings.length) {
+  if (!readings.length && !allowEmpty) {
     return (
       <div className="grid min-h-svh place-items-center px-4 text-center">
         <div className="max-w-sm">
           <h1 className="font-display text-2xl font-bold">{station.name} ainda não enviou leituras</h1>
           <div className="text-left"><NoReadings s={station} /></div>
           <p className="mt-3 text-xs text-ink-3">Sensor BME280: 3V3, GND, SDA no GPIO 6 e SCL no GPIO 7. Depois aperte RESET na placa.</p>
+          <button onClick={() => go(`s/${station.id}/config`)} className="mt-4 rounded-xl border border-line px-4 py-2.5 text-sm hover:bg-card-hover">Configurações da estação</button>
           <button onClick={() => go('')} className="mt-4 rounded-xl bg-blue px-4 py-2.5 text-sm font-semibold text-white">Voltar ao mapa</button>
         </div>
       </div>
@@ -85,8 +86,10 @@ function StationPage({ id, net }: { id: string; net: Net }) {
 /** Parte técnica da estação: energia, telemetria, sensores e configuração remota. */
 function SettingsPage({ id, net }: { id: string; net: Net }) {
   return (
-    <StationGate id={id} net={net}>
-      {(station, readings) => {
+    <StationGate id={id} net={net} allowEmpty>
+      {(station, loaded) => {
+        // estação sem leitura de sensor (por exemplo, sem BME280): a configuração continua disponível, com o que a placa informa
+        const readings = loaded.length ? loaded : [{ ts: station.last_seen ?? 0, temp: NaN, hum: NaN, pres: NaN, wind: NaN, gust: NaN, dir: NaN, rain: NaN, vbat: station.vbat ?? 0, rssi: station.rssi ?? 0 }]
         const now = readings[readings.length - 1]
         return (
           <>

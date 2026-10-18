@@ -40,7 +40,7 @@ export default function DiagnosticsPanel({ station, readings, events }: { statio
       <dl className="num grid grid-cols-2 gap-3 text-sm sm:grid-cols-4">
         <div><dt className="flex items-center gap-1.5 text-xs text-ink-3"><Cpu className="h-3.5 w-3.5" aria-hidden /> Firmware</dt><dd>{station.fw_version ?? 'desconhecido'}</dd></div>
         <div><dt className="text-xs text-ink-3">Último contato</dt><dd>{station.last_seen ? ago(station.last_seen) : 'nunca'}</dd></div>
-        <div><dt className="text-xs text-ink-3">Sinal do Wi-Fi</dt><dd>{now.rssi} dBm</dd></div>
+        <div><dt className="text-xs text-ink-3">Sinal do Wi-Fi</dt><dd>{now.rssi < 0 ? `${now.rssi} dBm` : '—'}</dd></div>
         <div><dt className="text-xs text-ink-3">Reinícios em 24 h</dt><dd className={day.bad ? 'text-warn' : ''}>{day.boots}{day.bad ? ` · ${day.bad} anormais` : ''}</dd></div>
       </dl>
       {day.brown > 0 && (
