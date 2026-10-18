@@ -65,6 +65,23 @@ check('não expõe a chave nem o nonce', !r.text.includes('key_hash') && !r.text
 // ================= envio com a chave (HTTPS)
 r = await call('POST', '/api/ingest', { body: { ...reading, cfg: 0 }, headers: dev })
 check('aceita leitura solta e devolve a configuração', r.status === 200 && r.json.config?.send_every >= 1, r.text)
+
+// ---- tempo real (WebSocket em /api/live): a estação envia e o navegador é avisado, sem perguntar
+{
+  const msgs = []
+  const ws = new WebSocket(BASE.replace(/^http/, 'ws') + '/api/live')
+  ws.onmessage = (e) => msgs.push(String(e.data))
+  await new Promise((res) => { ws.onopen = res; ws.onerror = res; setTimeout(res, 3000) })
+  check('abre o WebSocket em /api/live', ws.readyState === 1)
+  ws.send('ping')
+  await sleep(300)
+  check('responde ao ping sem acordar o servidor', msgs.includes('pong'), JSON.stringify(msgs))
+  msgs.length = 0
+  await call('POST', '/api/ingest', { body: reading, headers: dev })
+  await sleep(500)
+  check('avisa os navegadores quando a estação envia', msgs.some((m) => m.includes('"update"') && m.includes('serra')), JSON.stringify(msgs))
+  ws.close()
+}
 check('a resposta vem assinada', r.headers.get('x-sig') === hmac(SECRET, `|${r.text}`))
 
 r = await call('POST', '/api/ingest', { body: { cfg: 999, fw: '0.1.0', batch: [0, 1, 2].map((i) => ({ ...reading, age: 1800 - i * 600, wind: 3 + i })) }, headers: dev })

@@ -96,6 +96,7 @@ export default function MapView({ stations, selectedId, layers, pickMode, onSele
   const located = useRef(false) // a posição do usuário já levou o mapa para onde ele está
   const first = useRef(true)
   const [menu, setMenu] = useState(false)
+  const [tick, setTick] = useState(0) // o "há N s" dos pinos anda de segundo em segundo
   const prefs = usePrefs()
   live.current = { stations, layers, pickMode, onSelect, onPick }
 
@@ -128,6 +129,13 @@ export default function MapView({ stations, selectedId, layers, pickMode, onSele
   }, [prefs.basemap])
 
   useEffect(() => { if (map.current) map.current.getCanvas().style.cursor = pickMode ? 'crosshair' : '' }, [pickMode])
+
+  const showSeen = layers.includes('seen')
+  useEffect(() => {
+    if (!showSeen) return
+    const t = window.setInterval(() => setTick((n) => n + 1), 1000)
+    return () => window.clearInterval(t)
+  }, [showSeen])
 
   // ---- pinos
   useEffect(() => {
@@ -164,7 +172,7 @@ export default function MapView({ stations, selectedId, layers, pickMode, onSele
         m.fitBounds(b, { padding: narrow ? { top: 110, bottom: 150, left: 40, right: 40 } : { top: 90, bottom: 90, left: 60, right: 340 }, maxZoom: 9, duration: 0 })
       }
     }
-  }, [stations, layers, selectedId, prefs.wind, prefs.temp, prefs.rain])
+  }, [stations, layers, selectedId, prefs.wind, prefs.temp, prefs.rain, tick])
 
   // ---- partículas de vento (campo interpolado entre as estações)
   useEffect(() => {

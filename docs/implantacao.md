@@ -110,4 +110,6 @@ Sem a API, o site entra em **modo demonstração** com 8 estações simuladas. O
 
 ## Custos e limites
 
+**Tempo real:** o site recebe avisos por WebSocket (`/api/live`), que usa um Durable Object com SQLite, disponível no plano gratuito. O `wrangler deploy` cria o objeto sozinho (a migração está no `wrangler.toml`). Sem tempo real, escolha *Consulta periódica* em *Ajustes → Atualização dos dados*; cada aba aberta consultando a cada 5 s gasta cerca de 17 mil requisições por dia por consulta, contra 100 mil do plano gratuito.
+
 Confira a tabela de preços e os limites do Workers e do D1 no site da Cloudflare, porque eles mudam. Para uma rede pequena (algumas estações enviando a cada 30 min) o consumo fica muito abaixo de qualquer limite razoável, mas verifique antes de escalar.

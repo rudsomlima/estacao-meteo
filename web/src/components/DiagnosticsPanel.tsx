@@ -1,5 +1,6 @@
 import { AlertTriangle, CircleCheck, Cpu, Download, ExternalLink, Power, Wrench } from 'lucide-react'
 import { useMemo } from 'react'
+import { useNow } from '../hooks/useNow'
 import { ago } from '../lib/derive'
 import type { Reading, Station, StationEvent } from '../types'
 
@@ -28,6 +29,7 @@ function line(e: StationEvent) {
 
 /** Reinícios e eventos que a estação conta junto com as leituras. */
 export default function DiagnosticsPanel({ station, readings, events }: { station: Station; readings: Reading[]; events: StationEvent[] }) {
+  useNow() // as idades ("há 2min10s") andam sozinhas
   const now = readings[readings.length - 1]
   const day = useMemo(() => {
     const since = Date.now() / 1000 - 86400

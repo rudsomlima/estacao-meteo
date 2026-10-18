@@ -1,5 +1,6 @@
 import { Activity, ArrowLeft, BarChart3, Radio, Settings, SlidersHorizontal } from 'lucide-react'
 import { go } from '../hooks/useRoute'
+import { useNow } from '../hooks/useNow'
 import { scrollToId } from '../hooks/useLenis'
 import { ago } from '../lib/derive'
 import type { Source } from '../types'
@@ -43,6 +44,7 @@ interface Props {
 }
 
 export default function Navbar({ mode, title, source, status, lastTs, back, settingsTo }: Props) {
+  useNow() // redesenha a cada segundo: as idades ("há 2min10s") andam sozinhas
   const links = { station: STATION_LINKS, settings: SETTINGS_LINKS, config: CONFIG_LINKS, analyses: ANALYSES_LINKS, map: MAP_LINKS }[mode]
   return (
     <header className="fixed inset-x-0 top-0 z-50 border-b border-line/70 bg-bg/70 backdrop-blur-xl">

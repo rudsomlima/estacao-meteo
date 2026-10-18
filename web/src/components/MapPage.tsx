@@ -1,6 +1,7 @@
 import { Maximize2, Minimize2, Plus, Star } from 'lucide-react'
 import { lazy, Suspense, useEffect, useMemo, useRef, useState } from 'react'
 import type { SaveResult } from '../hooks/useNetwork'
+import { useNow } from '../hooks/useNow'
 import { go } from '../hooks/useRoute'
 import { type StationEdit } from '../lib/api'
 import { batteryPct, CHEMS } from '../lib/battery'
@@ -27,6 +28,7 @@ interface Props {
 }
 
 export default function MapPage({ stations, source, onCreate, onSave, onRemove }: Props) {
+  useNow() // as idades ("há 2min10s") andam sozinhas
   const prefs = usePrefs()
   const f = useFmt()
   const [layers, setLayers] = useState<MapLayer[]>(prefs.layers)
@@ -176,13 +178,15 @@ export default function MapPage({ stations, source, onCreate, onSave, onRemove }
           <table className="w-full min-w-[820px] border-collapse text-sm">
             <thead>
               <tr className="text-left text-[11px] uppercase tracking-[0.1em] text-ink-3">
-                {['', 'Estação', 'Temperatura', 'Vento', 'Chuva 24 h', 'Bateria', 'Última leitura'].map((h) => <th key={h} className="border-b border-line px-4 py-3 font-semibold">{h}</th>)}
+                {['', 'Estação', 'Temperatura', 'Vento', 'Chuva 24 h', 'Bateria', 'Visto'].map((h) => <th key={h} className="border-b border-line px-4 py-3 font-semibold">{h}</th>)}
               </tr>
             </thead>
             <tbody>
               {rows.map((s) => {
                 const l = s.latest, on = isOnline(s)
-                const pct = l ? batteryPct(l.vbat, s.config.battery_chem) : 0
+                const vb = l?.vbat ?? s.vbat
+                const pct = vb != null && vb > 1 ? batteryPct(vb, s.config.battery_chem) : 0
+                const seenTs = s.last_seen ?? l?.ts
                 return (
                   <tr key={s.id} tabIndex={0} onClick={() => go(`s/${s.id}`)} onKeyDown={(e) => e.key === 'Enter' && go(`s/${s.id}`)}
                     className={`num cursor-pointer border-b border-line last:border-0 hover:bg-card-hover ${on ? '' : 'opacity-60'}`}>
@@ -196,14 +200,14 @@ export default function MapPage({ stations, source, onCreate, onSave, onRemove }
                     <td className="px-4 py-3">{l ? <span style={{ color: windColor(kmh(l.wind)) }}>{f.wind(l.wind)} {compass16(l.dir)}</span> : '—'}</td>
                     <td className="px-4 py-3">{s.day ? f.rain(s.day.rain) : '—'}</td>
                     <td className="px-4 py-3">
-                      {l ? (
+                      {vb != null && vb > 1 ? (
                         <span className="flex items-center gap-2">
                           <span className="h-2 w-14 overflow-hidden rounded-full bg-line"><i className="block h-full" style={{ width: `${pct}%`, background: batteryColor(pct) }} /></span>
                           {pct}% <span className="text-xs text-ink-3">{CHEMS[s.config.battery_chem].label} · {s.config.battery_mah} mAh</span>
                         </span>
                       ) : '—'}
                     </td>
-                    <td className="px-4 py-3">{l ? <span className={on ? '' : 'text-bad'}>{ago(l.ts)}</span> : 'nunca'}</td>
+                    <td className="px-4 py-3">{seenTs ? <span className={on ? '' : 'text-bad'}>{ago(seenTs)}</span> : 'nunca'}</td>
                   </tr>
                 )
               })}

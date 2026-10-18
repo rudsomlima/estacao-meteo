@@ -1,3 +1,4 @@
+import { serverNow } from './clock'
 import type { Reading } from '../types'
 
 const DIRS = ['N', 'NNE', 'NE', 'ENE', 'L', 'ESE', 'SE', 'SSE', 'S', 'SSO', 'SO', 'OSO', 'O', 'ONO', 'NO', 'NNO']
@@ -71,16 +72,22 @@ export function windRose(readings: Reading[]) {
   return bins.map((b) => ({ freq: b.n / total, avg: b.n ? b.sum / b.n : 0 }))
 }
 
-export function ago(ts: number, now = Date.now() / 1000) {
-  const s = Math.max(0, Math.round(now - ts))
-  if (s < 90) return `há ${s} s`
-  if (s < 5400) return `há ${Math.round(s / 60)} min`
-  if (s < 172800) return `há ${Math.round(s / 3600)} h`
-  return `há ${Math.round(s / 86400)} d`
+/** Idade até o segundo: "há 45s", "há 2min10s", "há 3h12min08s", "há 2d4h10min05s". */
+export function ago(ts: number, now = serverNow()) {
+  let s = Math.max(0, Math.floor(now - ts))
+  const d = Math.floor(s / 86400); s -= d * 86400
+  const h = Math.floor(s / 3600); s -= h * 3600
+  const m = Math.floor(s / 60); s -= m * 60
+  const parts: string[] = []
+  if (d) parts.push(`${d}d`)
+  if (d || h) parts.push(`${h}h`)
+  if (d || h || m) parts.push(`${d || h ? String(m).padStart(2, '0') : m}min`)
+  parts.push(`${d || h || m ? String(s).padStart(2, '0') : s}s`)
+  return `há ${parts.join('')}`
 }
 
 /** Visto há pouco: a placa falou com o servidor, mesmo sem leitura de sensor (por exemplo, sem BME280). */
-export function isSeen(s: { last_seen: number | null; config: { interval_min: number; send_every?: number } }, now = Date.now() / 1000) {
+export function isSeen(s: { last_seen: number | null; config: { interval_min: number; send_every?: number } }, now = serverNow()) {
   return !!s.last_seen && now - s.last_seen < s.config.interval_min * 60 * Math.max(1, s.config.send_every ?? 1) * 2.5
 }
 
@@ -89,6 +96,6 @@ export const wifiLabel = (rssi: number) => (rssi >= -60 ? 'ótimo' : rssi >= -70
 export const wifiColor = (rssi: number) => (rssi >= -60 ? '#4ade80' : rssi >= -70 ? '#a3e635' : rssi >= -80 ? '#fbbf24' : '#f87171')
 
 /** Online se a última leitura tem menos de 2,5 ciclos de idade. */
-export function isOnline(s: { latest: { ts: number } | null; config: { interval_min: number } }, now = Date.now() / 1000) {
+export function isOnline(s: { latest: { ts: number } | null; config: { interval_min: number } }, now = serverNow()) {
   return !!s.latest && now - s.latest.ts < s.config.interval_min * 60 * 2.5
 }

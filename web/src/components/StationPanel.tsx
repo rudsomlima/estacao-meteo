@@ -1,5 +1,6 @@
 import { ArrowRight, Pencil, Settings, Star, X } from 'lucide-react'
 import { useMemo } from 'react'
+import { useNow } from '../hooks/useNow'
 import { useReadings } from '../hooks/useNetwork'
 import { go } from '../hooks/useRoute'
 import { batteryColor } from '../lib/colors'
@@ -23,6 +24,7 @@ function Spark({ values, color }: { values: number[]; color: string }) {
 
 /** Estação sem leitura de sensor: mostra o que a placa informa mesmo assim (bateria e sinal Wi-Fi). */
 export function NoReadings({ s }: { s: Station }) {
+  useNow()
   const seen = isSeen(s)
   const f = s.vbat != null
   return (
@@ -43,6 +45,7 @@ export function NoReadings({ s }: { s: Station }) {
 }
 
 export default function StationPanel({ station: s, source, onClose, onEdit }: { station: Station; source: Source; onClose: () => void; onEdit: () => void }) {
+  useNow() // redesenha a cada segundo: as idades ("há 2min10s") andam sozinhas
   const { readings } = useReadings(s.id, source, 24)
   const f = useFmt()
   const prefs = usePrefs()

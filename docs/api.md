@@ -129,6 +129,18 @@ Campos com os limites que o servidor aplica (valores fora da faixa são ajustado
 | `battery_mah` | 100 a 100000 | `bench_min` | 0 a 30 (minutos do modo bancada; 0 desliga) |
 | `battery_chem` | `li`, `lfp`, `lipo`, `aa` | | |
 
+## Tempo real (WebSocket)
+
+`GET /api/live` abre um WebSocket (sem autenticação, só leitura). Sempre que uma estação envia, ou é criada, alterada ou removida, o servidor manda a todos os conectados um aviso curto:
+
+```json
+{"t":"update","id":"usina"}
+```
+
+O aviso não traz dados: o site então busca o que mudou pelas rotas normais (`/api/stations`, `/readings`, `/events`). O cliente pode mandar o texto `ping` e recebe `pong` (respondido pela plataforma, sem acordar o objeto). Quem implementa o Durable Object é [`worker/src/hub.ts`](../worker/src/hub.ts), com a API de hibernação: conexões paradas não gastam tempo de execução. O limite é de 200 conexões simultâneas.
+
+No plano gratuito da Cloudflare, cada 20 mensagens do WebSocket contam como 1 requisição (limite de 100 mil por dia). Em *Ajustes → Atualização dos dados* o site escolhe entre tempo real e consulta periódica e define a consulta de segurança (padrão 60 s) que cobre uma conexão que caia sem aviso.
+
 ## Pareamento por código
 
 Para instalar uma estação sem copiar a chave: o administrador gera um código e quem instala o digita no portal da placa.

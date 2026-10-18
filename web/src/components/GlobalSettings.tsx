@@ -8,6 +8,7 @@ import FlashPanel from './FlashPanel'
 import TelegramPanel from './TelegramPanel'
 import { requestUsb } from './UsbDevice'
 import { usbSupported } from '../lib/usb'
+import { useLiveState } from '../lib/refresh'
 
 function Choice<K extends keyof Prefs>({ label, name, options, value }: { label: string; name: K; options: [Prefs[K], string][]; value: Prefs[K] }) {
   return (
@@ -30,6 +31,7 @@ function Choice<K extends keyof Prefs>({ label, name, options, value }: { label:
 /** Ajustes do site (valem para todas as estações e ficam só neste navegador), alertas e dados. */
 export default function GlobalSettings({ stations, source }: { stations: Station[]; source: Source }) {
   const p = usePrefs()
+  const live = useLiveState()
   const favs = p.favorites.map((id) => stations.find((s) => s.id === id)).filter((s): s is Station => !!s)
   const others = stations.filter((s) => !p.favorites.includes(s.id))
 
@@ -65,6 +67,35 @@ export default function GlobalSettings({ stations, source }: { stations: Station
           </div>
           <p className="mt-4 text-xs text-ink-3">Os dados são guardados sempre em m/s, °C, mm e hPa. A conversão acontece só na tela.</p>
           <button onClick={() => setPrefs(DEFAULT_PREFS)} className="mt-3 rounded-lg border border-line px-3 py-1.5 text-xs hover:bg-card-hover">Voltar ao padrão</button>
+        </Panel>
+
+        <div id="atualizacao" className="scroll-mt-20" />
+        <Panel id="g-atualizacao" title="Atualização dos dados" hint="como o site fica sabendo que a estação enviou">
+          <div className="grid gap-5 sm:grid-cols-2">
+            <Choice label="Como atualizar" name="updates" value={p.updates} options={[['live', 'Tempo real (WebSocket)'], ['poll', 'Consulta periódica']]} />
+            <label className="grid content-start gap-1.5 text-sm text-ink-2">
+              {p.updates === 'live' ? 'Consulta de segurança (segundos, 0 desliga)' : 'Consultar a cada (segundos, mínimo 5)'}
+              <input
+                type="number" min={0} max={3600} step={5} value={p.pollS} aria-label="Segundos entre consultas"
+                onChange={(e) => setPrefs({ pollS: Number(e.target.value) })}
+                className="num w-32 rounded-lg border border-line bg-bg px-3 py-2 text-sm text-ink"
+              />
+            </label>
+          </div>
+          <p className="mt-3 text-sm" role="status">
+            {source !== 'api' ? <span className="text-ink-3">Sem servidor (demonstração): não há o que atualizar.</span>
+              : live === 'live' ? <span className="text-ok">Conectado em tempo real: o servidor avisa na hora em que a estação envia.</span>
+              : live === 'connecting' ? <span className="text-warn">Conectando ao servidor em tempo real…</span>
+              : live === 'poll' ? <span className="text-ink-2">Consultando o servidor a cada {Math.max(5, p.pollS || 15)} s.</span>
+              : <span className="text-ink-3">Inativo nesta tela.</span>}
+          </p>
+          <ul className="mt-3 grid gap-1.5 text-xs text-ink-3">
+            <li><b className="text-ink-2">Tempo real:</b> o site mantém uma conexão aberta e só busca dados quando o servidor avisa. Gasta poucas requisições.</li>
+            <li><b className="text-ink-2">Consulta de segurança:</b> uma consulta comum de tempos em tempos, caso a conexão caia sem o navegador perceber. Em 60 s custa cerca de 1.400 requisições por dia por aba aberta.</li>
+            <li><b className="text-ink-2">Consulta periódica:</b> sem WebSocket. Cada consulta do intervalo gasta requisições do plano gratuito da Cloudflare (100 mil por dia).</li>
+            <li>Com a aba escondida o site não consulta e atualiza na hora quando você volta.</li>
+          </ul>
+          <button onClick={() => setPrefs({ updates: DEFAULT_PREFS.updates, pollS: DEFAULT_PREFS.pollS })} className="mt-3 rounded-lg border border-line px-3 py-1.5 text-xs hover:bg-card-hover">Voltar ao padrão</button>
         </Panel>
 
         <div id="favoritas" className="scroll-mt-20" />

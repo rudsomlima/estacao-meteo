@@ -30,7 +30,7 @@ export default defineConfig({
   plugins: [react(), tailwindcss(), lanIp()],
   server: {
     // `npm run dev` na pasta worker/ sobe a API em 8787
-    proxy: { '/api': { target: 'http://127.0.0.1:8787', changeOrigin: true } },
+    proxy: { '/api': { target: 'http://127.0.0.1:8787', changeOrigin: true, ws: true } }, // ws: o tempo real (WebSocket em /api/live)
   },
   build: { chunkSizeWarningLimit: 1200 },
 })

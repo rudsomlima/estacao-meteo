@@ -17,3 +17,13 @@ database_id = "00000000-0000-0000-0000-000000000000" # troque pelo id que `wrang
 # Alertas de "estação offline": roda a cada 5 minutos
 [triggers]
 crons = ["*/5 * * * *"]
+
+# Tempo real: os navegadores recebem um aviso quando a estação envia (WebSocket em /api/live).
+# Durable Object com SQLite, que é o único tipo disponível no plano gratuito.
+[[durable_objects.bindings]]
+name = "HUB"
+class_name = "Hub"
+
+[[migrations]]
+tag = "v1"
+new_sqlite_classes = ["Hub"]

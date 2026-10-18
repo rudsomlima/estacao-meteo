@@ -18,9 +18,13 @@ export interface Prefs {
   basemap: 'dark' | 'streets' | 'satellite' | 'terrain'
   /** abrir direto na página da estação principal */
   openMain: boolean
+  /** como o site busca dados novos: aviso em tempo real (WebSocket) ou consulta periódica */
+  updates: 'live' | 'poll'
+  /** segundos entre consultas: de segurança no tempo real (0 desliga) ou o intervalo da consulta periódica (mínimo 5) */
+  pollS: number
 }
 
-export const DEFAULT_PREFS: Prefs = { wind: 'kmh', temp: 'c', rain: 'mm', pres: 'hpa', favorites: [], layers: ['wind'], basemap: 'dark', openMain: false }
+export const DEFAULT_PREFS: Prefs = { wind: 'kmh', temp: 'c', rain: 'mm', pres: 'hpa', favorites: [], layers: ['wind'], basemap: 'dark', openMain: false, updates: 'live', pollS: 60 }
 
 const KEY = 'meteo.prefs'
 const EVENT = 'meteo:prefs'
@@ -49,6 +53,8 @@ export function sanitize(input: unknown): Prefs {
       : typeof o.layer === 'string' && MAP_LAYERS.some(([k]) => k === o.layer) ? [o.layer as MapLayer] : DEFAULT_PREFS.layers,
     basemap: pick(o.basemap, ['dark', 'streets', 'satellite', 'terrain'], DEFAULT_PREFS.basemap),
     openMain: o.openMain === true,
+    updates: pick(o.updates, ['live', 'poll'], DEFAULT_PREFS.updates),
+    pollS: typeof o.pollS === 'number' && Number.isFinite(o.pollS) ? Math.min(3600, Math.max(0, Math.round(o.pollS))) : DEFAULT_PREFS.pollS,
   }
 }
 
@@ -69,6 +75,9 @@ function subscribe(cb: () => void) {
   window.addEventListener('storage', on)
   return () => { listeners.delete(cb); window.removeEventListener('storage', on) }
 }
+
+/** Avisa quando as preferências mudam (nesta aba ou em outra). */
+export const subscribePrefs = subscribe
 
 export const usePrefs = () => useSyncExternalStore(subscribe, getPrefs, () => DEFAULT_PREFS)
 

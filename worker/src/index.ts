@@ -6,6 +6,7 @@
  *   GET  /api/ota/firmware.bin   baixa o firmware publicado para ela
  *   POST /api/claim              troca um código de pareamento (de uso único) pela chave da estação
  * Público (somente leitura):
+ *   GET  /api/live                WebSocket: avisa quando uma estação envia ou muda (o navegador então busca o dado novo)
  *   GET  /api/stations, /api/stations/:id, /:id/readings, /:id/daily, /:id/events, /:id/firmware
  * Administrador (assinatura HMAC com o ADMIN_TOKEN, o token nunca viaja):
  *   POST /api/stations, PUT|DELETE /api/stations/:id, POST /:id/key, POST /:id/claim, POST|DELETE /:id/firmware
@@ -14,10 +15,13 @@
 import {
   detectChat, DEFAULT_TEMPLATES, evaluateAfterIngest, evaluateOffline, loadTelegram, publicTelegram, render, saveTelegram, sendTelegram,
 } from './alerts'
+import { notifyLive } from './hub'
 import { fromBase64, hmacHex, newKey, randomHex, same, sha256Hex, toBase64 } from './crypto'
 import {
   type Config, DEFAULT_CONFIG, type Env, EVENT_KINDS, INTEGER_FIELDS, json, LIMITS, MAX_AGE_S, MAX_BATCH, CHEMS, READING_RANGES,
 } from './shared'
+
+export { Hub } from './hub'
 
 const MAX_FIRMWARE = 1_600_000
 
@@ -192,6 +196,7 @@ async function ingest(req: Request, env: Env, ctx: ExecutionContext) {
   }
 
   const fwMeta = await env.DB.prepare('SELECT version, size, sha256 FROM firmware WHERE station_id = ?').bind(st.id).first<{ version: string; size: number; sha256: string }>()
+  ctx.waitUntil(notifyLive(env, st.id))
   if (latest) ctx.waitUntil(evaluateAfterIngest(env, { id: st.id, name: st.name, city: st.city, config: cfg }, latest).catch(() => undefined))
 
   return signedJson(auth, {
@@ -448,6 +453,9 @@ async function route(req: Request, env: Env, ctx: ExecutionContext): Promise<Res
   if (p === '/api/ota/firmware.bin' && m === 'GET') return firmwareDownload(req, env)
   if (p === '/api/claim' && m === 'POST') return claim(req, env, await readRaw(req))
 
+  // tempo real: o navegador abre um WebSocket e é avisado quando algo muda
+  if (p === '/api/live' && m === 'GET') return env.HUB.get(env.HUB.idFromName('rede')).fetch(req)
+
   // leitura pública
   if (m === 'GET') {
     if (p === '/api/stations') return listStations(env)
@@ -504,7 +512,12 @@ export default {
   async fetch(req: Request, env: Env, ctx: ExecutionContext): Promise<Response> {
     try {
       const r = await route(req, env, ctx)
-      if (r) return r
+      if (r) {
+        // criar, editar, remover ou trocar a chave de uma estação: os navegadores conectados atualizam na hora
+        const changed = req.method !== 'GET' && r.ok && new URL(req.url).pathname.match(/^\/api\/stations(?:\/([a-z0-9-]+))?/)
+        if (changed) ctx.waitUntil(notifyLive(env, changed[1] ?? null))
+        return r
+      }
       if (new URL(req.url).pathname.startsWith('/api/')) return json({ error: 'rota não encontrada' }, 404)
     } catch (e) {
       console.error(e)

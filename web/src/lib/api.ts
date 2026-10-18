@@ -1,3 +1,4 @@
+import { syncServerTime } from './clock'
 import type { DailyRow, FirmwareInfo, Reading, Station, StationConfig, StationEvent } from '../types'
 
 export class ApiError extends Error {
@@ -13,6 +14,7 @@ async function request<T>(url: string, init?: RequestInit, timeoutMs = 8000): Pr
   const timer = setTimeout(() => ctl.abort(), timeoutMs)
   try {
     const res = await fetch(url, { ...init, signal: ctl.signal })
+    syncServerTime(res.headers.get('date'))
     const type = res.headers.get('content-type') ?? ''
     if (!type.includes('json')) throw new Error('resposta não é JSON')
     const body = await res.json()

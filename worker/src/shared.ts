@@ -1,6 +1,8 @@
 export interface Env {
   DB: D1Database
   ASSETS: Fetcher
+  /** ponto de encontro do tempo real (WebSocket), veja hub.ts */
+  HUB: DurableObjectNamespace
   ADMIN_TOKEN: string
   /** só para testes: aponta o Telegram para um servidor local */
   TELEGRAM_API?: string

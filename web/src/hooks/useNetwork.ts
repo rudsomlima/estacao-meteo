@@ -1,10 +1,10 @@
+import { subscribeRefresh } from '../lib/refresh'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { ApiError, createStation, deleteStation, fetchDaily, fetchEvents, fetchFirmware, fetchReadings, fetchStations, rotateKey, store, updateStation, type StationEdit } from '../lib/api'
 import { aggregateDaily, localTzMinutes } from '../lib/daily'
 import { demoHistory, demoNetwork, demoNext } from '../lib/demo'
 import type { DailyRow, FirmwareInfo, Reading, Source, Station, StationEvent } from '../types'
 
-const POLL_MS = 30_000
 const DEMO_TICK_MS = 6_000
 const HISTORY_HOURS = 24 * 7
 
@@ -32,9 +32,10 @@ export function useNetwork() {
   useEffect(() => {
     let alive = true
     let timer = 0
+    let unsub = () => {}
     refresh().then((ok) => {
       if (!alive) return
-      if (ok) { timer = window.setInterval(refresh, POLL_MS); return }
+      if (ok) { unsub = subscribeRefresh(() => void refresh()); return }
       // sem API (por exemplo `npm run dev` sozinho): rede simulada
       sourceRef.current = 'demo'
       setStations(demoNetwork().map((s) => ({ ...s, ...patchFromLocal(s) })))
@@ -47,7 +48,7 @@ export function useNetwork() {
         }))
       }, DEMO_TICK_MS)
     })
-    return () => { alive = false; clearInterval(timer) }
+    return () => { alive = false; clearInterval(timer); unsub() }
   }, [refresh])
 
   const save = useCallback(async (s: Station, token: string): Promise<SaveResult> => {
@@ -129,6 +130,7 @@ export function useReadings(id: string | null, source: Source, hours = HISTORY_H
     if (!id) return
     let alive = true
     let timer = 0
+    let unsub = () => {}
     setLoading(true)
     const load = async () => {
       try {
@@ -140,7 +142,7 @@ export function useReadings(id: string | null, source: Source, hours = HISTORY_H
     }
     if (source === 'api') {
       load()
-      timer = window.setInterval(load, POLL_MS)
+      unsub = subscribeRefresh((sid) => { if (!sid || sid === id) void load() })
     } else {
       setReadings(demoHistory(id, hours))
       setLoading(false)
@@ -149,7 +151,7 @@ export function useReadings(id: string | null, source: Source, hours = HISTORY_H
         if (next) setReadings((prev) => [...prev.slice(-1100), next])
       }, DEMO_TICK_MS)
     }
-    return () => { alive = false; clearInterval(timer) }
+    return () => { alive = false; clearInterval(timer); unsub() }
   }, [id, source, hours])
 
   return { readings, loading }
@@ -217,8 +219,8 @@ export function useEvents(id: string | null, source: Source) {
     const load = () => (source === 'api' ? fetchEvents(id, 50).catch(() => [] as StationEvent[]) : Promise.resolve(DEMO_EVENTS()))
       .then((e) => { if (alive) setEvents(e) })
     load()
-    const t = window.setInterval(load, POLL_MS)
-    return () => { alive = false; clearInterval(t) }
+    const unsub = source === 'api' ? subscribeRefresh((sid) => { if (!sid || sid === id) load() }) : () => {}
+    return () => { alive = false; unsub() }
   }, [id, source])
 
   return events
