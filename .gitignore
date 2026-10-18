@@ -1,0 +1,17 @@
+node_modules/
+dist/
+.wrangler/
+.dev.vars
+.env
+.pio/
+wr.log
+wrangler.log
+seed.sql
+web/public/maplibre/
+.DS_Store
+Thumbs.db
+
+# Modelos 3D: o Windicator original tem licença própria (veja THIRD_PARTY.md).
+# Remova estas linhas só depois de confirmar que pode redistribuir.
+*.stl
+*.3mf

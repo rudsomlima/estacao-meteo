@@ -1,0 +1,15 @@
+name = "estacao-meteo"
+main = "src/index.ts"
+compatibility_date = "2025-10-01"
+
+# O mesmo Worker serve o site (web/dist) e a API em /api/*
+[assets]
+directory = "../web/dist"
+binding = "ASSETS"
+not_found_handling = "single-page-application"
+run_worker_first = ["/api/*"]
+
+[[d1_databases]]
+binding = "DB"
+database_name = "estacao-meteo"
+database_id = "00000000-0000-0000-0000-000000000000" # troque pelo id que `wrangler d1 create estacao-meteo` imprime

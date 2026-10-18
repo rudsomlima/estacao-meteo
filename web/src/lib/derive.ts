@@ -1,0 +1,85 @@
+import type { Reading } from '../types'
+
+const DIRS = ['N', 'NNE', 'NE', 'ENE', 'L', 'ESE', 'SE', 'SSE', 'S', 'SSO', 'SO', 'OSO', 'O', 'ONO', 'NO', 'NNO']
+export const compass16 = (deg: number) => DIRS[Math.round((((deg % 360) + 360) % 360) / 22.5) % 16]
+
+export const kmh = (ms: number) => ms * 3.6
+
+const BEAUFORT = [0.3, 1.6, 3.4, 5.5, 8, 10.8, 13.9, 17.2, 20.8, 24.5, 28.5, 32.7]
+const BEAUFORT_NAME = [
+  'Calmaria', 'Aragem', 'Brisa leve', 'Brisa fraca', 'Brisa moderada', 'Brisa forte',
+  'Vento fresco', 'Vento forte', 'Ventania', 'Ventania forte', 'Tempestade', 'Tempestade violenta', 'Furacão',
+]
+export function beaufort(ms: number) {
+  const n = BEAUFORT.findIndex((limit) => ms < limit)
+  const f = n === -1 ? 12 : n
+  return { n: f, name: BEAUFORT_NAME[f] }
+}
+
+/** Ponto de orvalho (Magnus). */
+export function dewPoint(t: number, rh: number) {
+  const a = 17.62, b = 243.12
+  const g = Math.log(Math.max(rh, 1) / 100) + (a * t) / (b + t)
+  return (b * g) / (a - g)
+}
+
+/** Temperatura aparente (Steadman, com vento). */
+export function feelsLike(t: number, rh: number, windMs: number) {
+  const e = (rh / 100) * 6.105 * Math.exp((17.27 * t) / (237.7 + t))
+  return t + 0.33 * e - 0.7 * windMs - 4
+}
+
+export function trend(readings: Reading[], pick: (r: Reading) => number, hours = 3) {
+  if (readings.length < 2) return 0
+  const last = readings[readings.length - 1]
+  const target = last.ts - hours * 3600
+  let ref = readings[0]
+  for (const r of readings) if (r.ts <= target) ref = r
+  return pick(last) - pick(ref)
+}
+
+export interface DayStats {
+  tMin: number; tMax: number; gustMax: number; rainDay: number; rainHour: number; windAvg: number
+}
+export function dayStats(readings: Reading[]): DayStats {
+  const now = readings[readings.length - 1]
+  const mid = new Date(now.ts * 1000)
+  mid.setHours(0, 0, 0, 0)
+  const today = readings.filter((r) => r.ts >= mid.getTime() / 1000)
+  const set = today.length ? today : [now]
+  const hour = readings.filter((r) => r.ts > now.ts - 3600)
+  return {
+    tMin: Math.min(...set.map((r) => r.temp)),
+    tMax: Math.max(...set.map((r) => r.temp)),
+    gustMax: Math.max(...set.map((r) => r.gust)),
+    rainDay: set.reduce((s, r) => s + r.rain, 0),
+    rainHour: hour.reduce((s, r) => s + r.rain, 0),
+    windAvg: set.reduce((s, r) => s + r.wind, 0) / set.length,
+  }
+}
+
+/** Frequência por setor (16) e velocidade média, para a rosa dos ventos. */
+export function windRose(readings: Reading[]) {
+  const bins = Array.from({ length: 16 }, () => ({ n: 0, sum: 0 }))
+  for (const r of readings) {
+    if (r.wind < 0.3) continue
+    const i = Math.round((((r.dir % 360) + 360) % 360) / 22.5) % 16
+    bins[i].n++
+    bins[i].sum += r.wind
+  }
+  const total = bins.reduce((s, b) => s + b.n, 0) || 1
+  return bins.map((b) => ({ freq: b.n / total, avg: b.n ? b.sum / b.n : 0 }))
+}
+
+export function ago(ts: number, now = Date.now() / 1000) {
+  const s = Math.max(0, Math.round(now - ts))
+  if (s < 90) return `há ${s} s`
+  if (s < 5400) return `há ${Math.round(s / 60)} min`
+  if (s < 172800) return `há ${Math.round(s / 3600)} h`
+  return `há ${Math.round(s / 86400)} d`
+}
+
+/** Online se a última leitura tem menos de 2,5 ciclos de idade. */
+export function isOnline(s: { latest: { ts: number } | null; config: { interval_min: number } }, now = Date.now() / 1000) {
+  return !!s.latest && now - s.latest.ts < s.config.interval_min * 60 * 2.5
+}

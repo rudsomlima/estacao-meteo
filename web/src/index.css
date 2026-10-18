@@ -1,0 +1,75 @@
+@import "tailwindcss";
+
+@theme {
+  --color-bg: #0b1012;
+  --color-card: #0e1417;
+  --color-card-hover: #131a1e;
+  --color-line: #1d2529;
+  --color-line-hover: #2b353a;
+  --color-ink: #f4f6f7;
+  --color-ink-2: #9ca9b0;
+  --color-ink-3: #76838b;
+  --color-blue: #2563eb;
+  --color-sky: #60a5fa;
+  --color-cyan: #38bdf8;
+  --color-ok: #4ade80;
+  --color-warn: #fbbf24;
+  --color-bad: #f87171;
+  --color-sun: #fb923c;
+  --font-display: "Bricolage Grotesque Variable", "Inter Variable", system-ui, sans-serif;
+  --font-sans: "Inter Variable", system-ui, sans-serif;
+  --font-mono: "Geist Mono Variable", ui-monospace, monospace;
+}
+
+html {
+  background: var(--color-bg);
+  color-scheme: dark;
+}
+
+body {
+  margin: 0;
+  background: var(--color-bg);
+  color: var(--color-ink);
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+  overflow-x: hidden;
+}
+
+html.lenis, html.lenis body { height: auto; }
+.lenis.lenis-smooth { scroll-behavior: auto !important; }
+.lenis.lenis-stopped { overflow: hidden; }
+
+.num { font-family: var(--font-mono); font-variant-numeric: tabular-nums; }
+
+.glass {
+  background: color-mix(in srgb, var(--color-card) 72%, transparent);
+  backdrop-filter: blur(14px);
+  border: 1px solid var(--color-line);
+}
+
+input[type="range"] { accent-color: var(--color-cyan); }
+:focus-visible { outline: 2px solid var(--color-cyan); outline-offset: 2px; }
+
+@media (prefers-reduced-motion: reduce) {
+  * { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; }
+}
+
+/* ---- pinos do mapa ---- */
+.wpin {
+  display: grid; justify-items: center; background: none; border: 0; padding: 0; cursor: pointer;
+  font: 600 11px var(--font-mono); color: #fff; transform-origin: bottom center;
+}
+.wpin b {
+  background: #0b1620; border: 2px solid var(--c, #38bdf8); border-radius: 99px; padding: 2px 9px;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.5); white-space: nowrap; font-weight: 600;
+}
+.wpin i { display: block; width: 2px; height: 10px; background: var(--c, #38bdf8); }
+.wpin span { margin-top: 2px; font-size: 10px; color: rgba(255, 255, 255, 0.78); text-shadow: 0 1px 3px #000; }
+.wpin[data-sel="1"] b { background: var(--c, #38bdf8); color: #04121c; }
+.wpin[data-off="1"] b { opacity: 0.6; border-style: dashed; }
+.wpin:focus-visible b { outline: 2px solid #fff; outline-offset: 2px; }
+.maplibregl-ctrl-attrib { background: rgba(11, 16, 18, 0.7) !important; color: #9ca9b0 !important; }
+.maplibregl-ctrl-attrib a { color: #9ca9b0 !important; }
+.maplibregl-ctrl-group { background: #0e1417 !important; border: 1px solid var(--color-line); }
+.maplibregl-ctrl-group button + button { border-top: 1px solid var(--color-line) !important; }
+.maplibregl-ctrl-icon { filter: invert(1); }

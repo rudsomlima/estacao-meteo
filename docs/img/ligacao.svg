@@ -1,0 +1,183 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 860" width="1200" height="860" role="img" aria-label="Diagrama de ligação da estação">
+<title>Diagrama de ligação da estação</title>
+<rect width="1200" height="860" fill="#ffffff"/>
+<text x="40" y="40" font-size="24" fill="#0f172a" text-anchor="start" font-weight="700" font-family="'Helvetica Neue', Arial, sans-serif" >Ligação da estação</text>
+<text x="40" y="62" font-size="13" fill="#64748b" text-anchor="start" font-weight="400" font-family="'Helvetica Neue', Arial, sans-serif" >ESP32-C3 SuperMini, BME280, GY-273 (QMC5883L), dois sensores Hall, bateria com divisor e carregador solar.</text>
+<path d="M60,100 L1140,100" fill="none" stroke="#d62828" stroke-width="6" stroke-linejoin="round" stroke-linecap="round"/>
+<text x="60" y="90" font-size="13" fill="#d62828" text-anchor="start" font-weight="700" font-family="ui-monospace, 'SFMono-Regular', Menlo, Consolas, monospace" >3V3</text>
+<text x="60" y="830" font-size="11" fill="#64748b" text-anchor="start" font-weight="400" font-family="'Helvetica Neue', Arial, sans-serif" >Todos os símbolos de terra (GND) são o mesmo nó. Para 3V3, a barra vermelha do topo é o mesmo nó.</text>
+<rect x="500" y="150" width="200" height="380" rx="10" fill="#e0f2fe" stroke="#0284c7" stroke-width="2.2" />
+<text x="600.0" y="220" font-size="16" fill="#0f172a" text-anchor="middle" font-weight="700" font-family="'Helvetica Neue', Arial, sans-serif" >ESP32-C3</text>
+<text x="600.0" y="238" font-size="12" fill="#64748b" text-anchor="middle" font-weight="400" font-family="'Helvetica Neue', Arial, sans-serif" >SuperMini</text>
+<text x="600.0" y="490" font-size="11" fill="#64748b" text-anchor="middle" font-weight="400" font-family="ui-monospace, 'SFMono-Regular', Menlo, Consolas, monospace" >botão BOOT (GPIO9)</text>
+<text x="600.0" y="506" font-size="11" fill="#64748b" text-anchor="middle" font-weight="400" font-family="'Helvetica Neue', Arial, sans-serif" >segurar ao ligar abre o portal Wi-Fi</text>
+<path d="M560,150 L560,100" fill="none" stroke="#d62828" stroke-width="2.6" stroke-linejoin="round" stroke-linecap="round"/>
+<circle cx="560" cy="100" r="3.6" fill="#d62828"/>
+<circle cx="560" cy="150" r="3.2" fill="#d62828"/>
+<text x="560" y="169" font-size="11" fill="#d62828" text-anchor="middle" font-weight="400" font-family="ui-monospace, 'SFMono-Regular', Menlo, Consolas, monospace" >3V3</text>
+<path d="M560,530 L560,542" fill="none" stroke="#1f2933" stroke-width="2.4" stroke-linejoin="round" stroke-linecap="round"/>
+<path d="M544,542 L576,542" fill="none" stroke="#1f2933" stroke-width="2.4" stroke-linejoin="round" stroke-linecap="round"/>
+<path d="M550,547 L570,547" fill="none" stroke="#1f2933" stroke-width="2.4" stroke-linejoin="round" stroke-linecap="round"/>
+<path d="M555,552 L565,552" fill="none" stroke="#1f2933" stroke-width="2.4" stroke-linejoin="round" stroke-linecap="round"/>
+<circle cx="560" cy="530" r="3.2" fill="#1f2933"/>
+<text x="560" y="521" font-size="11" fill="#1f2933" text-anchor="middle" font-weight="400" font-family="ui-monospace, 'SFMono-Regular', Menlo, Consolas, monospace" >GND</text>
+<rect x="70" y="150" width="190" height="90" rx="8" fill="#f8fafc" stroke="#94a3b8" stroke-width="1.6" />
+<text x="165.0" y="174" font-size="14" fill="#0f172a" text-anchor="middle" font-weight="700" font-family="'Helvetica Neue', Arial, sans-serif" >BME280</text>
+<text x="165.0" y="192" font-size="11" fill="#64748b" text-anchor="middle" font-weight="400" font-family="'Helvetica Neue', Arial, sans-serif" >temp · umidade · pressão</text>
+<rect x="300" y="150" width="190" height="90" rx="8" fill="#f8fafc" stroke="#94a3b8" stroke-width="1.6" />
+<text x="395.0" y="174" font-size="14" fill="#0f172a" text-anchor="middle" font-weight="700" font-family="'Helvetica Neue', Arial, sans-serif" >GY-273</text>
+<text x="395.0" y="192" font-size="11" fill="#64748b" text-anchor="middle" font-weight="400" font-family="'Helvetica Neue', Arial, sans-serif" >QMC5883L · direção</text>
+<path d="M100,150 L100,100" fill="none" stroke="#d62828" stroke-width="2.6" stroke-linejoin="round" stroke-linecap="round"/>
+<circle cx="100" cy="100" r="3.6" fill="#d62828"/>
+<circle cx="100" cy="150" r="3.2" fill="#d62828"/>
+<text x="100" y="169" font-size="11" fill="#d62828" text-anchor="middle" font-weight="400" font-family="ui-monospace, 'SFMono-Regular', Menlo, Consolas, monospace" >VCC</text>
+<path d="M330,150 L330,100" fill="none" stroke="#d62828" stroke-width="2.6" stroke-linejoin="round" stroke-linecap="round"/>
+<circle cx="330" cy="100" r="3.6" fill="#d62828"/>
+<circle cx="330" cy="150" r="3.2" fill="#d62828"/>
+<text x="330" y="169" font-size="11" fill="#d62828" text-anchor="middle" font-weight="400" font-family="ui-monospace, 'SFMono-Regular', Menlo, Consolas, monospace" >VCC</text>
+<path d="M130,240 L130,252" fill="none" stroke="#1f2933" stroke-width="2.4" stroke-linejoin="round" stroke-linecap="round"/>
+<path d="M114,252 L146,252" fill="none" stroke="#1f2933" stroke-width="2.4" stroke-linejoin="round" stroke-linecap="round"/>
+<path d="M120,257 L140,257" fill="none" stroke="#1f2933" stroke-width="2.4" stroke-linejoin="round" stroke-linecap="round"/>
+<path d="M125,262 L135,262" fill="none" stroke="#1f2933" stroke-width="2.4" stroke-linejoin="round" stroke-linecap="round"/>
+<circle cx="130" cy="240" r="3.2" fill="#1f2933"/>
+<text x="130" y="231" font-size="11" fill="#1f2933" text-anchor="middle" font-weight="400" font-family="ui-monospace, 'SFMono-Regular', Menlo, Consolas, monospace" >GND</text>
+<path d="M360,240 L360,252" fill="none" stroke="#1f2933" stroke-width="2.4" stroke-linejoin="round" stroke-linecap="round"/>
+<path d="M344,252 L376,252" fill="none" stroke="#1f2933" stroke-width="2.4" stroke-linejoin="round" stroke-linecap="round"/>
+<path d="M350,257 L370,257" fill="none" stroke="#1f2933" stroke-width="2.4" stroke-linejoin="round" stroke-linecap="round"/>
+<path d="M355,262 L365,262" fill="none" stroke="#1f2933" stroke-width="2.4" stroke-linejoin="round" stroke-linecap="round"/>
+<circle cx="360" cy="240" r="3.2" fill="#1f2933"/>
+<text x="360" y="231" font-size="11" fill="#1f2933" text-anchor="middle" font-weight="400" font-family="ui-monospace, 'SFMono-Regular', Menlo, Consolas, monospace" >GND</text>
+<path d="M170,240 L170,310 L500,310" fill="none" stroke="#1d4ed8" stroke-width="2.6" stroke-linejoin="round" stroke-linecap="round"/>
+<circle cx="170" cy="310" r="3.6" fill="#1d4ed8"/>
+<circle cx="400" cy="310" r="3.6" fill="#1d4ed8"/>
+<path d="M400,240 L400,310" fill="none" stroke="#1d4ed8" stroke-width="2.6" stroke-linejoin="round" stroke-linecap="round"/>
+<path d="M210,240 L210,345 L500,345" fill="none" stroke="#15803d" stroke-width="2.6" stroke-linejoin="round" stroke-linecap="round"/>
+<circle cx="210" cy="345" r="3.6" fill="#15803d"/>
+<circle cx="440" cy="345" r="3.6" fill="#15803d"/>
+<path d="M440,240 L440,345" fill="none" stroke="#15803d" stroke-width="2.6" stroke-linejoin="round" stroke-linecap="round"/>
+<circle cx="170" cy="240" r="3.2" fill="#1d4ed8"/>
+<text x="170" y="231" font-size="11" fill="#1d4ed8" text-anchor="middle" font-weight="400" font-family="ui-monospace, 'SFMono-Regular', Menlo, Consolas, monospace" >SDA</text>
+<circle cx="400" cy="240" r="3.2" fill="#1d4ed8"/>
+<text x="400" y="231" font-size="11" fill="#1d4ed8" text-anchor="middle" font-weight="400" font-family="ui-monospace, 'SFMono-Regular', Menlo, Consolas, monospace" >SDA</text>
+<circle cx="210" cy="240" r="3.2" fill="#15803d"/>
+<text x="210" y="231" font-size="11" fill="#15803d" text-anchor="middle" font-weight="400" font-family="ui-monospace, 'SFMono-Regular', Menlo, Consolas, monospace" >SCL</text>
+<circle cx="440" cy="240" r="3.2" fill="#15803d"/>
+<text x="440" y="231" font-size="11" fill="#15803d" text-anchor="middle" font-weight="400" font-family="ui-monospace, 'SFMono-Regular', Menlo, Consolas, monospace" >SCL</text>
+<path d="M210,303 a7,7 0 0 1 0,14" fill="none" stroke="#15803d" stroke-width="2.4"/>
+<rect x="208.5" y="304" width="3" height="12" fill="#fff" opacity="0"/>
+<path d="M440,303 a7,7 0 0 1 0,14" fill="none" stroke="#15803d" stroke-width="2.4"/>
+<rect x="438.5" y="304" width="3" height="12" fill="#fff" opacity="0"/>
+<circle cx="500" cy="310" r="3.2" fill="#1d4ed8"/>
+<text x="508" y="314" font-size="11" fill="#1d4ed8" text-anchor="start" font-weight="400" font-family="ui-monospace, 'SFMono-Regular', Menlo, Consolas, monospace" >GPIO6 · SDA</text>
+<circle cx="500" cy="345" r="3.2" fill="#15803d"/>
+<text x="508" y="349" font-size="11" fill="#15803d" text-anchor="start" font-weight="400" font-family="ui-monospace, 'SFMono-Regular', Menlo, Consolas, monospace" >GPIO7 · SCL</text>
+<text x="70" y="275" font-size="11" fill="#64748b" text-anchor="start" font-weight="400" font-family="'Helvetica Neue', Arial, sans-serif" >Endereços I²C: BME280 0x76 (SDO→GND), QMC5883L 0x0D.</text>
+<text x="70" y="292" font-size="11" fill="#64748b" text-anchor="start" font-weight="400" font-family="'Helvetica Neue', Arial, sans-serif" >Os módulos já trazem pull-up de 10 kΩ nas linhas SDA e SCL.</text>
+<rect x="860" y="160" width="190" height="100" rx="8" fill="#f8fafc" stroke="#94a3b8" stroke-width="1.6" />
+<text x="955.0" y="184" font-size="14" fill="#0f172a" text-anchor="middle" font-weight="700" font-family="'Helvetica Neue', Arial, sans-serif" >Hall · anemômetro</text>
+<text x="955.0" y="202" font-size="11" fill="#64748b" text-anchor="middle" font-weight="400" font-family="'Helvetica Neue', Arial, sans-serif" >1 pulso por volta</text>
+<path d="M700,222 L860,222" fill="none" stroke="#ea580c" stroke-width="2.6" stroke-linejoin="round" stroke-linecap="round"/>
+<circle cx="770" cy="222" r="3.6" fill="#ea580c"/>
+<circle cx="700" cy="222" r="3.2" fill="#ea580c"/>
+<text x="692" y="226" font-size="11" fill="#ea580c" text-anchor="end" font-weight="400" font-family="ui-monospace, 'SFMono-Regular', Menlo, Consolas, monospace" >GPIO4</text>
+<circle cx="860" cy="222" r="3.2" fill="#ea580c"/>
+<text x="868" y="226" font-size="11" fill="#ea580c" text-anchor="start" font-weight="400" font-family="ui-monospace, 'SFMono-Regular', Menlo, Consolas, monospace" >OUT</text>
+<path d="M770,222 L770,100" fill="none" stroke="#ea580c" stroke-width="2.0" stroke-linejoin="round" stroke-linecap="round"/>
+<circle cx="770" cy="100" r="3.6" fill="#ea580c"/>
+<rect x="764" y="147" width="12" height="28" fill="#fff" stroke="#ea580c" stroke-width="1.8"/>
+<text x="782" y="165" font-size="11" fill="#ea580c" text-anchor="start" font-weight="400" font-family="ui-monospace, 'SFMono-Regular', Menlo, Consolas, monospace" >1 MΩ</text>
+<path d="M1050,190 L1090,190" fill="none" stroke="#d62828" stroke-width="2.6" stroke-linejoin="round" stroke-linecap="round"/>
+<circle cx="1090" cy="190" r="3.6" fill="#d62828"/>
+<circle cx="1050" cy="190" r="3.2" fill="#d62828"/>
+<text x="1042" y="194" font-size="11" fill="#d62828" text-anchor="end" font-weight="400" font-family="ui-monospace, 'SFMono-Regular', Menlo, Consolas, monospace" >VCC</text>
+<path d="M1050,240 L1090,240" fill="none" stroke="#1f2933" stroke-width="2.6" stroke-linejoin="round" stroke-linecap="round"/>
+<path d="M1090,240 L1090,252" fill="none" stroke="#1f2933" stroke-width="2.4" stroke-linejoin="round" stroke-linecap="round"/>
+<path d="M1074,252 L1106,252" fill="none" stroke="#1f2933" stroke-width="2.4" stroke-linejoin="round" stroke-linecap="round"/>
+<path d="M1080,257 L1100,257" fill="none" stroke="#1f2933" stroke-width="2.4" stroke-linejoin="round" stroke-linecap="round"/>
+<path d="M1085,262 L1095,262" fill="none" stroke="#1f2933" stroke-width="2.4" stroke-linejoin="round" stroke-linecap="round"/>
+<circle cx="1050" cy="240" r="3.2" fill="#1f2933"/>
+<text x="1042" y="244" font-size="11" fill="#1f2933" text-anchor="end" font-weight="400" font-family="ui-monospace, 'SFMono-Regular', Menlo, Consolas, monospace" >GND</text>
+<rect x="860" y="330" width="190" height="100" rx="8" fill="#f8fafc" stroke="#94a3b8" stroke-width="1.6" />
+<text x="955.0" y="354" font-size="14" fill="#0f172a" text-anchor="middle" font-weight="700" font-family="'Helvetica Neue', Arial, sans-serif" >Hall · pluviômetro</text>
+<text x="955.0" y="372" font-size="11" fill="#64748b" text-anchor="middle" font-weight="400" font-family="'Helvetica Neue', Arial, sans-serif" >1 pulso por basculada</text>
+<path d="M700,392 L860,392" fill="none" stroke="#7c3aed" stroke-width="2.6" stroke-linejoin="round" stroke-linecap="round"/>
+<circle cx="740" cy="392" r="3.6" fill="#7c3aed"/>
+<circle cx="700" cy="392" r="3.2" fill="#7c3aed"/>
+<text x="692" y="396" font-size="11" fill="#7c3aed" text-anchor="end" font-weight="400" font-family="ui-monospace, 'SFMono-Regular', Menlo, Consolas, monospace" >GPIO3</text>
+<circle cx="860" cy="392" r="3.2" fill="#7c3aed"/>
+<text x="868" y="396" font-size="11" fill="#7c3aed" text-anchor="start" font-weight="400" font-family="ui-monospace, 'SFMono-Regular', Menlo, Consolas, monospace" >OUT</text>
+<path d="M740,392 L740,100" fill="none" stroke="#7c3aed" stroke-width="2.0" stroke-linejoin="round" stroke-linecap="round"/>
+<circle cx="740" cy="100" r="3.6" fill="#7c3aed"/>
+<rect x="734" y="232" width="12" height="28" fill="#fff" stroke="#7c3aed" stroke-width="1.8"/>
+<text x="752" y="250" font-size="11" fill="#7c3aed" text-anchor="start" font-weight="400" font-family="ui-monospace, 'SFMono-Regular', Menlo, Consolas, monospace" >1 MΩ</text>
+<path d="M1050,360 L1090,360" fill="none" stroke="#d62828" stroke-width="2.6" stroke-linejoin="round" stroke-linecap="round"/>
+<circle cx="1090" cy="360" r="3.6" fill="#d62828"/>
+<circle cx="1050" cy="360" r="3.2" fill="#d62828"/>
+<text x="1042" y="364" font-size="11" fill="#d62828" text-anchor="end" font-weight="400" font-family="ui-monospace, 'SFMono-Regular', Menlo, Consolas, monospace" >VCC</text>
+<path d="M1050,410 L1090,410" fill="none" stroke="#1f2933" stroke-width="2.6" stroke-linejoin="round" stroke-linecap="round"/>
+<path d="M1090,410 L1090,422" fill="none" stroke="#1f2933" stroke-width="2.4" stroke-linejoin="round" stroke-linecap="round"/>
+<path d="M1074,422 L1106,422" fill="none" stroke="#1f2933" stroke-width="2.4" stroke-linejoin="round" stroke-linecap="round"/>
+<path d="M1080,427 L1100,427" fill="none" stroke="#1f2933" stroke-width="2.4" stroke-linejoin="round" stroke-linecap="round"/>
+<path d="M1085,432 L1095,432" fill="none" stroke="#1f2933" stroke-width="2.4" stroke-linejoin="round" stroke-linecap="round"/>
+<circle cx="1050" cy="410" r="3.2" fill="#1f2933"/>
+<text x="1042" y="414" font-size="11" fill="#1f2933" text-anchor="end" font-weight="400" font-family="ui-monospace, 'SFMono-Regular', Menlo, Consolas, monospace" >GND</text>
+<path d="M1090,100 L1090,360" fill="none" stroke="#d62828" stroke-width="2.6" stroke-linejoin="round" stroke-linecap="round"/>
+<text x="860" y="455" font-size="11" fill="#64748b" text-anchor="start" font-weight="400" font-family="'Helvetica Neue', Arial, sans-serif" >Com Hall DRV5032 (baixa corrente) use pull-up de 1 MΩ.</text>
+<text x="860" y="472" font-size="11" fill="#64748b" text-anchor="start" font-weight="400" font-family="'Helvetica Neue', Arial, sans-serif" >Com A3144 (4,4 mA, só 4,5 V+) use 10 kΩ e o modo janela.</text>
+<rect x="780" y="500" width="360" height="170" rx="8" fill="#fffbeb" stroke="#d4a72c" stroke-width="1.4" />
+<text x="960" y="524" font-size="13" fill="#0f172a" text-anchor="middle" font-weight="700" font-family="'Helvetica Neue', Arial, sans-serif" >Medição da bateria</text>
+<text x="796" y="594" font-size="12" fill="#ca8a04" text-anchor="end" font-weight="700" font-family="ui-monospace, 'SFMono-Regular', Menlo, Consolas, monospace" >BAT+</text>
+<path d="M800,590 L835,590" fill="none" stroke="#ca8a04" stroke-width="2.4" stroke-linejoin="round" stroke-linecap="round"/>
+<rect x="835" y="584" width="44" height="12" fill="#fff" stroke="#ca8a04" stroke-width="1.8"/>
+<text x="857" y="578" font-size="11" fill="#ca8a04" text-anchor="middle" font-weight="400" font-family="ui-monospace, 'SFMono-Regular', Menlo, Consolas, monospace" >1 MΩ</text>
+<path d="M879,590 L940,590" fill="none" stroke="#ca8a04" stroke-width="2.4" stroke-linejoin="round" stroke-linecap="round"/>
+<circle cx="940" cy="590" r="3.6" fill="#ca8a04"/>
+<rect x="940" y="584" width="0" height="0"/>
+<path d="M940,590 L990,590" fill="none" stroke="#ca8a04" stroke-width="2.4" stroke-linejoin="round" stroke-linecap="round"/>
+<rect x="990" y="584" width="44" height="12" fill="#fff" stroke="#ca8a04" stroke-width="1.8"/>
+<text x="1012" y="578" font-size="11" fill="#ca8a04" text-anchor="middle" font-weight="400" font-family="ui-monospace, 'SFMono-Regular', Menlo, Consolas, monospace" >1 MΩ</text>
+<path d="M1034,590 L1070,590" fill="none" stroke="#ca8a04" stroke-width="2.4" stroke-linejoin="round" stroke-linecap="round"/>
+<path d="M1070,590 L1070,602" fill="none" stroke="#1f2933" stroke-width="2.4" stroke-linejoin="round" stroke-linecap="round"/>
+<path d="M1054,602 L1086,602" fill="none" stroke="#1f2933" stroke-width="2.4" stroke-linejoin="round" stroke-linecap="round"/>
+<path d="M1060,607 L1080,607" fill="none" stroke="#1f2933" stroke-width="2.4" stroke-linejoin="round" stroke-linecap="round"/>
+<path d="M1065,612 L1075,612" fill="none" stroke="#1f2933" stroke-width="2.4" stroke-linejoin="round" stroke-linecap="round"/>
+<path d="M940,590 L940,612" fill="none" stroke="#ca8a04" stroke-width="2.4" stroke-linejoin="round" stroke-linecap="round"/>
+<path d="M926,612 L954,612" fill="none" stroke="#ca8a04" stroke-width="2.6" stroke-linejoin="round" stroke-linecap="round"/>
+<path d="M926,620 L954,620" fill="none" stroke="#ca8a04" stroke-width="2.6" stroke-linejoin="round" stroke-linecap="round"/>
+<path d="M940,620 L940,632" fill="none" stroke="#1f2933" stroke-width="2.4" stroke-linejoin="round" stroke-linecap="round"/>
+<path d="M924,632 L956,632" fill="none" stroke="#1f2933" stroke-width="2.4" stroke-linejoin="round" stroke-linecap="round"/>
+<path d="M930,637 L950,637" fill="none" stroke="#1f2933" stroke-width="2.4" stroke-linejoin="round" stroke-linecap="round"/>
+<path d="M935,642 L945,642" fill="none" stroke="#1f2933" stroke-width="2.4" stroke-linejoin="round" stroke-linecap="round"/>
+<text x="962" y="620" font-size="11" fill="#ca8a04" text-anchor="start" font-weight="400" font-family="ui-monospace, 'SFMono-Regular', Menlo, Consolas, monospace" >100 nF</text>
+<path d="M940,590 L940,560 L740,560" fill="none" stroke="#ca8a04" stroke-width="2.0" stroke-linejoin="round" stroke-linecap="round"/>
+<path d="M700,440 L740,440 L740,560" fill="none" stroke="#ca8a04" stroke-width="2.4" stroke-linejoin="round" stroke-linecap="round"/>
+<circle cx="740" cy="560" r="3.6" fill="#ca8a04"/>
+<circle cx="700" cy="440" r="3.2" fill="#ca8a04"/>
+<text x="692" y="444" font-size="11" fill="#ca8a04" text-anchor="end" font-weight="400" font-family="ui-monospace, 'SFMono-Regular', Menlo, Consolas, monospace" >GPIO0 · ADC</text>
+<text x="60" y="565" font-size="13" fill="#0f172a" text-anchor="start" font-weight="700" font-family="'Helvetica Neue', Arial, sans-serif" >Energia</text>
+<rect x="60" y="580" width="150" height="100" rx="8" fill="#f8fafc" stroke="#94a3b8" stroke-width="1.6" />
+<text x="135.0" y="604" font-size="14" fill="#0f172a" text-anchor="middle" font-weight="700" font-family="'Helvetica Neue', Arial, sans-serif" >Painel solar</text>
+<text x="135.0" y="622" font-size="11" fill="#64748b" text-anchor="middle" font-weight="400" font-family="'Helvetica Neue', Arial, sans-serif" >5 a 6 V · 1 a 2 W</text>
+<rect x="250" y="580" width="190" height="100" rx="8" fill="#f8fafc" stroke="#94a3b8" stroke-width="1.6" />
+<text x="345.0" y="604" font-size="14" fill="#0f172a" text-anchor="middle" font-weight="700" font-family="'Helvetica Neue', Arial, sans-serif" >Carregador</text>
+<text x="345.0" y="622" font-size="11" fill="#64748b" text-anchor="middle" font-weight="400" font-family="'Helvetica Neue', Arial, sans-serif" >com proteção da célula</text>
+<rect x="480" y="580" width="150" height="100" rx="8" fill="#f8fafc" stroke="#94a3b8" stroke-width="1.6" />
+<text x="555.0" y="604" font-size="14" fill="#0f172a" text-anchor="middle" font-weight="700" font-family="'Helvetica Neue', Arial, sans-serif" >Bateria</text>
+<text x="555.0" y="622" font-size="11" fill="#64748b" text-anchor="middle" font-weight="400" font-family="'Helvetica Neue', Arial, sans-serif" >ver docs/hardware.md</text>
+<rect x="640" y="700" width="200" height="70" rx="8" fill="#f8fafc" stroke="#94a3b8" stroke-width="1.6" />
+<text x="740.0" y="724" font-size="14" fill="#0f172a" text-anchor="middle" font-weight="700" font-family="'Helvetica Neue', Arial, sans-serif" >Regulador 3,3 V</text>
+<text x="740.0" y="742" font-size="11" fill="#64748b" text-anchor="middle" font-weight="400" font-family="'Helvetica Neue', Arial, sans-serif" >pico ≥ 500 mA · Iq baixo</text>
+<path d="M210,630 L250,630" fill="none" stroke="#d62828" stroke-width="3" stroke-linejoin="round" stroke-linecap="round"/>
+<path d="M440,630 L480,630" fill="none" stroke="#ca8a04" stroke-width="3" stroke-linejoin="round" stroke-linecap="round"/>
+<path d="M630,630 L700,630 L700,700" fill="none" stroke="#ca8a04" stroke-width="3" stroke-linejoin="round" stroke-linecap="round"/>
+<text x="900" y="655" font-size="11" fill="#64748b" text-anchor="start" font-weight="400" font-family="'Helvetica Neue', Arial, sans-serif" >470 µF perto do ESP32:</text>
+<text x="900" y="672" font-size="11" fill="#64748b" text-anchor="start" font-weight="400" font-family="'Helvetica Neue', Arial, sans-serif" >o Wi-Fi puxa picos de ~350 mA.</text>
+<text x="580" y="700" font-size="11" fill="#ca8a04" text-anchor="middle" font-weight="700" font-family="ui-monospace, 'SFMono-Regular', Menlo, Consolas, monospace" >BAT+</text>
+<path d="M840,735 L1150,735 L1150,100 L1140,100" fill="none" stroke="#d62828" stroke-width="3" stroke-linejoin="round" stroke-linecap="round"/>
+<text x="1000" y="728" font-size="11" fill="#d62828" text-anchor="middle" font-weight="400" font-family="ui-monospace, 'SFMono-Regular', Menlo, Consolas, monospace" >3V3 para o trilho do topo</text>
+<path d="M740,770 L740,782" fill="none" stroke="#1f2933" stroke-width="2.4" stroke-linejoin="round" stroke-linecap="round"/>
+<path d="M724,782 L756,782" fill="none" stroke="#1f2933" stroke-width="2.4" stroke-linejoin="round" stroke-linecap="round"/>
+<path d="M730,787 L750,787" fill="none" stroke="#1f2933" stroke-width="2.4" stroke-linejoin="round" stroke-linecap="round"/>
+<path d="M735,792 L745,792" fill="none" stroke="#1f2933" stroke-width="2.4" stroke-linejoin="round" stroke-linecap="round"/>
+<text x="40" y="850" font-size="11" fill="#64748b" text-anchor="start" font-weight="400" font-family="'Helvetica Neue', Arial, sans-serif" >Não alimente o pino 3V3 e a USB ao mesmo tempo sem conferir o diodo da sua placa. Detalhes e lista de materiais em docs/hardware.md.</text>
+</svg>

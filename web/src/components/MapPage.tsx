@@ -1,0 +1,146 @@
+import { Plus } from 'lucide-react'
+import { lazy, Suspense, useMemo, useState } from 'react'
+import type { SaveResult } from '../hooks/useNetwork'
+import { go } from '../hooks/useRoute'
+import { type StationEdit } from '../lib/api'
+import { batteryPct, CHEMS } from '../lib/battery'
+import { batteryColor, windColor } from '../lib/colors'
+import { ago, compass16, isOnline, kmh } from '../lib/derive'
+import type { Source, Station } from '../types'
+import AddStationDialog from './AddStationDialog'
+import type { Layer } from './MapView'
+import Reveal, { SectionHead } from './Reveal'
+import StationPanel from './StationPanel'
+
+const MapView = lazy(() => import('./MapView'))
+
+const LAYERS: [Layer, string][] = [['wind', 'Vento'], ['temp', 'Temperatura'], ['rain', 'Chuva 24 h'], ['battery', 'Bateria']]
+
+interface Props {
+  stations: Station[]
+  source: Source
+  onCreate: (body: StationEdit & { id: string }, token: string) => Promise<SaveResult>
+}
+
+export default function MapPage({ stations, source, onCreate }: Props) {
+  const [layer, setLayer] = useState<Layer>('wind')
+  const [selected, setSelected] = useState<string | null>(null)
+  const [adding, setAdding] = useState(false)
+  const [picking, setPicking] = useState(false)
+  const [picked, setPicked] = useState<{ lat: number; lon: number } | null>(null)
+  const sel = stations.find((s) => s.id === selected) ?? null
+  const online = useMemo(() => stations.filter((s) => isOnline(s)).length, [stations])
+
+  return (
+    <>
+      <section id="mapa" className="relative h-[calc(100svh-56px)] min-h-[540px] overflow-hidden" style={{ marginTop: 56 }}>
+        <Suspense fallback={<div className="grid h-full place-items-center text-sm text-ink-3">Carregando mapa…</div>}>
+          <MapView
+            stations={stations}
+            selectedId={selected}
+            layer={layer}
+            pickMode={picking}
+            onSelect={setSelected}
+            onPick={(lat, lon) => { setPicked({ lat, lon }); setPicking(false); setAdding(true) }}
+          />
+        </Suspense>
+
+        <div className="pointer-events-none absolute left-3 top-3 z-10 flex max-w-[calc(100%-24px)] flex-col gap-2 sm:left-4 sm:top-4">
+          <div role="group" aria-label="Camada do mapa" className="pointer-events-auto flex flex-wrap gap-1.5">
+            {LAYERS.map(([k, label]) => (
+              <button
+                key={k}
+                aria-pressed={layer === k}
+                onClick={() => setLayer(k)}
+                className={`num rounded-lg border px-3 py-1.5 text-xs transition-colors ${layer === k ? 'border-cyan bg-cyan text-[#03212d]' : 'glass text-ink hover:border-line-hover'}`}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+          <p className="num glass pointer-events-auto w-fit rounded-lg px-3 py-1.5 text-xs text-ink-2">
+            {online} de {stations.length} online{source === 'demo' ? ' · demonstração' : ''}
+          </p>
+        </div>
+
+        <button
+          onClick={() => setAdding(true)}
+          className="glass absolute bottom-20 left-3 z-10 flex items-center gap-1.5 rounded-xl px-3.5 py-2 text-sm font-medium hover:border-line-hover sm:bottom-4 sm:left-auto sm:right-[68px] sm:top-auto"
+          style={sel ? { display: undefined } : undefined}
+        >
+          <Plus className="h-4 w-4" aria-hidden /> Adicionar estação
+        </button>
+
+        {layer === 'wind' && (
+          <div className="glass num pointer-events-none absolute bottom-3 left-3 z-10 hidden items-center gap-2 rounded-lg px-3 py-1.5 text-[11px] text-ink-2 sm:flex">
+            0<i className="block h-2 w-36 rounded-full" style={{ background: 'linear-gradient(90deg,#3b82f6,#38bdf8,#4ade80,#fbbf24,#fb923c,#ef4444)' }} />60 km/h
+          </div>
+        )}
+
+        {picking && (
+          <div className="glass absolute inset-x-0 top-4 z-30 mx-auto w-fit rounded-xl px-4 py-2 text-sm" role="status">
+            Clique no mapa para escolher o local da estação.{' '}
+            <button className="ml-2 underline" onClick={() => { setPicking(false); setAdding(true) }}>Cancelar</button>
+          </div>
+        )}
+
+        {stations.length === 0 && (
+          <div className="glass absolute inset-0 z-10 m-auto h-fit max-w-sm rounded-2xl p-6 text-center">
+            <h2 className="font-display text-xl font-bold">Nenhuma estação ainda</h2>
+            <p className="mt-2 text-sm text-ink-2">Adicione a primeira para receber a chave do ESP32 e ver os dados aqui.</p>
+            <button onClick={() => setAdding(true)} className="mt-4 rounded-xl bg-blue px-4 py-2.5 text-sm font-semibold text-white">Adicionar estação</button>
+          </div>
+        )}
+
+        {sel && <StationPanel station={sel} source={source} onClose={() => setSelected(null)} />}
+      </section>
+
+      <AddStationDialog
+        open={adding && !picking}
+        picked={picked}
+        onClose={() => { setAdding(false); setPicked(null) }}
+        onPickMap={() => { setPicking(true) }}
+        onCreate={onCreate}
+      />
+
+      <section className="mx-auto max-w-7xl px-4 py-20 sm:px-6">
+        <SectionHead id="rede" kicker="Rede" title="Todas as estações">
+          Cada estação tem a própria chave, configuração e bateria. Clique numa linha para abrir a estação.
+        </SectionHead>
+        <Reveal className="mt-8 overflow-x-auto rounded-2xl border border-line bg-card">
+          <table className="w-full min-w-[820px] border-collapse text-sm">
+            <thead>
+              <tr className="text-left text-[11px] uppercase tracking-[0.1em] text-ink-3">
+                {['Estação', 'Temperatura', 'Vento', 'Chuva 24 h', 'Bateria', 'Última leitura'].map((h) => <th key={h} className="border-b border-line px-4 py-3 font-semibold">{h}</th>)}
+              </tr>
+            </thead>
+            <tbody>
+              {stations.map((s) => {
+                const l = s.latest, on = isOnline(s)
+                const pct = l ? batteryPct(l.vbat, s.config.battery_chem) : 0
+                return (
+                  <tr key={s.id} tabIndex={0} onClick={() => go(`s/${s.id}`)} onKeyDown={(e) => e.key === 'Enter' && go(`s/${s.id}`)}
+                    className={`num cursor-pointer border-b border-line last:border-0 hover:bg-card-hover ${on ? '' : 'opacity-60'}`}>
+                    <td className="px-4 py-3"><b className="font-sans font-semibold">{s.name}</b><div className="text-xs text-ink-3">{s.city}</div></td>
+                    <td className="px-4 py-3">{l ? `${l.temp.toFixed(1)}°` : '—'}</td>
+                    <td className="px-4 py-3">{l ? <span style={{ color: windColor(kmh(l.wind)) }}>{Math.round(kmh(l.wind))} km/h {compass16(l.dir)}</span> : '—'}</td>
+                    <td className="px-4 py-3">{s.day ? `${s.day.rain.toFixed(1)} mm` : '—'}</td>
+                    <td className="px-4 py-3">
+                      {l ? (
+                        <span className="flex items-center gap-2">
+                          <span className="h-2 w-14 overflow-hidden rounded-full bg-line"><i className="block h-full" style={{ width: `${pct}%`, background: batteryColor(pct) }} /></span>
+                          {pct}% <span className="text-xs text-ink-3">{CHEMS[s.config.battery_chem].label} · {s.config.battery_mah} mAh</span>
+                        </span>
+                      ) : '—'}
+                    </td>
+                    <td className="px-4 py-3">{l ? <span className={on ? '' : 'text-bad'}>{ago(l.ts)}</span> : 'nunca'}</td>
+                  </tr>
+                )
+              })}
+            </tbody>
+          </table>
+        </Reveal>
+      </section>
+    </>
+  )
+}

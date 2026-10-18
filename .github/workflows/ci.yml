@@ -1,0 +1,75 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  web-e-api:
+    name: Site e API
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: |
+            web/package-lock.json
+            worker/package-lock.json
+      - name: Compilar o site
+        run: |
+          cd web
+          npm ci
+          npm run build
+      - name: Checar tipos da API
+        run: |
+          cd worker
+          npm ci
+          npx tsc --noEmit
+      - name: Testes da API (Worker local + D1 local)
+        run: |
+          cd worker
+          npm run db:local
+          npm run seed:local
+          nohup npx wrangler dev --port 8787 > wrangler.log 2>&1 &
+          for i in $(seq 1 40); do curl -sf http://127.0.0.1:8787/api/stations > /dev/null && break; sleep 1; done
+          npm run smoke
+      - name: Log do Worker (em caso de falha)
+        if: failure()
+        run: cat worker/wrangler.log
+
+  firmware:
+    name: Firmware
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - uses: actions/cache@v4
+        with:
+          path: ~/.platformio
+          key: pio-${{ hashFiles('firmware/platformio.ini') }}
+      - name: Instalar o PlatformIO
+        run: pip install platformio
+      - name: Compilar os dois ambientes
+        run: |
+          cd firmware
+          pio run -e esp32c3 -e esp32c3-lowpower
+
+  docs:
+    name: Diagramas e links da documentação
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Diagramas em dia
+        run: |
+          python docs/tools/make_diagrams.py
+          git diff --exit-code docs/img/*.svg
+      - name: Links dos .md
+        run: python docs/tools/check_links.py

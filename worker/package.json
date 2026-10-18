@@ -1,0 +1,22 @@
+{
+  "name": "estacao-meteo-api",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "wrangler dev --port 8787",
+    "db:local": "wrangler d1 execute estacao-meteo --local --file=schema.sql",
+    "db:reset-local": "wrangler d1 execute estacao-meteo --local --file=reset.sql && npm run db:local",
+    "seed:local": "node scripts/seed.mjs && wrangler d1 execute estacao-meteo --local --file=seed.sql",
+    "db:remote": "wrangler d1 execute estacao-meteo --remote --file=schema.sql",
+    "deploy": "npm --prefix ../web run build && wrangler deploy",
+    "check": "tsc --noEmit",
+    "smoke": "node scripts/smoke.mjs"
+  },
+  "devDependencies": {
+    "@cloudflare/workers-types": "^5.20261016.1",
+    "typescript": "^7.0.2",
+    "wrangler": "^4.151.1"
+  },
+  "version": "0.1.0",
+  "license": "MIT"
+}
