@@ -66,7 +66,7 @@ X-Sig:     HMAC-SHA256(sha256hex(chave), "<id>|<nonce>|<corpo>")
 | `wind`, `gust` | m/s | 0 a 120, 0 a 150 |
 | `dir` | graus, de onde o vento vem | 0 a 360 |
 | `rain` | mm desde a leitura anterior | 0 a 200 |
-| `vbat` | V | 1 a 5 |
+| `vbat` | V | 0 a 5 (0 = sem bateria, placa na USB) |
 | `rssi` | dBm | -120 a 0 |
 
 O servidor carimba cada leitura com `agora - age`. Uma leitura solta (sem `batch`) também é aceita. O lote tem de 1 a 24 leituras. Todos os campos são obrigatórios; um valor fora da faixa rejeita o lote inteiro com `422`.

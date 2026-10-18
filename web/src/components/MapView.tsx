@@ -1,21 +1,22 @@
 import * as maplibregl from 'maplibre-gl'
 import 'maplibre-gl/dist/maplibre-gl.css'
-import { useEffect, useRef } from 'react'
+import { Layers } from 'lucide-react'
+import { useEffect, useRef, useState } from 'react'
 import { batteryColor, rainColor, tempColor, windColor } from '../lib/colors'
 import { batteryPct } from '../lib/battery'
-import { compass16, isOnline, kmh } from '../lib/derive'
-import { getPrefs, usePrefs } from '../lib/prefs'
+import { ago, compass16, isOnline, isSeen, kmh, wifiColor } from '../lib/derive'
+import { getPrefs, setPrefs, usePrefs, type MapLayer, type Prefs } from '../lib/prefs'
 import { makeFmt } from '../lib/units'
 import type { Station } from '../types'
 
 maplibregl.setWorkerUrl('/maplibre/maplibre-gl-worker.mjs')
 
-export type Layer = 'wind' | 'temp' | 'rain' | 'battery'
+export type Layer = MapLayer
 
 interface Props {
   stations: Station[]
   selectedId: string | null
-  layer: Layer
+  layers: Layer[]
   pickMode: boolean
   onSelect: (id: string | null) => void
   onPick: (lat: number, lon: number) => void
@@ -27,50 +28,89 @@ const TILES = import.meta.env.VITE_MAP_TILES || 'https://tile.openstreetmap.org/
 const TILES_ARE_DARK = import.meta.env.VITE_MAP_TILES_DARK === '1'
 const ATTRIBUTION = import.meta.env.VITE_MAP_ATTRIBUTION || '© OpenStreetMap contributors'
 
-const STYLE: maplibregl.StyleSpecification = {
-  version: 8,
-  sources: { base: { type: 'raster', tiles: [TILES], tileSize: 256, maxzoom: 19, attribution: ATTRIBUTION } },
-  layers: [
-    { id: 'bg', type: 'background', paint: { 'background-color': '#0b1012' } },
-    {
-      id: 'base', type: 'raster', source: 'base',
-      paint: TILES_ARE_DARK ? {} : { 'raster-brightness-max': 0.4, 'raster-saturation': -0.75, 'raster-contrast': 0.2 },
-    },
-  ],
+type Basemap = Prefs['basemap']
+
+/** Mapas de fundo oferecidos. O escuro é o padrão do site (tiles claros escurecidos por filtro). */
+export const BASEMAPS: { id: Basemap; label: string; tiles: string; maxzoom: number; attribution: string; dim: boolean }[] = [
+  { id: 'dark', label: 'Escuro', tiles: TILES, maxzoom: 19, attribution: ATTRIBUTION, dim: !TILES_ARE_DARK },
+  { id: 'streets', label: 'Ruas', tiles: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png', maxzoom: 19, attribution: '© OpenStreetMap contributors', dim: false },
+  { id: 'satellite', label: 'Satélite', tiles: 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', maxzoom: 18, attribution: 'Imagens © Esri, Maxar, Earthstar Geographics', dim: false },
+  { id: 'terrain', label: 'Relevo', tiles: 'https://tile.opentopomap.org/{z}/{x}/{y}.png', maxzoom: 17, attribution: '© OpenStreetMap contributors, SRTM · estilo © OpenTopoMap (CC-BY-SA)', dim: false },
+]
+
+const styleFor = (id: Basemap): maplibregl.StyleSpecification => {
+  const b = BASEMAPS.find((x) => x.id === id) ?? BASEMAPS[0]
+  return {
+    version: 8,
+    sources: { base: { type: 'raster', tiles: [b.tiles], tileSize: 256, maxzoom: b.maxzoom, attribution: b.attribution } },
+    layers: [
+      { id: 'bg', type: 'background', paint: { 'background-color': '#0b1012' } },
+      { id: 'base', type: 'raster', source: 'base', paint: b.dim ? { 'raster-brightness-max': 0.4, 'raster-saturation': -0.75, 'raster-contrast': 0.2 } : {} },
+    ],
+  }
 }
 
-function pin(s: Station, layer: Layer) {
+const esc = (t: string) => t.replace(/[<&]/g, '')
+
+/** Uma linha por camada ligada. A borda do pino usa a cor da primeira camada ligada com valor. */
+function pin(s: Station, layers: Layer[]) {
   const f = makeFmt(getPrefs())
-  const on = isOnline(s)
   const l = s.latest
-  let text = 'sem sinal', color = '#64748b'
-  if (l && on) {
-    if (layer === 'wind') { text = `${f.wind(l.wind)} ${compass16(l.dir)}`; color = windColor(kmh(l.wind)) }
-    else if (layer === 'temp') { text = f.tempShort(l.temp); color = tempColor(l.temp) }
-    else if (layer === 'rain') { const mm = s.day?.rain ?? 0; text = f.rain(mm); color = rainColor(mm) }
-    else { const p = batteryPct(l.vbat, s.config.battery_chem); text = `${p}%`; color = batteryColor(p) }
-  } else if (l) { text = 'sem sinal'; color = '#64748b' }
-  else { text = 'sem dados' }
-  return { text, color, on: on && !!l }
+  const on = isOnline(s)
+  const alive = on || isSeen(s) // falou com o servidor há pouco, com ou sem leitura de sensor
+  const lines: { text: string; color: string }[] = []
+  let border = alive ? '#38bdf8' : '#64748b'
+  let first = true
+  const add = (text: string, color: string) => { lines.push({ text, color }); if (first) { border = color; first = false } }
+  const vbat = l?.vbat ?? s.vbat
+  const rssi = l?.rssi ?? s.rssi
+
+  if (!alive) {
+    lines.push({ text: l ? 'sem sinal' : 'sem dados', color: l ? '#94a3b8' : '#fff' })
+    if (layers.includes('seen')) lines.push({ text: s.last_seen ? ago(s.last_seen) : l ? ago(l.ts) : 'nunca', color: '#f87171' })
+  } else {
+    const sensors = layers.some((k) => k === 'wind' || k === 'temp' || k === 'rain')
+    if (l && on) {
+      if (layers.includes('wind')) add(`${f.wind(l.wind)} ${compass16(l.dir)}`, windColor(kmh(l.wind)))
+      if (layers.includes('temp')) add(f.tempShort(l.temp), tempColor(l.temp))
+      if (layers.includes('rain')) { const mm = s.day?.rain ?? 0; add(f.rain(mm), rainColor(mm)) }
+    } else if (sensors) lines.push({ text: 'sem sensor', color: '#94a3b8' }) // conectou, mas não mediu nada
+    if (layers.includes('battery') && vbat != null) {
+      if (vbat < 1) add('sem bateria', '#94a3b8') // placa na USB
+      else { const p = batteryPct(vbat, s.config.battery_chem); add(`${p}%`, batteryColor(p)) }
+    }
+    if (layers.includes('wifi') && rssi != null) add(`${rssi} dBm`, wifiColor(rssi))
+    if (layers.includes('seen')) lines.push({ text: ago(s.last_seen ?? l?.ts ?? 0), color: '#cbd5e1' })
+    if (!lines.length) lines.push({ text: 'online', color: '#4ade80' })
+  }
+  return { lines, border, on: alive }
 }
 
-export default function MapView({ stations, selectedId, layer, pickMode, onSelect, onPick }: Props) {
+export default function MapView({ stations, selectedId, layers, pickMode, onSelect, onPick }: Props) {
   const host = useRef<HTMLDivElement>(null)
   const cv = useRef<HTMLCanvasElement>(null)
   const map = useRef<maplibregl.Map | null>(null)
   const markers = useRef(new Map<string, { m: maplibregl.Marker; el: HTMLButtonElement }>())
-  const live = useRef({ stations, layer, pickMode, onSelect, onPick })
+  const live = useRef({ stations, layers, pickMode, onSelect, onPick })
   const fitted = useRef(false)
+  const located = useRef(false) // a posição do usuário já levou o mapa para onde ele está
+  const first = useRef(true)
+  const [menu, setMenu] = useState(false)
   const prefs = usePrefs()
-  live.current = { stations, layer, pickMode, onSelect, onPick }
+  live.current = { stations, layers, pickMode, onSelect, onPick }
 
   // ---- mapa
   useEffect(() => {
     if (!host.current) return
     const m = new maplibregl.Map({
-      container: host.current, style: STYLE, center: [-45.5, -23.2], zoom: 6.2, attributionControl: false, cooperativeGestures: false,
+      container: host.current, style: styleFor(getPrefs().basemap), center: [-45.5, -23.2], zoom: 6.2, attributionControl: false, cooperativeGestures: false,
     })
     m.addControl(new maplibregl.NavigationControl({ showCompass: false }), 'bottom-right')
+    // ao abrir, vai para a localização atual (se o navegador deixar); sem permissão, mostra as estações
+    const geo = new maplibregl.GeolocateControl({ positionOptions: { enableHighAccuracy: false, timeout: 8000 }, fitBoundsOptions: { maxZoom: 10 }, showAccuracyCircle: false })
+    m.addControl(geo, 'bottom-right')
+    geo.on('geolocate', () => { located.current = true })
+    m.once('load', () => geo.trigger())
     m.addControl(new maplibregl.AttributionControl({ compact: true }), 'bottom-right')
     m.on('click', (e) => {
       if (live.current.pickMode) live.current.onPick(e.lngLat.lat, e.lngLat.lng)
@@ -78,8 +118,14 @@ export default function MapView({ stations, selectedId, layer, pickMode, onSelec
     })
     map.current = m
     const mk = markers.current
-    return () => { mk.forEach((v) => v.m.remove()); mk.clear(); m.remove(); map.current = null; fitted.current = false }
+    return () => { mk.forEach((v) => v.m.remove()); mk.clear(); m.remove(); map.current = null; fitted.current = false; located.current = false }
   }, [])
+
+  // ---- mapa de fundo
+  useEffect(() => {
+    if (first.current) { first.current = false; return }
+    map.current?.setStyle(styleFor(prefs.basemap))
+  }, [prefs.basemap])
 
   useEffect(() => { if (map.current) map.current.getCanvas().style.cursor = pickMode ? 'crosshair' : '' }, [pickMode])
 
@@ -90,7 +136,7 @@ export default function MapView({ stations, selectedId, layer, pickMode, onSelec
     const seen = new Set<string>()
     for (const s of stations) {
       seen.add(s.id)
-      const p = pin(s, layer)
+      const p = pin(s, layers)
       let entry = markers.current.get(s.id)
       if (!entry) {
         const el = document.createElement('button')
@@ -101,14 +147,14 @@ export default function MapView({ stations, selectedId, layer, pickMode, onSelec
         markers.current.set(s.id, entry)
       }
       entry.m.setLngLat([s.lon, s.lat])
-      entry.el.style.setProperty('--c', p.color)
+      entry.el.style.setProperty('--c', p.border)
       entry.el.dataset.off = p.on ? '0' : '1'
       entry.el.dataset.sel = s.id === selectedId ? '1' : '0'
-      entry.el.setAttribute('aria-label', `${s.name}: ${p.text}`)
-      entry.el.innerHTML = `<b>${p.text}</b><i></i><span>${s.name.replace(/[<&]/g, '')}</span>`
+      entry.el.setAttribute('aria-label', `${s.name}: ${p.lines.map((x) => x.text).join(', ')}`)
+      entry.el.innerHTML = `<b>${p.lines.map((x) => `<em style="color:${x.color}">${esc(x.text)}</em>`).join('')}</b><i></i><span>${esc(s.name)}</span>`
     }
     markers.current.forEach((v, id) => { if (!seen.has(id)) { v.m.remove(); markers.current.delete(id) } })
-    if (!fitted.current && stations.length) {
+    if (!fitted.current && stations.length && !located.current) {
       fitted.current = true
       const b = new maplibregl.LngLatBounds()
       stations.forEach((s) => b.extend([s.lon, s.lat]))
@@ -118,7 +164,7 @@ export default function MapView({ stations, selectedId, layer, pickMode, onSelec
         m.fitBounds(b, { padding: narrow ? { top: 110, bottom: 150, left: 40, right: 40 } : { top: 90, bottom: 90, left: 60, right: 340 }, maxZoom: 9, duration: 0 })
       }
     }
-  }, [stations, layer, selectedId, prefs.wind, prefs.temp, prefs.rain])
+  }, [stations, layers, selectedId, prefs.wind, prefs.temp, prefs.rain])
 
   // ---- partículas de vento (campo interpolado entre as estações)
   useEffect(() => {
@@ -180,7 +226,7 @@ export default function MapView({ stations, selectedId, layer, pickMode, onSelec
     let has = false
     const frame = (now: number) => {
       raf = requestAnimationFrame(frame)
-      if (!running || live.current.layer !== 'wind' || !W) { if (live.current.layer !== 'wind') clear(); return }
+      if (!running || !live.current.layers.includes('wind') || !W) { if (!live.current.layers.includes('wind')) clear(); return }
       const dt = Math.min(0.05, (now - last) / 1000)
       last = now
       if (now - gridAt > 600) { has = buildGrid(); gridAt = now }
@@ -216,6 +262,23 @@ export default function MapView({ stations, selectedId, layer, pickMode, onSelec
     <div className="absolute inset-0" data-lenis-prevent>
       <div ref={host} className="h-full w-full" />
       <canvas ref={cv} className="pointer-events-none absolute inset-0 h-full w-full" />
+      <div className="absolute right-3 top-16 z-10 sm:right-4">
+        <button
+          type="button" onClick={() => setMenu((v) => !v)} aria-expanded={menu} aria-label="Camadas do mapa"
+          className="glass flex h-10 w-10 items-center justify-center rounded-xl text-ink-2 hover:text-ink"
+        ><Layers className="h-5 w-5" aria-hidden /></button>
+        {menu && (
+          <div role="radiogroup" aria-label="Mapa de fundo" className="glass absolute right-0 top-12 grid w-40 gap-0.5 rounded-xl p-1.5">
+            {BASEMAPS.map((b) => (
+              <button
+                key={b.id} type="button" role="radio" aria-checked={prefs.basemap === b.id}
+                onClick={() => { setPrefs({ basemap: b.id }); setMenu(false) }}
+                className={`rounded-lg px-3 py-2 text-left text-sm ${prefs.basemap === b.id ? 'bg-cyan font-semibold text-[#03212d]' : 'text-ink-2 hover:bg-card-hover hover:text-ink'}`}
+              >{b.label}</button>
+            ))}
+          </div>
+        )}
+      </div>
     </div>
   )
 }

@@ -2,6 +2,7 @@ import { useEffect, useMemo, type ReactNode } from 'react'
 import Analyses from './components/Analyses'
 import GlobalSettings from './components/GlobalSettings'
 import StationSettings from './components/StationSettings'
+import { NoReadings } from './components/StationPanel'
 import Hero from './components/Hero'
 import MapPage from './components/MapPage'
 import Navbar from './components/Navbar'
@@ -40,7 +41,8 @@ function StationGate({ id, net, children }: { id: string; net: Net; children: (s
       <div className="grid min-h-svh place-items-center px-4 text-center">
         <div className="max-w-sm">
           <h1 className="font-display text-2xl font-bold">{station.name} ainda não enviou leituras</h1>
-          <p className="mt-2 text-ink-2">Ligue o ESP32, confira o Wi-Fi e a chave do dispositivo. A primeira leitura aparece aqui em até {station.config.interval_min} min.</p>
+          <div className="text-left"><NoReadings s={station} /></div>
+          <p className="mt-3 text-xs text-ink-3">Sensor BME280: 3V3, GND, SDA no GPIO 6 e SCL no GPIO 7. Depois aperte RESET na placa.</p>
           <button onClick={() => go('')} className="mt-4 rounded-xl bg-blue px-4 py-2.5 text-sm font-semibold text-white">Voltar ao mapa</button>
         </div>
       </div>
@@ -144,7 +146,7 @@ function Routes({ net }: { net: Net }) {
         status={{ color: net.source === 'demo' ? 'bg-warn' : 'bg-ok', text: net.source === 'demo' ? 'demonstração' : `${online} de ${net.stations.length} online` }}
       />
       <main>
-        <MapPage stations={net.stations} source={net.source} onCreate={net.add} />
+        <MapPage stations={net.stations} source={net.source} onCreate={net.add} onSave={net.save} onRemove={net.remove} />
       </main>
       <footer className="border-t border-line px-4 py-8 text-center text-xs text-ink-3">
         Mapa © OpenStreetMap contributors · Estação meteorológica ESP32-C3
@@ -158,7 +160,7 @@ export default function App() {
   return (
     <>
       <Routes net={net} />
-      <UsbDevice stations={net.stations} source={net.source} />
+      <UsbDevice stations={net.stations} source={net.source} onChanged={net.refresh} />
     </>
   )
 }

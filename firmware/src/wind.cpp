@@ -3,9 +3,11 @@
 #include <esp_sleep.h>
 #include <esp_timer.h>
 #include "config.h"
+#include "console.h"
 #include "log.h"
 #include "sensors.h"
 #include "settings.h"
+#include "usblink.h"
 
 RTC_DATA_ATTR volatile uint32_t rtcRainTips = 0;
 RTC_DATA_ATTR float rtcLastDir = 0;
@@ -53,7 +55,7 @@ WindResult windMeasure(uint16_t seconds) {
   const bool magOk = qmcStart();
   windLow = digitalRead(PIN_WIND) == LOW;  // um pulso em andamento não conta
   rainLow = digitalRead(PIN_RAIN) == LOW;
-  if (logOn) Serial.flush();
+  if (logOn) Console.flush();
 
   double sx = 0, sy = 0;
   uint32_t nd = 0;
@@ -63,6 +65,7 @@ WindResult windMeasure(uint16_t seconds) {
   const int64_t t0 = esp_timer_get_time();
   int64_t nextSec = t0 + 1000000, nextDir = t0 + dirPeriod;
 
+  bool plugged = usbPlugged();
   while (sec < seconds) {
     const int64_t now = esp_timer_get_time();
     pollPins(now);
@@ -76,8 +79,11 @@ WindResult windMeasure(uint16_t seconds) {
       bucket[sec++] = (uint16_t)min<uint32_t>(windCount - lastCount, 65535);
       lastCount = windCount;
       nextSec += 1000000;
+      plugged = usbPlugged();  // o cabo pode ter sido plugado ou tirado durante uma medição longa
       continue;
     }
+    // Com um computador plugado não há light sleep: ele derrubaria a porta USB no meio da medição.
+    if (plugged) { usbOpen(); usbPoll(); delayMicroseconds(300); continue; }  // e continua atendendo o site
     // Light sleep: acorda quando um pino muda de nível (os dois lados do pulso) ou no próximo tick.
     gpio_wakeup_enable((gpio_num_t)PIN_WIND, windLow ? GPIO_INTR_HIGH_LEVEL : GPIO_INTR_LOW_LEVEL);
     gpio_wakeup_enable((gpio_num_t)PIN_RAIN, rainLow ? GPIO_INTR_HIGH_LEVEL : GPIO_INTR_LOW_LEVEL);

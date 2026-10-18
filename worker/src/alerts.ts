@@ -178,7 +178,8 @@ export async function evaluateAfterIngest(env: Env, st: AlertStation, last: Aler
   // bateria: histerese de 5 pontos percentuais
   const low = tg.rules.lowBattery
   const lvl = await getLevel(env, st.id, 'battery')
-  const next = pct <= low.pct ? 'low' : pct >= low.pct + 5 || lvl === null ? 'ok' : (lvl ?? 'ok')
+  const noBattery = last.vbat < 1 // placa na USB, sem bateria: não há o que avisar
+  const next = noBattery ? 'ok' : pct <= low.pct ? 'low' : pct >= low.pct + 5 || lvl === null ? 'ok' : (lvl ?? 'ok')
   await transition(env, tg, st.id, 'battery', next, (prev) =>
     next === 'low' ? (low.on ? render(tpl(tg, 'lowBattery'), vars) : null) : prev === 'low' && tg.rules.batteryOk.on ? render(tpl(tg, 'batteryOk'), vars) : null)
 

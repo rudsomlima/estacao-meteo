@@ -18,9 +18,13 @@
 
   Primeiro uso: sem rede salva a estação abre o ponto de acesso "EstacaoMeteo-XXXX" (portal cativo).
   Para reabrir o portal depois, segure o botão BOOT ao ligar.
-  Modo bancada: ao ligar (e depois do portal), abre uma página local por `bench_min` minutos com as leituras ao vivo
-  e a calibração da biruta, sem cabo serial.
-  Calibração pela serial: ao ligar, o monitor espera 6 s por 'c' (calibrar) ou 'n' (mostrar ângulo do norte).
+  Modo bancada: ao ligar (depois do primeiro envio), abre uma página local por `bench_min` minutos com as leituras ao vivo
+  e a calibração da biruta, sem cabo.
+
+  USB: o mesmo firmware serve para a bancada e para o campo. Sem computador do outro lado do cabo (bateria, painel solar,
+  carregador) a porta USB nunca é aberta e o ciclo é o de baixo consumo. Com um computador plugado, ao ligar a placa
+  atende o site por alguns segundos (configura Wi-Fi, endereço e chave) e as ferramentas 'c' (calibrar a biruta) e 'n'
+  (ângulo do norte); depois não dorme enquanto o cabo estiver ali, para a porta continuar disponível para gravar.
 */
 #include <Arduino.h>
 #include <Wire.h>
@@ -30,6 +34,7 @@
 
 #include "bench.h"
 #include "config.h"
+#include "console.h"
 #include "events.h"
 #include "log.h"
 #include "net.h"
@@ -37,6 +42,7 @@
 #include "sensors.h"
 #include "settings.h"
 #include "types.h"
+#include "usblink.h"
 #include "wind.h"
 
 bool logOn = false;
@@ -53,7 +59,39 @@ RTC_DATA_ATTR static bool rtcCharging = false;
 static bool coldBoot = false;
 
 // ---------------- sono ----------------
-[[noreturn]] static void sleepFor(uint32_t seconds, bool rainWake) {
+/**
+ * Com um computador plugado a placa não entra em deep sleep: a porta USB sumiria (e não daria para gravar sem apertar RESET).
+ * Fica acordada atendendo o site e as ferramentas até acabar o tempo, ou até o cabo sair.
+ */
+static void usbWait(uint32_t seconds) {
+  netOff();
+  setCpuFrequencyMhz(80);
+  usbOpen();
+  LOG("USB conectada: aguardando %us acordada (a porta continua disponivel para gravar)\n", (unsigned)seconds);
+  const uint32_t t0 = millis();
+  uint32_t goneSince = 0;
+  while (millis() - t0 < seconds * 1000UL) {
+    if (usbPlugged()) goneSince = 0;
+    else if (!goneSince) goneSince = millis();
+    else if (millis() - goneSince > 1500) break;  // cabo removido
+    if (usbPoll()) continue;
+    if (Console.available()) Console.read();  // descarta o que não é comando
+    delay(20);
+  }
+}
+
+/**
+ * Espera até o próximo ciclo. Em campo é deep sleep e não volta (acorda no setup). Com computador plugado espera acordada
+ * e volta quando o tempo acaba; se o cabo sair no meio, dorme o que faltar.
+ */
+static void sleepFor(uint32_t seconds, bool rainWake) {
+  if (usbPlugged()) {
+    const uint32_t t0 = millis();
+    usbWait(seconds);
+    const uint32_t spent = (millis() - t0) / 1000;
+    if (spent >= seconds) return;
+    seconds -= spent;
+  }
   netOff();
   Wire.end();
   esp_sleep_enable_timer_wakeup((uint64_t)seconds * 1000000ULL);
@@ -61,7 +99,7 @@ static bool coldBoot = false;
   if (rainWake && digitalRead(PIN_RAIN) == HIGH)
     esp_deep_sleep_enable_gpio_wakeup(1ULL << PIN_RAIN, ESP_GPIO_WAKEUP_GPIO_LOW);
   LOG("dormindo %us\n", (unsigned)seconds);
-  if (logOn) Serial.flush();
+  if (logOn) Console.flush();
   esp_deep_sleep_start();
   while (true) {}
 }
@@ -128,8 +166,16 @@ static void sendIfDue(bool urgent) {
   coldBoot = false;  // só o primeiro ciclo envia por ser boot a frio
   if (!due || (missing && !wasCold)) return;
 
+  // Com o cabo num computador, o site configura a placa pela USB: o portal Wi-Fi (180 s sem atender a USB) só atrapalharia.
+  // Sem o cabo ele abre normalmente; com o cabo, segurar BOOT ao ligar também o abre.
+  if (missing && !forcePortal && usbPlugged()) {
+    LOG("sem configuracao: configure pelo site (USB). O portal abre sem o cabo, ou segurando BOOT ao ligar\n");
+    return;
+  }
   setCpuFrequencyMhz(160);
   const bool viaPortal = missing || forcePortal;
+  // modo bancada: só depois do primeiro envio, para a estação aparecer no site logo ao ser ligada
+  const bool bench = wasCold && cfg.benchMin > 0 && (viaPortal || digitalRead(PIN_BOOT) == HIGH);
   const bool connected = viaPortal ? runPortal() : wifiConnect(cfg.wifiTimeoutS * 1000UL);
   if (!connected) {
     rtcFails++;
@@ -142,7 +188,6 @@ static void sendIfDue(bool urgent) {
     netOff();
     return;
   }
-  if (viaPortal) benchRun(cfg.benchMin);  // acabou de configurar: aproveita para calibrar sem cabo
 
   const float vbat = rtcCount ? rtcBuf[rtcCount - 1].vbat : 0;
   const PostResult r = postBatch(rtcBuf, rtcCount);
@@ -155,15 +200,16 @@ static void sendIfDue(bool urgent) {
   } else {
     rtcFails++;  // as leituras e os eventos ficam guardados e vão no próximo envio
   }
+  if (bench) benchRun(cfg.benchMin);  // ainda conectada: aproveita para calibrar sem cabo
   netOff();
 }
 
 // ---------------- modo janela: deep sleep entre ciclos ----------------
-[[noreturn]] static void windowCycle() {
+static void windowCycle() {
   const float vbat = batteryVolts();
   updateLevel(vbat);
   LOG("bateria %.2f V (nivel %u%s)\n", vbat, rtcLevel, rtcCharging ? ", carregando" : "");
-  if (vbat > 1.0f && rtcLevel == 2) sleepFor(3600, false);  // protege a célula
+  if (vbat > 1.0f && rtcLevel == 2) { sleepFor(3600, false); return; }  // protege a célula
 
   const bool urgent = measureAndStore(vbat, cfg.windWindowS);
   sendIfDue(urgent);
@@ -172,7 +218,7 @@ static void sendIfDue(bool urgent) {
   const uint32_t used = millis() / 1000;
   const uint32_t rest = interval > used + 5 ? interval - used : 5;
   rtcNextDue = time(nullptr) + rest;
-  sleepFor(rest, true);
+  sleepFor(rest, true);  // sem computador plugado não volta daqui: o próximo ciclo começa no setup
 }
 
 // ---------------- modo contínuo: light sleep o tempo todo ----------------
@@ -180,7 +226,7 @@ static void continuousCycle() {
   const float vbat = batteryVolts();
   updateLevel(vbat);
   LOG("bateria %.2f V (nivel %u%s)\n", vbat, rtcLevel, rtcCharging ? ", carregando" : "");
-  if (vbat > 1.0f && rtcLevel == 2) sleepFor(3600, false);
+  if (vbat > 1.0f && rtcLevel == 2) { sleepFor(3600, false); return; }
 
   const uint32_t interval = min<uint32_t>(nextInterval(), MAX_WIND_SECONDS);
   const bool urgent = measureAndStore(vbat, (uint16_t)interval);  // o vento é medido pelo intervalo inteiro
@@ -212,26 +258,20 @@ void setup() {
   Wire.begin(PIN_SDA, PIN_SCL);
   Wire.setClock(100000);
   if (coldBoot) {
-    Serial.begin(115200);
-    delay(400);
-    logOn = true;
     rtcRainTips = 0;
     rtcCount = 0;
-    serialTools();
-    // modo bancada ao ligar (só com Wi-Fi já configurado; no primeiro uso ele abre depois do portal)
-    if (cfg.benchMin > 0 && !wifiSsid.isEmpty() && digitalRead(PIN_BOOT) == HIGH) {
-      setCpuFrequencyMhz(160);
-      if (wifiConnect(cfg.wifiTimeoutS * 1000UL)) benchRun(cfg.benchMin);
-      netOff();
+    if (usbPlugged()) {  // sem computador do outro lado do cabo não se espera nada
+      usbOpen();
+      // placa sem configuração: espera mais, para o site ter tempo de reconhecê-la e configurá-la antes do portal
+      const bool unconfigured = wifiSsid.isEmpty() || serverUrl.isEmpty() || (deviceKey.isEmpty() && claimCode.isEmpty());
+      serialTools(unconfigured ? 60000 : 10000);
     }
   }
   rainAttach();
-
-  if (!cfg.continuousWind) windowCycle();  // nunca volta: termina em deep sleep
-  LOG("modo continuo: light sleep, intervalo %u min, envio a cada %u leituras\n", cfg.intervalMin, cfg.sendEvery);
+  if (cfg.continuousWind) LOG("modo continuo: light sleep, intervalo %u min, envio a cada %u leituras\n", cfg.intervalMin, cfg.sendEvery);
 }
 
 void loop() {
   if (cfg.continuousWind) continuousCycle();
-  else delay(1000);
+  else windowCycle();  // em campo termina em deep sleep; com computador plugado volta aqui no próximo ciclo
 }

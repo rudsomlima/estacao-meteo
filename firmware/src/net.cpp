@@ -8,6 +8,7 @@
 #include "config.h"
 #include "events.h"
 #include "log.h"
+#include "sensors.h"
 #include "settings.h"
 
 // Cole aqui o certificado raiz do seu servidor (PEM) para validar o HTTPS. Vazio = não valida.
@@ -155,6 +156,9 @@ static String buildBody(const Sample *s, uint8_t n) {
   JsonDocument doc;
   doc["cfg"] = cfg.version;
   doc["fw"] = FW_VERSION;
+  // bateria e sinal vão sempre, mesmo sem leitura de sensor (por exemplo, sem BME280): o site mostra a placa viva
+  doc["vbat"] = roundf(batteryVolts() * 100.0f) / 100.0f;
+  doc["rssi"] = rssi;
   JsonArray arr = doc["batch"].to<JsonArray>();
   auto r2 = [](float v) { return roundf(v * 100.0f) / 100.0f; };
   for (uint8_t i = 0; i < n; i++) {

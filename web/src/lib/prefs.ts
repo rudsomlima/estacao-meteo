@@ -1,6 +1,9 @@
 import { useSyncExternalStore } from 'react'
 import { store } from './api'
 
+export type MapLayer = 'wind' | 'temp' | 'rain' | 'battery' | 'wifi' | 'seen'
+export const MAP_LAYERS: [MapLayer, string][] = [['wind', 'Vento'], ['temp', 'Temperatura'], ['rain', 'Chuva 24 h'], ['battery', 'Bateria'], ['wifi', 'Sinal Wi-Fi'], ['seen', 'Última vez visto']]
+
 /** Preferências de quem está vendo o site. Ficam só no navegador e valem na hora, em todas as telas. */
 export interface Prefs {
   wind: 'kmh' | 'ms' | 'kn' | 'mph'
@@ -9,12 +12,15 @@ export interface Prefs {
   pres: 'hpa' | 'inhg' | 'mmhg'
   /** estações favoritas; a primeira é a principal */
   favorites: string[]
-  layer: 'wind' | 'temp' | 'rain' | 'battery'
+  /** camadas do mapa ligadas ao abrir (pode ser mais de uma) */
+  layers: MapLayer[]
+  /** mapa de fundo */
+  basemap: 'dark' | 'streets' | 'satellite' | 'terrain'
   /** abrir direto na página da estação principal */
   openMain: boolean
 }
 
-export const DEFAULT_PREFS: Prefs = { wind: 'kmh', temp: 'c', rain: 'mm', pres: 'hpa', favorites: [], layer: 'wind', openMain: false }
+export const DEFAULT_PREFS: Prefs = { wind: 'kmh', temp: 'c', rain: 'mm', pres: 'hpa', favorites: [], layers: ['wind'], basemap: 'dark', openMain: false }
 
 const KEY = 'meteo.prefs'
 const EVENT = 'meteo:prefs'
@@ -38,7 +44,10 @@ export function sanitize(input: unknown): Prefs {
     rain: pick(o.rain, ['mm', 'in'], DEFAULT_PREFS.rain),
     pres: pick(o.pres, ['hpa', 'inhg', 'mmhg'], DEFAULT_PREFS.pres),
     favorites: Array.isArray(o.favorites) ? o.favorites.filter((s): s is string => typeof s === 'string' && /^[a-z0-9-]{2,32}$/.test(s)).slice(0, 50) : [],
-    layer: pick(o.layer, ['wind', 'temp', 'rain', 'battery'], DEFAULT_PREFS.layer),
+    layers: Array.isArray(o.layers)
+      ? MAP_LAYERS.map(([k]) => k).filter((k) => (o.layers as unknown[]).includes(k))
+      : typeof o.layer === 'string' && MAP_LAYERS.some(([k]) => k === o.layer) ? [o.layer as MapLayer] : DEFAULT_PREFS.layers,
+    basemap: pick(o.basemap, ['dark', 'streets', 'satellite', 'terrain'], DEFAULT_PREFS.basemap),
     openMain: o.openMain === true,
   }
 }

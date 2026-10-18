@@ -1,28 +1,30 @@
 #!/usr/bin/env python3
-"""Gera as imagens de fábrica (bootloader + partições + app juntos) que o site grava pelo navegador.
+"""Gera a imagem de fábrica (bootloader + partições + app juntos) que o site grava pelo navegador.
 
 Uso (na pasta firmware):
-    python tools/make_factory.py --server https://seu-site.workers.dev [--version 0.2.0]
+    python tools/make_factory.py --server https://seu-site.workers.dev   # site publicado
+    python tools/make_factory.py --lan                                    # teste local: http://IP-DO-COMPUTADOR:8787
+    python tools/make_factory.py                                          # sem endereço embutido (a USB configura)
 
-Compila os dois ambientes com o endereço do site embutido e escreve em ../web/public/firmware/:
-    estacao-c3-campo.bin   ambiente esp32c3-lowpower (para instalar em campo)
-    estacao-c3-usb.bin     ambiente esp32c3 (USB serial ligada: o site reconhece a placa e a configura pela USB)
-    manifest.json          o que o site lista na tela de gravação
-Depois rode "npm run build" e publique o site. As imagens ficam fora do git (.gitignore).
+Compila o firmware (um só serve para a bancada e para o campo) e escreve em ../web/public/firmware/:
+    estacao-c3.bin   imagem completa, para gravar a partir do endereço 0x0
+    manifest.json    o que o site lista na tela de gravação
+Depois rode "npm run build" e publique o site (em desenvolvimento o "npm run dev" já serve a pasta). A imagem fica fora do git.
 """
 import argparse
 import json
 import os
+import re
+import socket
 import subprocess
 import sys
+import time
 from pathlib import Path
 
 HERE = Path(__file__).resolve().parent.parent
 OUT = HERE.parent / "web" / "public" / "firmware"
-ENVS = [
-    ("esp32c3-lowpower", "estacao-c3-campo.bin", "Campo (baixo consumo)", "Sem USB serial: configura pelo portal do celular e pelo código de pareamento."),
-    ("esp32c3", "estacao-c3-usb.bin", "USB (desenvolvimento)", "Com USB serial: o site reconhece a placa e a configura pelo cabo. Consome mais em campo."),
-]
+ENV = "esp32c3"
+IMAGE = "estacao-c3.bin"
 # endereços da flash do ESP32-C3 com o esquema de partições padrão do Arduino
 BOOT, PART, APP0, APP = 0x0, 0x8000, 0xE000, 0x10000
 
@@ -34,36 +36,73 @@ def find_boot_app0() -> Path:
     sys.exit("boot_app0.bin não encontrado: compile uma vez com 'pio run' para baixar o framework.")
 
 
+def lan_ip() -> str:
+    """O IP deste computador na rede local (o que a placa alcança). Não envia nada: só pergunta ao sistema qual rota usaria."""
+    s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+    try:
+        s.connect(("10.255.255.255", 1))
+        return s.getsockname()[0]
+    except OSError:
+        sys.exit("Não consegui descobrir o IP do computador na rede. Use --server http://IP:8787")
+    finally:
+        s.close()
+
+
+def fw_version(override: str) -> str:
+    if override:
+        return override
+    m = re.search(r'#define\s+FW_VERSION\s+"([^"]+)"', (HERE / "src" / "config.h").read_text(encoding="utf-8"))
+    return m.group(1) if m else ""
+
+
 def main() -> None:
     ap = argparse.ArgumentParser()
     ap.add_argument("--server", default="", help="endereço do site embutido no firmware (https://...)")
+    ap.add_argument("--lan", action="store_true", help="embute http://IP-DESTE-COMPUTADOR:8787 (teste local com 'npm run dev:lan')")
     ap.add_argument("--version", default="", help="FW_VERSION (padrão: o de config.h)")
     a = ap.parse_args()
-    if a.server and not a.server.startswith(("https://", "http://")):
+    server = a.server.rstrip("/")
+    if a.lan:
+        server = f"http://{lan_ip()}:8787"
+    if server and not server.startswith(("https://", "http://")):
         sys.exit("--server precisa começar com https:// (ou http://)")
 
     flags = []
-    if a.server:
-        flags.append(f'-DDEFAULT_SERVER_URL=\\"{a.server.rstrip("/")}\\"')
+    if server:
+        flags.append(f'-DDEFAULT_SERVER_URL=\\"{server}\\"')
     if a.version:
         flags.append(f'-DFW_VERSION=\\"{a.version}\\"')
     env = dict(os.environ, PLATFORMIO_BUILD_FLAGS=" ".join(flags))
 
     boot_app0 = find_boot_app0().read_bytes()
+    print(f"== compilando {ENV}" + (f" com o site {server}" if server else ""))
+    # os objetos antigos não sabem do endereço novo: força recompilar o que depende dele
+    for stale in (HERE / ".pio" / "build" / ENV).glob("src/*.o"):
+        stale.unlink()
+    subprocess.run(["pio", "run", "-e", ENV], cwd=HERE, env=env, check=True)
+
+    b = HERE / ".pio" / "build" / ENV
+    parts = [(BOOT, (b / "bootloader.bin").read_bytes()), (PART, (b / "partitions.bin").read_bytes()), (APP0, boot_app0), (APP, (b / "firmware.bin").read_bytes())]
+    img = bytearray(b"\xff" * (parts[-1][0] + len(parts[-1][1])))
+    for off, data in parts:
+        img[off:off + len(data)] = data
+
     OUT.mkdir(parents=True, exist_ok=True)
-    manifest = []
-    for name, out, title, note in ENVS:
-        print(f"== compilando {name}")
-        subprocess.run(["pio", "run", "-e", name], cwd=HERE, env=env, check=True)
-        b = HERE / ".pio" / "build" / name
-        parts = [(BOOT, (b / "bootloader.bin").read_bytes()), (PART, (b / "partitions.bin").read_bytes()), (APP0, boot_app0), (APP, (b / "firmware.bin").read_bytes())]
-        img = bytearray(b"\xff" * (parts[-1][0] + len(parts[-1][1])))
-        for off, data in parts:
-            img[off:off + len(data)] = data
-        (OUT / out).write_bytes(img)
-        manifest.append({"file": out, "title": title, "note": note, "size": len(img), "server": a.server or None, "env": name})
-        print(f"   {out}: {len(img) / 1024:.0f} KB")
+    for old in OUT.glob("*.bin"):  # imagens de versões anteriores deste script
+        old.unlink()
+    (OUT / IMAGE).write_bytes(img)
+    manifest = [{
+        "file": IMAGE,
+        "title": "Estação Meteo",
+        "note": "Serve para a bancada e para o campo. Com o cabo no computador, o site reconhece a placa e a configura; sem ele, a placa segue o ciclo de baixo consumo.",
+        "size": len(img),
+        "server": server or None,
+        "env": ENV,
+        "fw": fw_version(a.version),
+        "built": int(time.time()),
+    }]
     (OUT / "manifest.json").write_text(json.dumps(manifest, ensure_ascii=False, indent=2), encoding="utf-8")
+    print(f"   {IMAGE}: {len(img) / 1024:.0f} KB, firmware {manifest[0]['fw']}")
     print(f"pronto em {OUT}")
 
 

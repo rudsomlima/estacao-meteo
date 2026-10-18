@@ -13,7 +13,9 @@ CREATE TABLE IF NOT EXISTS stations (
   nonce       TEXT NOT NULL DEFAULT '',   -- desafio do modo assinado (HTTP); muda a cada envio
   cfg_applied INTEGER NOT NULL DEFAULT 0, -- versão da configuração que a estação disse ter
   last_seen   INTEGER,                    -- último contato (segundos)
-  fw_version  TEXT                        -- versão do firmware que a estação disse ter
+  fw_version  TEXT,                       -- versão do firmware que a estação disse ter
+  vbat        REAL,                       -- bateria (V) e sinal Wi-Fi (dBm) do último contato, mesmo sem leitura de sensor
+  rssi        REAL
 );
 
 CREATE TABLE IF NOT EXISTS readings (

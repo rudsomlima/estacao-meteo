@@ -69,7 +69,7 @@ Uma atualização de firmware pelo ar baixa até 1,6 MB com o Wi-Fi ligado: cont
 - **A3144 alimentado direto:** 4,4 mA parado.
 - **Divisor da bateria de 10 kΩ:** 200 µA. Use 1 MΩ.
 - **Pull-up de 10 kΩ no Hall:** gasta 330 µA enquanto o ímã estiver perto. Com DRV5032 use 1 MΩ.
-- **USB CDC ligado:** atrapalha o light sleep. Em campo use o ambiente `esp32c3-lowpower`.
+- **Cabo USB num computador:** a placa não dorme enquanto ele estiver ali (para a porta continuar disponível). Em campo, sem cabo ou só com carregador, ela segue o ciclo de baixo consumo.
 
 ## Como medir de verdade
 

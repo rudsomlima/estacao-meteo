@@ -1,10 +1,10 @@
-import { ArrowRight, Settings, Star, X } from 'lucide-react'
+import { ArrowRight, Pencil, Settings, Star, X } from 'lucide-react'
 import { useMemo } from 'react'
 import { useReadings } from '../hooks/useNetwork'
 import { go } from '../hooks/useRoute'
 import { batteryColor } from '../lib/colors'
 import { batteryPct, CHEMS } from '../lib/battery'
-import { ago, compass16, isOnline } from '../lib/derive'
+import { ago, compass16, isOnline, isSeen, wifiColor, wifiLabel } from '../lib/derive'
 import { makeMain, toggleFavorite, usePrefs } from '../lib/prefs'
 import { useFmt } from '../lib/units'
 import type { Source, Station } from '../types'
@@ -21,7 +21,28 @@ function Spark({ values, color }: { values: number[]; color: string }) {
   )
 }
 
-export default function StationPanel({ station: s, source, onClose }: { station: Station; source: Source; onClose: () => void }) {
+/** Estação sem leitura de sensor: mostra o que a placa informa mesmo assim (bateria e sinal Wi-Fi). */
+export function NoReadings({ s }: { s: Station }) {
+  const seen = isSeen(s)
+  const f = s.vbat != null
+  return (
+    <div className="mt-3 grid gap-2 text-sm">
+      <p className="text-ink-2">
+        {seen ? 'A placa está conectada, mas não mediu nada: o sensor (BME280) não respondeu.' : 'Esta estação ainda não enviou nenhum sinal. Ligue o ESP32 e confira o Wi-Fi e a chave.'}
+      </p>
+      {s.last_seen && (
+        <dl className="num grid grid-cols-[1fr_auto] gap-x-4 gap-y-1.5">
+          <dt className="text-ink-3">Visto</dt><dd className={seen ? 'text-ok' : 'text-bad'}>{ago(s.last_seen)}</dd>
+          {f && (<><dt className="text-ink-3">Bateria</dt><dd>{s.vbat! < 1 ? 'sem bateria (USB)' : `${batteryPct(s.vbat!, s.config.battery_chem)}% · ${s.vbat!.toFixed(2)} V`}</dd></>)}
+          {s.rssi != null && (<><dt className="text-ink-3">Sinal Wi-Fi</dt><dd style={{ color: wifiColor(s.rssi) }}>{s.rssi} dBm · {wifiLabel(s.rssi)}</dd></>)}
+          {s.fw_version && (<><dt className="text-ink-3">Firmware</dt><dd>{s.fw_version}</dd></>)}
+        </dl>
+      )}
+    </div>
+  )
+}
+
+export default function StationPanel({ station: s, source, onClose, onEdit }: { station: Station; source: Source; onClose: () => void; onEdit: () => void }) {
   const { readings } = useReadings(s.id, source, 24)
   const f = useFmt()
   const prefs = usePrefs()
@@ -34,7 +55,7 @@ export default function StationPanel({ station: s, source, onClose }: { station:
   const temps = useMemo(() => readings.filter((_, i) => i % 3 === 0).map((r) => r.temp), [readings])
 
   return (
-    <aside className="glass absolute inset-x-3 bottom-3 z-20 rounded-2xl p-4 sm:inset-x-auto sm:bottom-auto sm:right-4 sm:top-4 sm:w-[300px]" aria-label={`Resumo de ${s.name}`}>
+    <aside className="glass absolute inset-x-3 bottom-3 z-20 rounded-2xl p-4 max-h-[70svh] overflow-y-auto sm:inset-x-auto sm:bottom-auto sm:right-4 sm:top-16 sm:max-h-[calc(100svh-140px)] sm:w-[300px]" aria-label={`Resumo de ${s.name}`}>
       <button onClick={onClose} aria-label="Fechar resumo" className="absolute right-3 top-3 rounded-lg p-1 text-ink-2 hover:bg-card-hover hover:text-ink"><X className="h-4 w-4" /></button>
       <h2 className="pr-8 font-display text-xl font-bold tracking-tight">{s.name}</h2>
       <p className="num text-xs text-ink-3">{s.city} · {s.alt.toFixed(0)} m</p>
@@ -60,7 +81,7 @@ export default function StationPanel({ station: s, source, onClose }: { station:
           <p className="num mt-1 text-[11px] text-ink-3">{chem.label} · {s.config.battery_mah} mAh · {l.vbat.toFixed(2)} V</p>
         </>
       ) : (
-        <p className="mt-3 text-sm text-ink-2">Esta estação ainda não enviou nenhuma leitura. Ligue o ESP32 e confira a chave do dispositivo.</p>
+        <NoReadings s={s} />
       )}
       <button onClick={() => go(`s/${s.id}`)} className="mt-4 flex w-full items-center justify-center gap-2 rounded-xl bg-blue px-4 py-2.5 text-sm font-semibold text-white">
         Abrir estação <ArrowRight className="h-4 w-4" aria-hidden />
@@ -76,6 +97,9 @@ export default function StationPanel({ station: s, source, onClose }: { station:
         </button>
         <button onClick={() => go(`s/${s.id}/config`)} className="flex items-center justify-center gap-1.5 rounded-xl border border-line px-3 py-2 text-xs hover:bg-card-hover">
           <Settings className="h-3.5 w-3.5" aria-hidden /> Configurações
+        </button>
+        <button onClick={onEdit} className="col-span-2 flex items-center justify-center gap-1.5 rounded-xl border border-line px-3 py-2 text-xs hover:bg-card-hover">
+          <Pencil className="h-3.5 w-3.5" aria-hidden /> Editar ou remover estação
         </button>
       </div>
     </aside>

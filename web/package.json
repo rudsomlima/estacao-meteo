@@ -9,6 +9,7 @@
     "prebuild": "node scripts/copy-maplibre.mjs",
     "build": "tsc -b && vite build",
     "lint": "oxlint",
+    "firmware": "python ../firmware/tools/make_factory.py --lan",
     "preview": "vite preview"
   },
   "dependencies": {

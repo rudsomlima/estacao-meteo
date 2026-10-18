@@ -1,4 +1,5 @@
 #include "sensors.h"
+#include "console.h"
 #include "usblink.h"
 #include <Adafruit_BME280.h>
 #include <Wire.h>
@@ -68,16 +69,18 @@ bool magVector(double &ux, double &uy) {
   return true;
 }
 
-// ---------------- ferramentas pela porta serial ----------------
-void serialTools() {
-  Serial.println("\nEstacao Meteo. 'c' = calibrar biruta, 'n' = ler angulo do norte. (6 s)");
-  const uint32_t t0 = millis();
-  while (millis() - t0 < 6000) {
-    if (!Serial.available()) { delay(20); continue; }
-    const char c = Serial.read();
-    if (!qmcStart()) { Serial.println("QMC5883L nao respondeu (0x0D)."); return; }
+// ---------------- ferramentas pela porta USB ----------------
+void serialTools(uint32_t windowMs) {
+  Console.printf("\nEstacao Meteo. 'c' = calibrar biruta, 'n' = ler angulo do norte. (%u s)\n", (unsigned)(windowMs / 1000));
+  uint32_t t0 = millis();
+  while (millis() - t0 < windowMs) {
+    if (usbPoll()) { t0 = millis(); continue; }  // o site (Web Serial) fala em JSON, uma linha por comando; cada comando renova a janela
+    if (!Console.available()) { delay(20); continue; }
+    const char c = Console.read();
+    if (c != 'c' && c != 'n') continue;
+    if (!qmcStart()) { Console.println("QMC5883L nao respondeu (0x0D)."); return; }
     if (c == 'c') {
-      Serial.println("Gire a biruta 360 graus devagar, duas vezes, durante 20 s...");
+      Console.println("Gire a biruta 360 graus devagar, duas vezes, durante 20 s...");
       int16_t mnx = 32767, mxx = -32768, mny = 32767, mxy = -32768;
       const uint32_t s = millis();
       while (millis() - s < 20000) {
@@ -86,12 +89,12 @@ void serialTools() {
         delay(20);
       }
       const float rx = (mxx - mnx) / 2.0f, ry = (mxy - mny) / 2.0f;
-      if (rx < 20 || ry < 20) { Serial.println("Sinal fraco demais. Aproxime o ima ou use a faixa de 8 G."); qmcStop(); return; }
+      if (rx < 20 || ry < 20) { Console.println("Sinal fraco demais. Aproxime o ima ou use a faixa de 8 G."); qmcStop(); return; }
       const float m = (rx + ry) / 2.0f;
       saveCalibration((mxx + mnx) / 2.0f, (mxy + mny) / 2.0f, m / rx, m / ry);
-      Serial.printf("Calibrado: raio X=%.0f Y=%.0f. Reinicie e use 'n' para achar o norte.\n", rx, ry);
+      Console.printf("Calibrado: raio X=%.0f Y=%.0f. Reinicie e use 'n' para achar o norte.\n", rx, ry);
     } else if (c == 'n') {
-      Serial.println("Aponte a biruta para o NORTE (indicador N). Lendo 3 s...");
+      Console.println("Aponte a biruta para o NORTE (indicador N). Lendo 3 s...");
       double sx = 0, sy = 0; int n = 0;
       const uint32_t s = millis();
       while (millis() - s < 3000) {
@@ -99,9 +102,9 @@ void serialTools() {
         if (magVector(ux, uy)) { sx += ux; sy += uy; n++; }
         delay(50);
       }
-      if (n < 3) { Serial.println("Sem leitura."); qmcStop(); return; }
+      if (n < 3) { Console.println("Sem leitura."); qmcStop(); return; }
       const float a = fmodf(DIR_SIGN * atan2f((float)sy, (float)sx) * 180.0f / PI + 360.0f, 360.0f);
-      Serial.printf("Digite no site, em Ajuste do norte da biruta: %.0f\n", a);
+      Console.printf("Digite no site, em Ajuste do norte da biruta: %.0f\n", a);
     }
     qmcStop();
     return;

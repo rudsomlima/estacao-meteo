@@ -43,7 +43,7 @@ export const INTEGER_FIELDS = ['send_every', 'continuous_wind', 'urgent_gust_kmh
 
 export const READING_RANGES: Record<string, [Num, Num]> = {
   temp: [-60, 90], hum: [0, 100], pres: [300, 1100], wind: [0, 120], gust: [0, 150],
-  dir: [0, 360], rain: [0, 200], vbat: [1, 5], rssi: [-120, 0],
+  dir: [0, 360], rain: [0, 200], vbat: [0, 5], rssi: [-120, 0],
 }
 
 export const EVENT_KINDS = ['boot', 'ota_fail', 'ota_ok', 'bench', 'info']

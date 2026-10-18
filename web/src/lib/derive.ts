@@ -79,6 +79,15 @@ export function ago(ts: number, now = Date.now() / 1000) {
   return `há ${Math.round(s / 86400)} d`
 }
 
+/** Visto há pouco: a placa falou com o servidor, mesmo sem leitura de sensor (por exemplo, sem BME280). */
+export function isSeen(s: { last_seen: number | null; config: { interval_min: number; send_every?: number } }, now = Date.now() / 1000) {
+  return !!s.last_seen && now - s.last_seen < s.config.interval_min * 60 * Math.max(1, s.config.send_every ?? 1) * 2.5
+}
+
+/** Qualidade do sinal Wi-Fi a partir do RSSI (dBm). */
+export const wifiLabel = (rssi: number) => (rssi >= -60 ? 'ótimo' : rssi >= -70 ? 'bom' : rssi >= -80 ? 'fraco' : 'muito fraco')
+export const wifiColor = (rssi: number) => (rssi >= -60 ? '#4ade80' : rssi >= -70 ? '#a3e635' : rssi >= -80 ? '#fbbf24' : '#f87171')
+
 /** Online se a última leitura tem menos de 2,5 ciclos de idade. */
 export function isOnline(s: { latest: { ts: number } | null; config: { interval_min: number } }, now = Date.now() / 1000) {
   return !!s.latest && now - s.latest.ts < s.config.interval_min * 60 * 2.5

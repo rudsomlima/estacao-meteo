@@ -24,8 +24,9 @@ const MAX_FIRMWARE = 1_600_000
 interface StationRow {
   id: string; name: string; city: string; lat: number; lon: number; alt: number; config: string; created_at: number
   key_hash: string; nonce: string; cfg_applied: number; last_seen: number | null; fw_version: string | null
+  vbat: number | null; rssi: number | null
 }
-const COLS = 'id,name,city,lat,lon,alt,config,created_at,key_hash,nonce,cfg_applied,last_seen,fw_version'
+const COLS = 'id,name,city,lat,lon,alt,config,created_at,key_hash,nonce,cfg_applied,last_seen,fw_version,vbat,rssi'
 const dec = new TextDecoder()
 
 // ---------------- autenticação ----------------
@@ -115,7 +116,7 @@ function meta(input: Record<string, unknown>, base?: Pick<StationRow, 'name' | '
 
 const publicStation = (s: StationRow) => ({
   id: s.id, name: s.name, city: s.city, lat: s.lat, lon: s.lon, alt: s.alt, config: JSON.parse(s.config) as Config,
-  cfg_applied: s.cfg_applied, last_seen: s.last_seen, fw_version: s.fw_version,
+  cfg_applied: s.cfg_applied, last_seen: s.last_seen, fw_version: s.fw_version, vbat: s.vbat, rssi: s.rssi,
 })
 
 const unauthorized = () => json({ error: 'não autorizado' }, 401)
@@ -132,24 +133,30 @@ async function ingest(req: Request, env: Env, ctx: ExecutionContext) {
 
   // aceita um lote ({ batch: [...] }) ou uma leitura solta
   const items: unknown[] = Array.isArray(body.batch) ? body.batch : [body]
-  if (items.length < 1 || items.length > MAX_BATCH) return json({ error: `o lote precisa ter de 1 a ${MAX_BATCH} leituras` }, 422)
+  // lote vazio é permitido: a placa está conectada mas sem leitura de sensor (BME280 ausente). Conta como "visto" e troca a configuração
+  const heartbeat = Array.isArray(body.batch) && body.batch.length === 0
+  if (heartbeat) console.warn(`ingest sem leituras (${st.id}): a placa conectou mas não mediu nada (BME280 ausente?)`)
+  if ((items.length < 1 && !heartbeat) || items.length > MAX_BATCH) return json({ error: `o lote precisa ter de 1 a ${MAX_BATCH} leituras` }, 422)
 
   const nowTs = Math.floor(Date.now() / 1000)
   const ins = env.DB.prepare('INSERT OR REPLACE INTO readings (station_id,ts,temp,hum,pres,wind,gust,dir,rain,vbat,rssi) VALUES (?,?,?,?,?,?,?,?,?,?,?)')
   const writes: D1PreparedStatement[] = []
-  let latest: { ts: number; gust: number; dir: number; vbat: number; rain: number } | null = null
+  let latest: { ts: number; gust: number; dir: number; vbat: number; rain: number; rssi: number } | null = null
   for (const rawItem of items) {
     const item = (rawItem ?? {}) as Record<string, unknown>
     const v: Record<string, number> = {}
     for (const [k, [lo, hi]] of Object.entries(READING_RANGES)) {
       const n = item[k]
-      if (typeof n !== 'number' || !Number.isFinite(n) || n < lo || n > hi) return json({ error: `campo ${k} ausente ou fora da faixa` }, 422)
+      if (typeof n !== 'number' || !Number.isFinite(n) || n < lo || n > hi) {
+        console.warn(`ingest recusado (${st.id}): campo ${k} = ${JSON.stringify(n)} fora de ${lo}..${hi}`) // aparece no log do wrangler
+        return json({ error: `campo ${k} ausente ou fora da faixa` }, 422)
+      }
       v[k] = n
     }
     const age = typeof item.age === 'number' && Number.isFinite(item.age) ? Math.min(MAX_AGE_S, Math.max(0, Math.round(item.age))) : 0
     const ts = nowTs - age
     writes.push(ins.bind(st.id, ts, v.temp, v.hum, v.pres, v.wind, v.gust, v.dir, v.rain, v.vbat, v.rssi))
-    if (!latest || ts >= latest.ts) latest = { ts, gust: v.gust, dir: v.dir, vbat: v.vbat, rain: v.rain }
+    if (!latest || ts >= latest.ts) latest = { ts, gust: v.gust, dir: v.dir, vbat: v.vbat, rain: v.rain, rssi: v.rssi }
   }
 
   // eventos do firmware (reinício, falha de atualização...)
@@ -164,13 +171,17 @@ async function ingest(req: Request, env: Env, ctx: ExecutionContext) {
     writes.push(evIns.bind(st.id, nowTs - age, ev.kind, text))
   }
 
+  // bateria e sinal do contato (vêm junto mesmo sem leitura de sensor); sem eles, usa os da leitura mais recente
+  const inRange = (n: unknown, [lo, hi]: [number, number]) => (typeof n === 'number' && Number.isFinite(n) && n >= lo && n <= hi ? n : null)
+  const stV = inRange(body.vbat, READING_RANGES.vbat) ?? latest?.vbat ?? null
+  const stR = inRange(body.rssi, READING_RANGES.rssi) ?? latest?.rssi ?? null
   const fw = typeof body.fw === 'string' ? body.fw.slice(0, 40) : null
   const cfg = JSON.parse(st.config) as Config
   const reported = Number(body.cfg)
   const nonce = auth.signed ? randomHex(8) : st.nonce
   writes.push(
-    env.DB.prepare('UPDATE stations SET cfg_applied = ?, last_seen = ?, fw_version = COALESCE(?, fw_version), nonce = ? WHERE id = ?')
-      .bind(Number.isFinite(reported) ? reported : st.cfg_applied, nowTs, fw, nonce, st.id),
+    env.DB.prepare('UPDATE stations SET cfg_applied = ?, last_seen = ?, fw_version = COALESCE(?, fw_version), nonce = ?, vbat = COALESCE(?, vbat), rssi = COALESCE(?, rssi) WHERE id = ?')
+      .bind(Number.isFinite(reported) ? reported : st.cfg_applied, nowTs, fw, nonce, stV, stR, st.id),
   )
   await env.DB.batch(writes)
   if (Math.random() < 0.01) {

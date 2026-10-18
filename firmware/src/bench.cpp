@@ -4,6 +4,7 @@
 #include <WebServer.h>
 #include <WiFi.h>
 #include "config.h"
+#include "console.h"
 #include "events.h"
 #include "log.h"
 #include "net.h"
@@ -105,7 +106,7 @@ void benchRun(uint8_t minutes) {
   snprintf(host, sizeof(host), "estacao-%02x%02x", mac[4], mac[5]);
   const bool mdns = MDNS.begin(host);
   const String ip = WiFi.localIP().toString();
-  Serial.printf("Modo bancada por %u min: http://%s.local ou http://%s\n", minutes, host, ip.c_str());
+  Console.printf("Modo bancada por %u min: http://%s.local ou http://%s\n", minutes, host, ip.c_str());
   pushEvent(EV_BENCH, minutes, 0, ip.c_str());
 
   const bool magOk = qmcStart();
@@ -196,5 +197,5 @@ void benchRun(uint8_t minutes) {
   detachInterrupt(digitalPinToInterrupt(PIN_WIND));
   qmcStop();
   recording = false;
-  Serial.println("Modo bancada encerrado.");
+  Console.println("Modo bancada encerrado.");
 }

@@ -68,6 +68,8 @@ export interface StationEdit {
 export const updateStation = (id: string, edit: StationEdit, token: string) =>
   adminRequest<Pick<Station, 'id' | 'name' | 'city' | 'lat' | 'lon' | 'alt' | 'config' | 'cfg_applied'>>('PUT', `/api/stations/${id}`, token, edit)
 
+export const deleteStation = (id: string, token: string) => adminRequest<{ ok: boolean }>('DELETE', `/api/stations/${id}`, token)
+
 export const createStation = (body: StationEdit & { id: string }, token: string) =>
   adminRequest<{ id: string; key: string }>('POST', '/api/stations', token, { ...body, ...body.config })
 

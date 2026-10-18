@@ -46,16 +46,18 @@
 2. Placa de desenvolvimento com LED e regulador comum: **centenas de µA em sono**.
 3. A3144 ligado direto no modo contínuo: **4,4 mA**.
 4. Pull-up de 10 kΩ no Hall com DRV5032, ou divisor de bateria de 10 kΩ.
-5. Ambiente `esp32c3` (USB CDC ligado) em campo: use `esp32c3-lowpower`.
+5. Cabo USB ligado a um computador: a placa não dorme enquanto ele estiver ali. Tire o cabo (ou use só um carregador).
 
 ## Firmware
 
 | Sintoma | O que fazer |
 |---|---|
 | Reinicia em loop | Queda de tensão no Wi-Fi: adicione 470 µF e confira o regulador (pico de ~350 mA). |
-| Não entra no monitor serial | Use `esp32c3` (USB CDC ligado) e mantenha o cabo conectado ao acordar. No ambiente `lowpower` a serial USB não existe. |
+| Não entra no monitor serial | Com o cabo num computador a placa fica acordada e a porta aparece. Se a porta sumiu, a placa estava dormindo sem cabo: plugue-o e aperte RESET. "Acesso negado" é outro programa com a porta (outra aba do site, monitor serial, IDE). |
+| `pio run -t upload` diz "port doesn't exist" | O PlatformIO escolheu uma COM de Bluetooth. O `platformio.ini` já escolhe a placa pelo VID; se ainda errar, use `--upload-port COMx`. |
 | `pio run` falha ao baixar pacotes | Primeira compilação baixa ~500 MB de toolchain. Tente de novo com boa conexão. |
-| A gravação pelo site falha ao conectar | Troque o cabo (precisa ser de dados), feche o monitor serial e a IDE e, se a placa for com ponte CH340/CP210x, segure BOOT, aperte RESET e tente de novo. Só Chrome, Edge e Opera têm Web Serial. |
+| A gravação pelo site falha ao conectar | Troque o cabo (precisa ser de dados), feche o monitor serial, a IDE e outras abas do site, e aperte RESET na placa (a gravação recomeça sozinha). Com ponte CH340/CP210x: segure BOOT, aperte RESET, solte o RESET e depois o BOOT. Só Chrome, Edge e Opera têm Web Serial. |
+| Gravou pelo site e a placa não liga | Aperte RESET uma vez. As versões antigas do site não reiniciavam a placa ao terminar. |
 | Mudei o modo de vento no site e nada mudou | A estação só aplica a configuração quando envia. Com envio em lote isso pode levar `intervalo × enviar a cada` minutos. Para testar, ponha *Enviar a cada* em 1. |
 
 ## Site e API

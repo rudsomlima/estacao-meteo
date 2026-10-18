@@ -14,5 +14,5 @@ bool qmcRead(int16_t &x, int16_t &y);
 /** Vetor unitário do campo horizontal já calibrado. false se não houve leitura nova ou o sinal é fraco. */
 bool magVector(double &ux, double &uy);
 
-/** Menu serial no boot a frio: 'c' calibra a biruta, 'n' mostra o ângulo do norte. */
-void serialTools();
+/** Janela de ferramentas pela USB no boot a frio, com o cabo plugado: o site configura a placa; 'c' calibra a biruta, 'n' mostra o ângulo do norte. */
+void serialTools(uint32_t windowMs = 10000);

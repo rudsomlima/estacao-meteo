@@ -90,7 +90,7 @@ export default function FirmwarePanel({ station, info, source, onChanged }: { st
 
       <ul className="grid gap-1.5 text-xs text-ink-3">
         <li>A estação atualiza quando a versão publicada é <b className="text-ink-2">diferente</b> da instalada, e não só quando é mais nova. Publicar por engano um arquivo antigo faz a estação voltar para ele. Use Despublicar para parar.</li>
-        <li>O arquivo precisa ser o <span className="num">firmware.bin</span> do ambiente <span className="num">esp32c3-lowpower</span> (ou <span className="num">esp32c3</span>), e a versão deve bater com <span className="num">FW_VERSION</span> no <span className="num">config.h</span>.</li>
+        <li>O arquivo é o <span className="num">firmware.bin</span> gerado por <span className="num">pio run</span> (em <span className="num">firmware/.pio/build/esp32c3/</span>), e a versão deve bater com <span className="num">FW_VERSION</span> no <span className="num">config.h</span>.</li>
         <li>A estação confere o SHA-256 antes de ativar, adia com a bateria perto do crítico e desiste da versão após 3 falhas. Não há retorno automático para a versão anterior: um firmware que não conecta exige gravação por USB.</li>
       </ul>
     </div>

@@ -94,6 +94,8 @@ export function demoStation(id: string, now = Date.now() / 1000): Station {
     cfg_applied: 1,
     last_seen: hist[hist.length - 1].ts,
     fw_version: '0.2.0',
+    vbat: hist[hist.length - 1].vbat,
+    rssi: hist[hist.length - 1].rssi,
     latest: hist[hist.length - 1],
     day: {
       rain: round(hist.reduce((s, r) => s + r.rain, 0)),

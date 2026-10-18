@@ -10,24 +10,27 @@ import { toggleFavorite, usePrefs } from '../lib/prefs'
 import { useFmt } from '../lib/units'
 import type { Source, Station } from '../types'
 import AddStationDialog from './AddStationDialog'
-import type { Layer } from './MapView'
+import { PICKED_EVENT, PICK_EVENT } from './UsbDevice'
+import { MAP_LAYERS, type MapLayer } from '../lib/prefs'
 import Reveal, { SectionHead } from './Reveal'
 import StationPanel from './StationPanel'
 
 const MapView = lazy(() => import('./MapView'))
 
-const LAYERS: [Layer, string][] = [['wind', 'Vento'], ['temp', 'Temperatura'], ['rain', 'Chuva 24 h'], ['battery', 'Bateria']]
 
 interface Props {
   stations: Station[]
   source: Source
   onCreate: (body: StationEdit & { id: string }, token: string) => Promise<SaveResult>
+  onSave: (s: Station, token: string) => Promise<SaveResult>
+  onRemove: (id: string, token: string) => Promise<SaveResult>
 }
 
-export default function MapPage({ stations, source, onCreate }: Props) {
+export default function MapPage({ stations, source, onCreate, onSave, onRemove }: Props) {
   const prefs = usePrefs()
   const f = useFmt()
-  const [layer, setLayer] = useState<Layer>(prefs.layer)
+  const [layers, setLayers] = useState<MapLayer[]>(prefs.layers)
+  const toggleLayer = (k: MapLayer) => setLayers((cur) => (cur.includes(k) ? cur.filter((x) => x !== k) : [...cur, k]))
   const box = useRef<HTMLElement>(null)
   const fallback = useRef(false)
   const [full, setFull] = useState(false)
@@ -35,6 +38,18 @@ export default function MapPage({ stations, source, onCreate }: Props) {
   const [adding, setAdding] = useState(false)
   const [picking, setPicking] = useState(false)
   const [picked, setPicked] = useState<{ lat: number; lon: number } | null>(null)
+  const [editing, setEditing] = useState<Station | null>(null)
+  const forUsb = useRef(false) // o ponto é para o aviso da placa USB, não para o diálogo Adicionar estação
+  const finishPick = (p: { lat: number; lon: number } | null) => {
+    setPicking(false)
+    if (forUsb.current) { forUsb.current = false; window.dispatchEvent(new CustomEvent(PICKED_EVENT, { detail: p })) }
+    else { if (p) setPicked(p); if (!editing) setAdding(true) }
+  }
+  useEffect(() => {
+    const on = () => { forUsb.current = true; setPicking(true) }
+    window.addEventListener(PICK_EVENT, on)
+    return () => window.removeEventListener(PICK_EVENT, on)
+  }, [])
   const sel = stations.find((s) => s.id === selected) ?? null
   const online = useMemo(() => stations.filter((s) => isOnline(s)).length, [stations])
   const rows = useMemo(() => [...stations].sort((a, b) => {
@@ -75,21 +90,21 @@ export default function MapPage({ stations, source, onCreate }: Props) {
           <MapView
             stations={stations}
             selectedId={selected}
-            layer={layer}
+            layers={layers}
             pickMode={picking}
             onSelect={setSelected}
-            onPick={(lat, lon) => { setPicked({ lat, lon }); setPicking(false); setAdding(true) }}
+            onPick={(lat, lon) => finishPick({ lat, lon })}
           />
         </Suspense>
 
         <div className="pointer-events-none absolute left-3 top-3 z-10 flex max-w-[calc(100%-24px)] flex-col gap-2 sm:left-4 sm:top-4">
-          <div role="group" aria-label="Camada do mapa" className="pointer-events-auto flex flex-wrap gap-1.5">
-            {LAYERS.map(([k, label]) => (
+          <div role="group" aria-label="Camada do mapa" className="pointer-events-auto flex flex-wrap gap-1.5 pr-12 sm:pr-0">
+            {MAP_LAYERS.map(([k, label]) => (
               <button
                 key={k}
-                aria-pressed={layer === k}
-                onClick={() => setLayer(k)}
-                className={`num rounded-lg border px-3 py-1.5 text-xs transition-colors ${layer === k ? 'border-cyan bg-cyan text-[#03212d]' : 'glass text-ink hover:border-line-hover'}`}
+                aria-pressed={layers.includes(k)}
+                onClick={() => toggleLayer(k)}
+                className={`num rounded-lg border px-3 py-1.5 text-xs transition-colors ${layers.includes(k) ? 'border-cyan bg-cyan text-[#03212d]' : 'glass text-ink hover:border-line-hover'}`}
               >
                 {label}
               </button>
@@ -118,7 +133,7 @@ export default function MapPage({ stations, source, onCreate }: Props) {
           <Plus className="h-4 w-4" aria-hidden /> Adicionar estação
         </button>
 
-        {layer === 'wind' && (
+        {layers.includes('wind') && (
           <div className="glass num pointer-events-none absolute bottom-3 left-3 z-10 hidden items-center gap-2 rounded-lg px-3 py-1.5 text-[11px] text-ink-2 sm:flex">
             0<i className="block h-2 w-36 rounded-full" style={{ background: 'linear-gradient(90deg,#3b82f6,#38bdf8,#4ade80,#fbbf24,#fb923c,#ef4444)' }} />{f.wind(60 / 3.6)}
           </div>
@@ -127,7 +142,7 @@ export default function MapPage({ stations, source, onCreate }: Props) {
         {picking && (
           <div className="glass absolute inset-x-0 top-4 z-30 mx-auto w-fit rounded-xl px-4 py-2 text-sm" role="status">
             Clique no mapa para escolher o local da estação.{' '}
-            <button className="ml-2 underline" onClick={() => { setPicking(false); setAdding(true) }}>Cancelar</button>
+            <button className="ml-2 underline" onClick={() => finishPick(null)}>Cancelar</button>
           </div>
         )}
 
@@ -139,15 +154,18 @@ export default function MapPage({ stations, source, onCreate }: Props) {
           </div>
         )}
 
-        {sel && <StationPanel station={sel} source={source} onClose={() => setSelected(null)} />}
+        {sel && <StationPanel station={sel} source={source} onClose={() => setSelected(null)} onEdit={() => setEditing(sel)} />}
       </section>
 
       <AddStationDialog
-        open={adding && !picking}
+        open={(adding || !!editing) && !picking}
         picked={picked}
-        onClose={() => { setAdding(false); setPicked(null) }}
+        station={editing}
+        onClose={() => { setAdding(false); setEditing(null); setPicked(null) }}
         onPickMap={() => { setPicking(true) }}
         onCreate={onCreate}
+        onSave={onSave}
+        onRemove={async (id, token) => { const r = await onRemove(id, token); if (r.ok) { setSelected(null); if (prefs.favorites.includes(id)) toggleFavorite(id) } return r }}
       />
 
       <section className="mx-auto max-w-7xl px-4 py-20 sm:px-6">

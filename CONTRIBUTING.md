@@ -21,14 +21,14 @@ cd worker && npm run smoke            # testes da API
 
 # firmware
 pip install platformio
-cd firmware && pio run -e esp32c3 && pio run -e esp32c3-lowpower
+cd firmware && pio run
 ```
 
 ## Antes de abrir um pull request
 
 - `cd web && npm run build` passa (inclui a checagem de tipos).
 - `cd worker && npx tsc --noEmit && npm run smoke` passam com a API rodando.
-- `cd firmware && pio run -e esp32c3 -e esp32c3-lowpower` compila.
+- `cd firmware && pio run` compila.
 - Mudou a ligação, a energia ou a arquitetura? Atualize `docs/tools/make_diagrams.py`, rode `python docs/tools/make_diagrams.py` e inclua os SVGs gerados.
 - Mudou um valor de configuração? Atualize juntos: `worker/src/index.ts`, `web/src/types.ts`, `web/src/components/ConfigPanel.tsx`, `firmware/src/settings.cpp` e `docs/firmware.md`.
 - Evite números de consumo sem fonte. Se medir, diga como.

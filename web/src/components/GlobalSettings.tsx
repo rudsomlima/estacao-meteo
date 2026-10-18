@@ -1,6 +1,6 @@
 import { Star, Usb } from 'lucide-react'
 import { go } from '../hooks/useRoute'
-import { DEFAULT_PREFS, makeMain, setPrefs, toggleFavorite, usePrefs, type Prefs } from '../lib/prefs'
+import { DEFAULT_PREFS, MAP_LAYERS, makeMain, setPrefs, toggleFavorite, usePrefs, type Prefs } from '../lib/prefs'
 import type { Source, Station } from '../types'
 import DataPanel from './DataPanel'
 import Panel from './Panel'
@@ -47,7 +47,21 @@ export default function GlobalSettings({ stations, source }: { stations: Station
             <Choice label="Temperatura" name="temp" value={p.temp} options={[['c', '°C'], ['f', '°F']]} />
             <Choice label="Chuva" name="rain" value={p.rain} options={[['mm', 'mm'], ['in', 'polegadas']]} />
             <Choice label="Pressão" name="pres" value={p.pres} options={[['hpa', 'hPa'], ['inhg', 'inHg'], ['mmhg', 'mmHg']]} />
-            <Choice label="Camada inicial do mapa" name="layer" value={p.layer} options={[['wind', 'Vento'], ['temp', 'Temperatura'], ['rain', 'Chuva'], ['battery', 'Bateria']]} />
+            <Choice label="Mapa de fundo" name="basemap" value={p.basemap} options={[['dark', 'Escuro'], ['streets', 'Ruas'], ['satellite', 'Satélite'], ['terrain', 'Relevo']]} />
+            <div role="group" aria-label="Camadas do mapa" className="grid gap-1.5 sm:col-span-2">
+              <span className="text-sm text-ink-2">Camadas ligadas ao abrir o mapa (pode ligar várias)</span>
+              <div className="flex flex-wrap gap-1.5">
+                {MAP_LAYERS.map(([k, text]) => {
+                  const on = p.layers.includes(k)
+                  return (
+                    <button
+                      key={k} aria-pressed={on} onClick={() => setPrefs({ layers: on ? p.layers.filter((x) => x !== k) : [...p.layers, k] })}
+                      className={`num rounded-lg border px-3 py-1.5 text-sm transition-colors ${on ? 'border-cyan bg-cyan text-[#03212d]' : 'border-line text-ink-2 hover:border-line-hover hover:text-ink'}`}
+                    >{text}</button>
+                  )
+                })}
+              </div>
+            </div>
           </div>
           <p className="mt-4 text-xs text-ink-3">Os dados são guardados sempre em m/s, °C, mm e hPa. A conversão acontece só na tela.</p>
           <button onClick={() => setPrefs(DEFAULT_PREFS)} className="mt-3 rounded-lg border border-line px-3 py-1.5 text-xs hover:bg-card-hover">Voltar ao padrão</button>
@@ -87,7 +101,7 @@ export default function GlobalSettings({ stations, source }: { stations: Station
             <>
               <p className="text-sm text-ink-2">Depois de autorizar a placa uma vez, o site a reconhece sozinho sempre que você plugar o cabo e oferece configurar o Wi-Fi, o endereço e a chave, sem usar o portal.</p>
               <button onClick={requestUsb} className="mt-3 flex items-center gap-2 rounded-xl bg-blue px-4 py-2.5 text-sm font-semibold text-white"><Usb className="h-4 w-4" aria-hidden /> Autorizar uma placa</button>
-              <p className="mt-3 text-xs text-ink-3">Precisa do firmware do ambiente <span className="num">esp32c3</span> (o de campo não tem USB serial) e de um cabo de dados.</p>
+              <p className="mt-3 text-xs text-ink-3">Precisa do firmware da estação (grave em <b>Gravar firmware</b>, abaixo) e de um cabo de dados. Com o cabo no computador a placa fica acordada, e o site solta a porta quando você troca de janela (para o PlatformIO poder usá-la).</p>
             </>
           ) : (
             <p className="text-sm text-ink-2">Este navegador não tem Web Serial. Use o Chrome, o Edge ou o Opera, em endereço https:// ou localhost.</p>

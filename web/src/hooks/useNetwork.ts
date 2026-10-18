@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { ApiError, createStation, fetchDaily, fetchEvents, fetchFirmware, fetchReadings, fetchStations, rotateKey, store, updateStation, type StationEdit } from '../lib/api'
+import { ApiError, createStation, deleteStation, fetchDaily, fetchEvents, fetchFirmware, fetchReadings, fetchStations, rotateKey, store, updateStation, type StationEdit } from '../lib/api'
 import { aggregateDaily, localTzMinutes } from '../lib/daily'
 import { demoHistory, demoNetwork, demoNext } from '../lib/demo'
 import type { DailyRow, FirmwareInfo, Reading, Source, Station, StationEvent } from '../types'
@@ -80,6 +80,17 @@ export function useNetwork() {
     }
   }, [refresh])
 
+  const remove = useCallback(async (id: string, token: string): Promise<SaveResult> => {
+    if (sourceRef.current === 'demo') return { ok: false, message: 'Na demonstração não há servidor. Rode a API do worker.' }
+    try {
+      await deleteStation(id, token)
+      setStations((prev) => prev.filter((s) => s.id !== id))
+      return { ok: true, message: 'Estação removida.' }
+    } catch (e) {
+      return { ok: false, message: explain(e) }
+    }
+  }, [])
+
   const newKey = useCallback(async (id: string, token: string): Promise<SaveResult> => {
     if (sourceRef.current === 'demo') return { ok: false, message: 'Disponível só com a API.' }
     try {
@@ -90,7 +101,7 @@ export function useNetwork() {
     }
   }, [])
 
-  return { stations, source, loading, save, add, newKey, refresh }
+  return { stations, source, loading, save, add, remove, newKey, refresh }
 }
 
 function patchFromLocal(s: Station): Partial<Station> {

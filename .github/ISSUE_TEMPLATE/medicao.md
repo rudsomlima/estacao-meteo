@@ -8,7 +8,7 @@ labels: medicao
 **Bateria (tipo e capacidade):**
 **Regulador usado:**
 **Hall (modelo) e pull-up (valor):**
-**Ambiente de compilação:** esp32c3 / esp32c3-lowpower
+**Versão do firmware (FW_VERSION):**
 **Modo de vento:** janela / contínuo   **Intervalo:**   **Enviar a cada:**
 
 **Como mediu** (equipamento e método):

@@ -6,15 +6,20 @@ Firmware do ESP32-C3 em PlatformIO (Arduino). Mede, guarda um lote, envia por HT
 
 ```bash
 cd firmware
-pio run -e esp32c3 -t upload      # desenvolvimento (USB serial ativa)
-pio device monitor                # log e calibração
-pio run -e esp32c3-lowpower -t upload   # estação em campo
+pio run -t upload                 # compila e grava pelo cabo USB
+pio device monitor                # log e calibração da biruta
 ```
 
-| Ambiente | USB CDC | Quando usar |
-|---|---|---|
-| `esp32c3` | ligada | Bancada: log, calibração da biruta. |
-| `esp32c3-lowpower` | desligada | Campo: o USB CDC atrapalha o light sleep. |
+Há **um só firmware** (ambiente `esp32c3`), igual para a bancada e para o campo. A porta USB nativa do ESP32-C3 só é aberta quando há um computador do outro lado do cabo:
+
+| Situação | O que a placa faz |
+|---|---|
+| **Sem cabo**, ou cabo só de carga (bateria, painel solar, carregador) | Ciclo de baixo consumo: mede, envia, dorme. A USB não é aberta e não custa nada. |
+| **Cabo num computador** | Ao ligar, atende o site por alguns segundos (configura Wi-Fi, endereço e chave) e aceita `c`/`n` no monitor serial. Depois **não dorme** enquanto o cabo estiver ali, para a porta continuar disponível para gravar. Mede normalmente, sem light sleep. |
+
+Por isso gravar uma placa que está no computador funciona a qualquer hora, sem apertar RESET nem BOOT. Uma placa **sem cabo** dorme entre as leituras e a porta some do computador: para gravá-la, plugue o cabo e aperte RESET (ela acorda e fica acordada).
+
+O `platformio.ini` escolhe sozinho a porta da placa (`tools/pick_port.py`). O PlatformIO às vezes escolhia uma COM de Bluetooth do Windows e a gravação falhava com "port doesn't exist". Para forçar outra porta: `pio run -t upload --upload-port COM5`.
 
 Instale o PlatformIO com `pip install platformio` ou pela extensão do VS Code.
 
@@ -25,7 +30,7 @@ Instale o PlatformIO com `pip install platformio` ou pela extensão do VS Code.
 3. Escolha o Wi-Fi e a senha, o **endereço do site** (`https://...workers.dev`) e a **chave do dispositivo** (mostrada ao criar a estação no site).
 4. Salve. A estação mede, envia a primeira leitura e passa a seguir a rotina.
 
-Para reabrir o portal: segure o botão **BOOT** (GPIO9) ao ligar.
+Para reabrir o portal: segure o botão **BOOT** (GPIO9) ao ligar. Com o cabo num computador o portal não abre sozinho (a configuração é pelo site, pela USB); para usá-lo mesmo assim, segure BOOT ao ligar.
 
 ## Como funciona um ciclo
 
@@ -94,20 +99,21 @@ Depois de baixar uma configuração nova, a estação a aplica e, no envio segui
 
 Sem PlatformIO e sem instalar nada: o site grava o firmware numa placa pelo cabo USB (Chrome, Edge ou Opera, via Web Serial e [esptool-js](https://github.com/espressif/esptool-js)).
 
-1. Gere as imagens de fábrica, com o endereço do seu site embutido (precisa do PlatformIO, uma vez):
+1. Gere a imagem de fábrica (precisa do PlatformIO, uma vez; repita quando mudar o firmware):
 
    ```bash
    cd firmware
-   python tools/make_factory.py --server https://seu-site.workers.dev
+   python tools/make_factory.py --lan                                  # teste local: embute http://IP-DO-COMPUTADOR:8787
+   python tools/make_factory.py --server https://seu-site.workers.dev   # site publicado
    ```
 
-   Isso compila os dois ambientes e escreve `estacao-c3-campo.bin` (baixo consumo), `estacao-c3-usb.bin` (com USB serial) e um `manifest.json` em `web/public/firmware/`. Essas imagens não vão para o git. Rode `npm run build` e publique o site.
-2. No site, **Ajustes → Gravar firmware**: escolha a placa, a imagem e toque em *Gravar*. Também dá para usar um `.bin` seu (imagem completa em 0x0, ou só o aplicativo em 0x10000).
-3. Terminada a gravação, a placa reinicia e é reconhecida sozinha (veja abaixo) ou segue para o pareamento por código.
+   Isso compila o firmware e escreve `estacao-c3.bin` e `manifest.json` em `web/public/firmware/` (fora do git). O site mostra a versão e a hora em que a imagem foi gerada, para você ver se está desatualizada. Em desenvolvimento (`npm run dev`) a pasta já é servida; para publicar, rode `npm run build`.
+2. No site, **Ajustes → Gravar firmware**: escolha a placa e toque em *Gravar*. Também dá para usar um `.bin` seu (imagem completa em 0x0, ou só o aplicativo em 0x10000).
+3. Terminada a gravação, a placa reinicia sozinha e o site a reconhece (veja abaixo).
 
-**Em desenvolvimento** (sem site publicado): use o IP do seu computador na rede, por exemplo `--server http://192.168.1.2:8787`, e suba a API aberta para a rede com `npm run dev:lan` (na pasta `worker`). O endereço `http://` põe a placa em modo assinado, que precisa do ID da estação; o **código de pareamento não funciona** (exige `https://`), então configure a placa pela USB (o site reconhece e grava Wi-Fi, endereço, ID e chave). O firewall do Windows pode pedir permissão para o Node/workerd na rede privada.
+Se a placa estiver dormindo (a porta não aparece), o site avisa para apertar RESET e recomeça a gravação sozinho quando ela surgir. A USB nativa do ESP32-C3 entra em modo de gravação sozinha; com uma ponte CH340 ou CP210x pode ser preciso segurar BOOT, apertar RESET, soltar o RESET e depois o BOOT. *Apagar toda a flash* remove Wi-Fi, chave e calibração salvos.
 
-A USB nativa do ESP32-C3 entra em modo de gravação sozinha. Com uma ponte CH340 ou CP210x pode ser preciso segurar BOOT, apertar RESET e soltar. *Apagar toda a flash* remove Wi-Fi, chave e calibração salvos.
+**Em desenvolvimento**, o endereço que o site grava na placa é o IP do computador (o `npm run dev` descobre sozinho; é só conferir em *Avançado*). Suba a API aberta para a rede com `npm run dev:lan` (pasta `worker`). O endereço `http://` põe a placa em modo assinado, que precisa do ID da estação; o **código de pareamento não funciona** (exige `https://`), então configure a placa pela USB. O firewall do Windows pode pedir permissão para o Node/workerd na rede privada.
 
 ## Instalar sem computador: código de pareamento
 
@@ -122,19 +128,20 @@ O pareamento só funciona com o endereço em `https://`, porque a chave viaja na
 
 Com o site aberto no Chrome, Edge ou Opera, a placa plugada é reconhecida sozinha: o site mostra um aviso, diz qual estação ela é e oferece **configurar Wi-Fi, endereço e chave** sem o portal. Na primeira vez, autorize a placa em *Ajustes → Placa USB* (o navegador exige um clique); depois ela é reconhecida a cada plugada.
 
-Como funciona: no boot a frio, o firmware escuta a USB por 10 s (cada comando renova a janela) e responde a comandos em JSON, uma linha por comando (`hello`, `provision`, `restart`, em [usblink.cpp](../firmware/src/usblink.cpp)). Ao configurar, o site **gera uma chave nova** para a estação, entrega direto à placa e ela reinicia. Se a placa não responder, o site tenta reiniciá-la pelos sinais DTR/RTS.
+Como funciona: ao ligar com o cabo num computador, o firmware escuta a USB por 10 s (60 s se ainda não está configurado; cada comando renova a janela) e responde a comandos em JSON, uma linha por comando (`hello`, `scan`, `provision`, `restart`, em [usblink.cpp](../firmware/src/usblink.cpp)). Ao configurar, o site **gera uma chave nova** para a estação, entrega direto à placa e ela reinicia. Se a placa não responder, o site tenta reiniciá-la pelos sinais DTR/RTS.
 
-Limites: só no ambiente `esp32c3` (o `lowpower` não tem USB serial, e a placa aparece como "firmware não respondeu"); o site precisa estar em `https://` ou `localhost`; e a placa não alcança `localhost`, então o endereço gravado deve ser o publicado ou o IP do computador.
+- **A porta é de um programa só.** O aviso do site solta a porta quando você troca de janela por alguns segundos (para o PlatformIO ou o monitor serial poderem usá-la) e a retoma quando você volta. Se o site disser que a porta está em uso, feche o monitor serial, a IDE ou a outra aba.
+- O site precisa estar em `https://` ou `localhost`, e a placa não alcança `localhost`, então o endereço gravado nela deve ser o publicado ou o IP do computador.
 
 ## Modo bancada (sem cabo serial)
 
-Ao ligar a estação (boot a frio) com Wi-Fi já salvo, ela abre por `bench_min` minutos uma página local, em `http://estacao-xxxx.local` ou no IP que aparece no log. A página mostra as leituras ao vivo e tem botões para **calibrar a biruta** e **mostrar o ângulo do norte**, sem monitor serial. A página não tem senha: qualquer um na sua rede enquanto ela estiver aberta pode vê-la, por isso ela é curta. O botão *Terminar* encerra antes. Depois a estação segue a rotina normal. Segurar o botão BOOT ao ligar pula o modo bancada e abre o portal Wi-Fi.
+Ao ligar a estação (boot a frio) com Wi-Fi já salvo, **depois de enviar a primeira leitura**, ela abre por `bench_min` minutos uma página local, em `http://estacao-xxxx.local` ou no IP que aparece no log. A página mostra as leituras ao vivo e tem botões para **calibrar a biruta** e **mostrar o ângulo do norte**, sem monitor serial. A página não tem senha: qualquer um na sua rede enquanto ela estiver aberta pode vê-la, por isso ela é curta. O botão *Terminar* encerra antes. Depois a estação segue a rotina normal. Segurar o botão BOOT ao ligar pula o modo bancada e abre o portal Wi-Fi.
 
 O modo bancada gasta bateria (Wi-Fi ligado). Em campo, ponha `bench_min` em 0.
 
 ## Calibração pela porta serial
 
-Ao ligar (boot a frio), o monitor serial espera 6 s por uma tecla:
+Ao ligar com o cabo no computador (boot a frio), o monitor serial espera 10 s por uma tecla (60 s se a placa ainda não está configurada):
 
 - **`c`**: calibra a biruta. Gire-a 360° devagar, duas vezes, em 20 s. O firmware guarda centro e escala do campo magnético (compensação simples de hard e soft iron).
 - **`n`**: com a biruta apontada para o **norte**, mostra o número a digitar em *Ajuste do norte da biruta* no site.
@@ -151,6 +158,7 @@ Se a direção girar ao contrário, troque `DIR_SIGN` para `-1` em [config.h](..
 | [`net.cpp`](../firmware/src/net.cpp) | Wi-Fi rápido, portal cativo, envio do lote (HTTPS ou HTTP assinado). |
 | [`auth.cpp`](../firmware/src/auth.cpp) | HMAC-SHA256 (mbedtls) dos pedidos e conferência da resposta do servidor. |
 | [`ota.cpp`](../firmware/src/ota.cpp) | Atualização pelo ar com conferência de tamanho e SHA-256. |
+| [`usblink.cpp`](../firmware/src/usblink.cpp) | Conversa com o site pela USB (JSON), detecção do computador plugado. |
 | [`bench.cpp`](../firmware/src/bench.cpp) | Página local do modo bancada. |
 | [`events.cpp`](../firmware/src/events.cpp) | Registro de reinícios e atualizações na RTC, enviado com o lote. |
 | [`settings.cpp`](../firmware/src/settings.cpp) | Configuração e rede guardadas na flash. |
@@ -162,7 +170,7 @@ Quando o motivo do reinício **não** é o acordar normal do deep sleep (queda d
 
 ## Atualização pelo ar (OTA)
 
-Gere o binário (`pio run -e esp32c3-lowpower`, arquivo `.pio/build/esp32c3-lowpower/firmware.bin`), mude `FW_VERSION` em [config.h](../firmware/src/config.h) **antes** de compilar e publique em *Configurações → Firmware pelo ar*. A estação:
+Gere o binário (`pio run`, arquivo `firmware/.pio/build/esp32c3/firmware.bin`), mude `FW_VERSION` em [config.h](../firmware/src/config.h) **antes** de compilar e publique em *Configurações → Firmware pelo ar*. A estação:
 
 1. envia as leituras; só se der certo, olha se há firmware publicado com versão **diferente** da dela;
 2. adia se a bateria estiver baixa e desiste da versão depois de 3 falhas;

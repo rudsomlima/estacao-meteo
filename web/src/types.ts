@@ -57,6 +57,9 @@ export interface Station {
   cfg_applied: number
   last_seen: number | null
   fw_version: string | null
+  /** bateria (V) e sinal Wi-Fi (dBm) do último contato, mesmo quando a placa não mediu nada */
+  vbat: number | null
+  rssi: number | null
   latest: Reading | null
   day: DaySummary | null
 }

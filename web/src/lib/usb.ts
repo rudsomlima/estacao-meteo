@@ -66,6 +66,15 @@ export function watchPorts(onPlug: (p: Port) => void, onUnplug: (p: Port) => voi
   return () => { s.removeEventListener('connect', plug); s.removeEventListener('disconnect', unplug) }
 }
 
+/** Espera uma placa autorizada aparecer (plugada ou reiniciada), por no máximo `ms`. Devolve a porta, ou null se não veio. */
+export function waitForPlug(ms: number): Promise<Port | null> {
+  return new Promise((resolve) => {
+    let stop = () => undefined as void
+    const t = window.setTimeout(() => { stop(); resolve(null) }, ms)
+    stop = watchPorts((p) => { window.clearTimeout(t); stop(); resolve(p) }, () => undefined)
+  })
+}
+
 export interface DeviceInfo {
   ok: true
   app: string
@@ -81,7 +90,10 @@ export interface DeviceInfo {
 }
 
 export interface Provision { ssid: string; pass: string; server: string; id: string; key: string }
+/** Rede Wi-Fi vista pela placa: nome, sinal (dBm) e se é aberta. */
+export interface WifiNet { s: string; r: number; open: boolean }
 
+const isHello = (o: Record<string, unknown>) => o.app === 'estacao-meteo' && o.ok === true
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms))
 
 /** Uma conversa aberta com a placa. Feche sempre com `close()`. */
@@ -89,7 +101,9 @@ export class Link {
   private reader: ReadableStreamDefaultReader<Uint8Array> | null = null
   private writer: WritableStreamDefaultWriter<Uint8Array> | null = null
   private buf = ''
-  private waiters: ((o: Record<string, unknown>) => void)[] = []
+  /** cada espera devolve true se aceitou a resposta (assim um "hello" do keep-alive não é confundido com a resposta de outro comando) */
+  private waiters: ((o: Record<string, unknown>) => boolean)[] = []
+  private busy = false
   private alive = false
   /** linhas de texto que não são JSON (o log da placa) */
   log: string[] = []
@@ -124,7 +138,7 @@ export class Link {
           this.buf = this.buf.slice(i + 1)
           if (!line) continue
           if (line.startsWith('{')) {
-            try { const o = JSON.parse(line) as Record<string, unknown>; this.waiters.splice(0).forEach((w) => w(o)); continue } catch { /* linha de log que começa com { */ }
+            try { const o = JSON.parse(line) as Record<string, unknown>; this.waiters = this.waiters.filter((w) => !w(o)); continue } catch { /* linha de log que começa com { */ }
           }
           this.log.push(line)
           if (this.log.length > 60) this.log.shift()
@@ -137,10 +151,10 @@ export class Link {
     await this.writer?.write(new TextEncoder().encode(JSON.stringify(o) + '\n'))
   }
 
-  private next(ms: number) {
+  private next(ms: number, accept: (o: Record<string, unknown>) => boolean = () => true) {
     return new Promise<Record<string, unknown> | null>((res) => {
       const t = setTimeout(() => { this.waiters = this.waiters.filter((w) => w !== h); res(null) }, ms)
-      const h = (o: Record<string, unknown>) => { clearTimeout(t); res(o) }
+      const h = (o: Record<string, unknown>) => { if (!accept(o)) return false; clearTimeout(t); res(o); return true }
       this.waiters.push(h)
     })
   }
@@ -150,8 +164,8 @@ export class Link {
     const end = Date.now() + totalMs
     while (Date.now() < end) {
       await this.send({ cmd: 'hello' }).catch(() => undefined)
-      const r = await this.next(700)
-      if (r && r.app === 'estacao-meteo' && r.ok === true) return r as unknown as DeviceInfo
+      const r = await this.next(700, isHello)
+      if (r) return r as unknown as DeviceInfo
     }
     return null
   }
@@ -164,11 +178,72 @@ export class Link {
     await sleep(600) // a USB nativa reaparece
   }
 
+  /** Redes Wi-Fi por perto, lidas pela própria placa (ela é quem vai se conectar). Lista vazia se a placa for antiga. */
+  async scan(): Promise<WifiNet[]> {
+    this.busy = true
+    try {
+      await this.send({ cmd: 'scan' })
+      const r = await this.next(9000, (o) => Array.isArray(o.networks) || 'error' in o) // firmware antigo responde "comando"
+      return r && Array.isArray(r.networks) ? (r.networks as WifiNet[]) : []
+    } finally { this.busy = false }
+  }
+
   async provision(p: Provision): Promise<{ ok: boolean; error?: string }> {
-    await this.send({ cmd: 'provision', ...p })
-    const r = await this.next(4000)
-    if (!r) return { ok: false, error: 'a placa não respondeu' }
-    return { ok: r.ok === true, error: typeof r.error === 'string' ? r.error : undefined }
+    this.busy = true
+    try {
+      await this.send({ cmd: 'provision', ...p })
+      const r = await this.next(4000, (o) => 'restarting' in o || 'error' in o)
+      if (!r) return { ok: false, error: 'a placa não respondeu' }
+      return { ok: r.ok === true, error: typeof r.error === 'string' ? r.error : undefined }
+    } finally { this.busy = false }
+  }
+
+  /**
+   * A placa só escuta a USB por um tempo depois de ligar, e cada comando renova esse tempo. Enquanto o formulário
+   * está aberto, manda um "hello" a cada poucos segundos para ela não desistir. Se ela parar de responder (a janela
+   * acabou e ela foi para o portal Wi-Fi), reinicia pelos sinais da USB e tenta de novo. `onLost` só é chamado se
+   * nem isso adiantar. Devolve a função que para o keep-alive.
+   */
+  keepAlive(onLost: () => void): () => void {
+    let stopped = false, misses = 0, recovering = false
+    const tick = async () => {
+      if (stopped || this.busy || recovering || !this.alive) return
+      await this.send({ cmd: 'hello' }).catch(() => undefined)
+      const r = await this.next(2000, isHello)
+      if (stopped || this.busy) return
+      if (r) { misses = 0; return }
+      if (++misses < 2) return
+      recovering = true
+      await this.reset()
+      const info = await this.hello(10000)
+      recovering = false
+      if (stopped) return
+      if (info) misses = 0
+      else onLost()
+    }
+    const t = window.setInterval(() => void tick(), 4000)
+    return () => { stopped = true; window.clearInterval(t) }
+  }
+
+  /** Reinicia a placa e espera ela responder de novo. Devolve false se não voltou. */
+  async revive(): Promise<boolean> {
+    this.busy = true
+    try {
+      await this.reset()
+      return (await this.hello(12000)) !== null
+    } finally { this.busy = false }
+  }
+
+  /** Solta a porta sem esquecer a conversa (outro programa, como o PlatformIO, pode precisar dela). `resume()` a retoma. */
+  async park() { await this.close() }
+
+  /** Reabre a porta que `park()` soltou e espera a placa responder de novo. */
+  async resume(): Promise<boolean> {
+    try {
+      await this.open()
+      await this.reset() // abrir a porta já reinicia a placa; o pulso garante o mesmo em qualquer ponte
+      return (await this.hello(12000)) !== null
+    } catch { return false }
   }
 
   async close() {

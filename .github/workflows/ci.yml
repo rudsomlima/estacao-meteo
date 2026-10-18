@@ -55,10 +55,10 @@ jobs:
           key: pio-${{ hashFiles('firmware/platformio.ini') }}
       - name: Instalar o PlatformIO
         run: pip install platformio
-      - name: Compilar os dois ambientes
+      - name: Compilar o firmware
         run: |
           cd firmware
-          pio run -e esp32c3 -e esp32c3-lowpower
+          pio run
 
   docs:
     name: Diagramas e links da documentação

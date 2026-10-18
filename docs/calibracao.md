@@ -8,9 +8,9 @@ Cada estação precisa de quatro ajustes. Faça nesta ordem.
 
 O QMC5883L lê o campo do ímã da biruta. O firmware converte em ângulo com `atan2` e usa a média vetorial das amostras.
 
-1. Monte a biruta com o ímã A (5×2 mm, face **S voltada ao eixo**) e ligue a estação ao USB. Use o ambiente `esp32c3`.
+1. Monte a biruta com o ímã A (5×2 mm, face **S voltada ao eixo**) e ligue a estação ao USB do computador.
 2. Abra o monitor serial (`pio device monitor`). Reinicie a placa.
-3. Nos 6 s seguintes, envie **`c`**. Gire a biruta 360° devagar, **duas vezes**, durante 20 s. O firmware guarda o centro e a escala do campo.
+3. Nos 10 s seguintes ao reinício (60 s se a placa ainda não está configurada), envie **`c`**. Gire a biruta 360° devagar, **duas vezes**, durante 20 s. O firmware guarda o centro e a escala do campo.
 4. Aponte a biruta para o **norte geográfico** (mesma direção do indicador N). Reinicie e envie **`n`**. Ele mostra um número.
 5. No site, em *Configuração → Ajuste do norte da biruta*, digite esse número e salve.
 6. Gire a biruta para L, S e O e confira no site se bate. Se estiver **espelhado** (L aparece como O), troque `DIR_SIGN` para `-1` em [config.h](../firmware/src/config.h), regrave e repita.
