@@ -2,7 +2,7 @@
 export interface Reading {
   ts: number // unix, segundos
   temp: number // °C
-  hum: number // %
+  hum: number // % (NaN quando o sensor não mede umidade, como o MS5611)
   pres: number // hPa (nível da estação)
   wind: number // m/s, média da janela
   gust: number // m/s, maior média curta dentro da janela
@@ -33,6 +33,12 @@ export interface StationConfig {
   continuous_wind: number // 1 = conta o vento o ciclo todo em light sleep
   urgent_gust_kmh: number // 0 = desligado; acima disso envia na hora
   bench_min: number // minutos do modo bancada ao ligar (0 = desligado)
+  env_sensor?: number // 0 nenhum, 1 BME280, 2 MS5611 (GY-63), 3 BME280 + MS5611
+  pin_sda?: number // pinos do ESP32-C3 (GPIO)
+  pin_scl?: number
+  pin_wind?: number
+  pin_rain?: number
+  pin_vbat?: number
   wifi_tx_save?: number // 1 = a estação reduz sozinha a potência de transmissão do Wi-Fi quando o sinal é bom
   battery_chem: BatteryChem
   battery_mah: number

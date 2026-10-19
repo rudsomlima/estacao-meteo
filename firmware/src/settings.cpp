@@ -63,7 +63,16 @@ bool applyRemoteConfig(JsonObjectConst c) {
   cfg.continuousWind = c["continuous_wind"] | cfg.continuousWind;
   cfg.urgentGustKmh = c["urgent_gust_kmh"] | cfg.urgentGustKmh;
   cfg.wifiTxSave = c["wifi_tx_save"] | cfg.wifiTxSave;
+  cfg.envSensor = constrain((int)(c["env_sensor"] | cfg.envSensor), 0, 3);
+  // pinos: só aceita um conjunto válido; qualquer mudança reinicia a placa para religar interrupções e I2C nos pinos novos
+  const int sda = c["pin_sda"] | cfg.pinSda, scl = c["pin_scl"] | cfg.pinScl, wind = c["pin_wind"] | cfg.pinWind;
+  const int rain = c["pin_rain"] | cfg.pinRain, vbat = c["pin_vbat"] | cfg.pinVbat;
+  bool pinsChanged = false;
+  if (pinsValid(sda, scl, wind, rain, vbat)) {
+    pinsChanged = sda != cfg.pinSda || scl != cfg.pinScl || wind != cfg.pinWind || rain != cfg.pinRain || vbat != cfg.pinVbat;
+    cfg.pinSda = sda; cfg.pinScl = scl; cfg.pinWind = wind; cfg.pinRain = rain; cfg.pinVbat = vbat;
+  }
   cfg.version = c["version"] | cfg.version;
   saveSettings();
-  return cfg.continuousWind != oldMode;
+  return cfg.continuousWind != oldMode || pinsChanged;
 }

@@ -72,6 +72,19 @@ O Wi-Fi é o maior consumo da estação. Com `wifi_tx_save` = 1, antes de conect
 
 O RSSI é o que a estação ouve do roteador; o caminho de volta tende a ser parecido, por isso as faixas têm folga. Se a conexão falhar com potência reduzida, a estação tenta de novo na máxima, e só volta a reduzir depois de 6 conexões. A economia estimada no modelo de energia do site é de cerca de 10 % no consumo do Wi-Fi; meça no seu local.
 
+## Sensores e pinos (`env_sensor`, `pin_*`)
+
+Em *Ajustes da estação → Sensores e pinos* escolhe-se o sensor de ambiente e os GPIOs. Tudo chega à placa pela configuração remota.
+
+| `env_sensor` | Sensor | Observação |
+|---|---|---|
+| 0 | nenhum | só o sinal de vida (bateria e Wi-Fi) a cada intervalo |
+| 1 | BME280 | 0x76 ou 0x77; temperatura, umidade e pressão |
+| 2 | MS5611 (GY-63) | 0x77 (CSB no GND) ou 0x76; temperatura e pressão, **sem umidade** (o site mostra "—") |
+| 3 | BME280 + MS5611 | BME280 em 0x76 (temperatura e umidade) e MS5611 em 0x77 (pressão) |
+
+Pinos (`pin_sda`, `pin_scl`, `pin_wind`, `pin_rain`, `pin_vbat`), padrão 6, 7, 4, 3, 0. Regras, iguais no site, no servidor e no firmware: sem repetir pino; GPIO0 a 7, 10, 20 e 21 (ficam de fora 8 e 9 de boot, 11 a 17 da flash, 18 e 19 da USB); o da chuva precisa acordar do deep sleep (0 a 5); o da bateria precisa ser ADC1 (0 a 4). O servidor responde 422 a um conjunto inválido, e o firmware ignora um conjunto inválido. Mudar um pino reinicia a placa ao receber a configuração. A fiação tem de estar igual ao configurado.
+
 ## Medição
 
 | Grandeza | Como é medida |

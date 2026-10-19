@@ -65,8 +65,10 @@ export async function adminRequest<T>(method: string, path: string, token: strin
 }
 
 // ---------------- leitura pública ----------------
+// o servidor manda null quando o sensor não mede umidade (MS5611): no site isso é NaN e aparece como "—"
+const noHum = <T extends { hum?: number | null }>(r: T): T => (r.hum == null ? { ...r, hum: NaN } : r)
 export const fetchStations = () => request<Station[]>('/api/stations')
-export const fetchReadings = (id: string, hours: number) => request<Reading[]>(`/api/stations/${id}/readings?hours=${hours}`)
+export const fetchReadings = (id: string, hours: number) => request<Reading[]>(`/api/stations/${id}/readings?hours=${hours}`).then((l) => l.map(noHum))
 export const fetchDaily = (id: string, days: number, tz: number) => request<DailyRow[]>(`/api/stations/${id}/daily?days=${days}&tz=${tz}`)
 export const fetchEvents = (id: string, limit = 50) => request<StationEvent[]>(`/api/stations/${id}/events?limit=${limit}`)
 export const fetchFirmware = (id: string) => request<FirmwareInfo>(`/api/stations/${id}/firmware`)

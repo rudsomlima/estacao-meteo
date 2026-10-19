@@ -2,12 +2,13 @@
 #include <Arduino.h>
 
 // ---------------- pinos (ESP32-C3) ----------------
-// Só GPIO0-5 acordam do deep sleep. GPIO2, 8 e 9 são pinos de boot: evite-os para sensores.
-constexpr int PIN_SDA  = 6;   // BME280 (0x76) e QMC5883L/GY-273 (0x0D)
-constexpr int PIN_SCL  = 7;
-constexpr int PIN_WIND = 4;   // Hall do anemômetro, 1 pulso por volta (pull-up externo de 1 MΩ a 10 kΩ para 3V3)
-constexpr int PIN_RAIN = 3;   // Hall do tanque de chuva, acorda do deep sleep (pull-up externo)
-constexpr int PIN_VBAT = 0;   // ADC1_CH0, divisor de 2 resistores iguais e 100 nF para o GND
+// Os pinos dos sensores vêm da configuração (padrões abaixo; o site muda em Sensores e pinos). Só GPIO0-5 acordam do deep sleep.
+// GPIO2, 8 e 9 são pinos de boot, 18 e 19 são da USB, 11-17 da flash.
+constexpr uint8_t DEF_PIN_SDA = 6;    // BME280 (0x76), MS5611 (0x77) e QMC5883L/GY-273 (0x0D)
+constexpr uint8_t DEF_PIN_SCL = 7;
+constexpr uint8_t DEF_PIN_WIND = 4;   // Hall do anemômetro, 1 pulso por volta (pull-up externo de 1 MΩ a 10 kΩ para 3V3)
+constexpr uint8_t DEF_PIN_RAIN = 3;   // Hall do tanque de chuva, acorda do deep sleep (pull-up externo)
+constexpr uint8_t DEF_PIN_VBAT = 0;   // ADC1, divisor de 2 resistores iguais e 100 nF para o GND
 constexpr int PIN_BOOT = 9;   // botão BOOT: segurar ao ligar abre o portal Wi-Fi
 
 constexpr float VBAT_DIV = 2.0f;        // relação do divisor (2 resistores iguais = 2,0)
@@ -29,7 +30,7 @@ constexpr uint32_t PORTAL_TIMEOUT_S = 180;
 // ---------------- versão ----------------
 // Mude a cada firmware que publicar pelo site: a estação só atualiza quando a versão publicada é DIFERENTE desta.
 #ifndef FW_VERSION
-#define FW_VERSION "0.3.3"
+#define FW_VERSION "0.4.0"
 #endif
 
 // ---------------- limites ----------------
@@ -55,6 +56,25 @@ struct Settings {
   uint8_t  sendEvery     = 3;       // envia a cada N leituras (lote)
   uint8_t  continuousWind = 0;      // 1 = conta o vento o ciclo todo em light sleep (exige Hall de baixa corrente)
   uint8_t  urgentGustKmh = 0;       // 0 = desligado; acima disso envia na hora
+  uint8_t  envSensor     = 1;       // 0 nenhum, 1 BME280, 2 MS5611 (GY-63), 3 BME280 (temperatura e umidade) + MS5611 (pressão)
+  uint8_t  pinSda = DEF_PIN_SDA, pinScl = DEF_PIN_SCL, pinWind = DEF_PIN_WIND, pinRain = DEF_PIN_RAIN, pinVbat = DEF_PIN_VBAT;
   uint8_t  wifiTxSave    = 0;       // 1 = reduz sozinha a potência de transmissão do Wi-Fi quando o sinal é bom
   uint32_t version       = 0;       // 0 = nunca recebeu configuração; o servidor manda a atual
 };
+
+extern Settings cfg;
+#define PIN_SDA  (cfg.pinSda)
+#define PIN_SCL  (cfg.pinScl)
+#define PIN_WIND (cfg.pinWind)
+#define PIN_RAIN (cfg.pinRain)
+#define PIN_VBAT (cfg.pinVbat)
+
+/** Pinos aceitáveis no ESP32-C3: o da chuva precisa acordar do deep sleep (0-5) e o da bateria ser ADC1 (0-4). Sem repetir pino. */
+inline bool pinsValid(int sda, int scl, int wind, int rain, int vbat) {
+  const int p[5] = {sda, scl, wind, rain, vbat};
+  for (int i = 0; i < 5; i++) {
+    if (!((p[i] >= 0 && p[i] <= 7) || p[i] == 10 || p[i] == 20 || p[i] == 21)) return false;
+    for (int j = i + 1; j < 5; j++) if (p[i] == p[j]) return false;
+  }
+  return rain <= 5 && vbat <= 4;
+}

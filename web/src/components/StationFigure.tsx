@@ -29,7 +29,7 @@ const LAY = {
 const CO = [
   { id: 'anemo', a: [-85, -446], t: 'Anemômetro', s: 'Velocidade do vento', v: (L: Live) => L.f.wind(L.ws / 3.6), x: (L: Live) => `rajada ${L.f.wind(L.gust / 3.6)}` },
   { id: 'vane', a: [85, -440], t: 'Veleta', s: 'Direção do vento (°)', v: (L: Live) => `${compass16(L.wd)} ${Math.round(L.wd)}°`, x: () => 'de onde o vento vem' },
-  { id: 'shield', a: [-84, -300], t: 'Sensor de temperatura e umidade do ar', s: 'Temperatura e umidade', v: (L: Live) => `${L.f.temp(L.temp)} · ${Math.round(L.hum)}%`, x: (L: Live) => `ponto de orvalho ${L.f.temp(dewPoint(L.temp, L.hum))}` },
+  { id: 'shield', a: [-84, -300], t: 'Sensor de temperatura e umidade do ar', s: 'Temperatura e umidade', v: (L: Live) => `${L.f.temp(L.temp)}${Number.isFinite(L.hum) ? ` · ${Math.round(L.hum)}%` : ''}`, x: (L: Live) => (Number.isFinite(L.hum) ? `ponto de orvalho ${L.f.temp(dewPoint(L.temp, L.hum))}` : 'sem umidade neste sensor') },
   { id: 'rain', a: [84, -292], t: 'Pluviômetro', s: 'Precipitação', v: (L: Live) => L.f.rainRate(L.rain), x: (L: Live) => `hoje ${L.f.rain(L.dayRain)}` },
   { id: 'solar', a: [-88, -158], t: 'Painel solar', s: 'Alimentação do sistema',
     v: (L: Live) => (L.dv > 0.02 ? 'carregando' : L.dv < -0.02 ? 'descarregando' : 'estável'),

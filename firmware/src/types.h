@@ -12,7 +12,7 @@ struct Sample {
 
 struct Env {
   bool ok;
-  float t, h, p;
+  float t, h, p;           // h = NAN quando o sensor não mede umidade
 };
 
 struct WindResult {

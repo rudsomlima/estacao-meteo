@@ -60,7 +60,7 @@ export default function Hero({ readings, station }: { readings: Reading[]; stati
 
       <div className="mt-4 grid grid-cols-2 gap-2.5 sm:grid-cols-4 lg:grid-cols-8">
         <Tile icon={Thermometer} label="Mín / Máx" value={`${f.tempShort(day.tMin)} / ${f.tempShort(day.tMax)}`} sub={`sensação ${f.tempShort(feels)}`} />
-        <Tile icon={Droplets} label="Umidade" value={`${now.hum.toFixed(0)}%`} sub={`orvalho ${f.tempShort(dew)}`} />
+        <Tile icon={Droplets} label="Umidade" value={Number.isFinite(now.hum) ? `${now.hum.toFixed(0)}%` : '—'} sub={Number.isFinite(now.hum) ? `orvalho ${f.tempShort(dew)}` : 'sensor sem umidade'} />
         <Tile icon={Gauge} label="Pressão" value={f.pres(now.pres)} sub={`${dPres >= 0 ? '↑' : '↓'} ${Math.abs(f.presNum(dPres)).toFixed(f.presUnit === 'inHg' ? 2 : 1)} em 3 h`} />
         <Tile icon={Wind} label="Rajada" value={f.wind(now.gust)} sub={`máx hoje ${f.windV(day.gustMax)}`} />
         <Tile icon={Waves} label="Beaufort" value={`${bf.n}`} sub={bf.name} />

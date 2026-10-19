@@ -186,7 +186,7 @@ void benchRun(uint8_t minutes) {
     if (now - lastSlow >= 2000) {
       lastSlow = now;
       const Env e = readEnv(1);
-      if (e.ok) { liveTemp = e.t; liveHum = e.h; livePres = e.p; }
+      if (e.ok) { liveTemp = e.t; liveHum = isnan(e.h) ? 0 : e.h; livePres = e.p; }
       liveV = batteryVolts();
     }
     delay(5);

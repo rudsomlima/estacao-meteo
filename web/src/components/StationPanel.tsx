@@ -74,7 +74,7 @@ export default function StationPanel({ station: s, source, onClose, onEdit }: { 
           <dl className="num grid grid-cols-[1fr_auto] gap-x-4 gap-y-1.5 text-sm">
             <dt className="text-ink-3">Vento</dt><dd>{f.wind(l.wind)} {compass16(l.dir)}</dd>
             <dt className="text-ink-3">Rajada</dt><dd>{f.wind(l.gust)}</dd>
-            <dt className="text-ink-3">Umidade</dt><dd>{Math.round(l.hum)}%</dd>
+            <dt className="text-ink-3">Umidade</dt><dd>{Number.isFinite(l.hum) ? `${Math.round(l.hum)}%` : '—'}</dd>
             <dt className="text-ink-3">Chuva 24 h</dt><dd>{f.rain(s.day?.rain ?? 0)}</dd>
             <dt className="text-ink-3">Pressão</dt><dd>{f.pres(l.pres)}</dd>
             <dt className="text-ink-3">Bateria</dt>

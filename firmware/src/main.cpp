@@ -156,7 +156,7 @@ static bool measureAndStore(float vbat, uint16_t windSeconds) {
   const Env e = readEnv(cfg.samples);
   LOG("T=%.1f H=%.0f P=%.1f | vento %.1f m/s, rajada %.1f, dir %.0f%s (%u pulsos em %u s)\n", e.t, e.h, e.p, w.avg, w.gust,
       w.dir, w.dirOk ? "" : " (sem biruta)", (unsigned)w.pulses, w.seconds);
-  if (!e.ok) { rtcSkipped = min<uint8_t>(rtcSkipped + 1, 250); LOG("BME280 nao respondeu: leitura descartada\n"); return false; }
+  if (!e.ok) { rtcSkipped = min<uint8_t>(rtcSkipped + 1, 250); LOG(cfg.envSensor ? "sensor de ambiente nao respondeu: leitura descartada\n" : "sem sensor de ambiente configurado: so o sinal de vida\n"); return false; }
 
   Sample s{(uint32_t)time(nullptr), e.t, e.h, e.p, w.avg, w.gust, w.dir, takeRainTips() * cfg.mmPerTip, vbat};
   pushSample(s);

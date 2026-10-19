@@ -17,7 +17,7 @@ import {
 } from './alerts'
 import { adminRoute, defaultConfig } from './admin'
 import { audit, type Actor, getActor, getUser, newSession, sessionCookie, upsertUser, verifyGoogleToken, type User } from './auth'
-import { cleanConfig } from './config'
+import { cleanConfig, pinProblem } from './config'
 import { notifyLive } from './hub'
 import { fromBase64, hmacHex, newKey, randomHex, same, sha256Hex, toBase64 } from './crypto'
 import {
@@ -144,6 +144,7 @@ async function ingest(req: Request, env: Env, ctx: ExecutionContext) {
     const v: Record<string, number> = {}
     for (const [k, [lo, hi]] of Object.entries(READING_RANGES)) {
       const n = item[k]
+      if (k === 'hum' && n === undefined) { v.hum = null as unknown as number; continue } // MS5611 e outros sem umidade
       if (typeof n !== 'number' || !Number.isFinite(n) || n < lo || n > hi) {
         console.warn(`ingest recusado (${st.id}): campo ${k} = ${JSON.stringify(n)} fora de ${lo}..${hi}`) // aparece no log do wrangler
         return json({ error: `campo ${k} ausente ou fora da faixa` }, 422)
@@ -316,6 +317,8 @@ async function createStation(env: Env, actor: Actor, raw: Uint8Array) {
   const owner = typeof body.owner_email === 'string' && /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(body.owner_email.trim()) ? body.owner_email.trim().toLowerCase() : null
   const key = newKey()
   const cfg = cleanConfig(body, await defaultConfig(env))
+  const bad = pinProblem(cfg)
+  if (bad) return json({ error: bad }, 422)
   await env.DB
     .prepare('INSERT INTO stations (id,name,city,lat,lon,alt,key_hash,config,created_at,nonce,owner_email) VALUES (?,?,?,?,?,?,?,?,?,?,?)')
     .bind(id, m.name, m.city, m.lat, m.lon, m.alt, await sha256Hex(key), JSON.stringify(cfg), Math.floor(Date.now() / 1000), randomHex(8), owner)
@@ -332,6 +335,8 @@ async function updateStation(env: Env, id: string, raw: Uint8Array) {
   const m = meta(body, cur)
   const old = JSON.parse(cur.config) as Config
   const cfg = { ...cleanConfig((body.config as Record<string, unknown>) ?? body, old), version: old.version + 1 }
+  const bad = pinProblem(cfg)
+  if (bad) return json({ error: bad }, 422)
   await env.DB.prepare('UPDATE stations SET name=?, city=?, lat=?, lon=?, alt=?, config=? WHERE id=?').bind(m.name, m.city, m.lat, m.lon, m.alt, JSON.stringify(cfg), id).run()
   return json({ id, ...m, config: cfg, cfg_applied: cur.cfg_applied })
 }

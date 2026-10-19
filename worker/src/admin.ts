@@ -6,7 +6,7 @@ import { audit, type Actor, getSetting, putSetting, revokeSessions, rotateAdminT
 import { sha256Hex, toBase64 } from './crypto'
 import { notifyLive } from './hub'
 import { type Config, DEFAULT_CONFIG, type Env, json, LIMITS } from './shared'
-import { cleanConfig } from './config'
+import { cleanConfig, pinProblem } from './config'
 
 const MAX_FIRMWARE = 1_600_000
 const CHUNK = 192 * 1024
@@ -59,11 +59,14 @@ async function bulkConfig(env: Env, actor: Actor, raw: Uint8Array) {
   const list = await targets(env, body.ids)
   if (!list.length) return json({ error: 'nenhuma estação selecionada' }, 422)
   const only: Record<string, unknown> = Object.fromEntries(fields.map((k) => [k, patch[k]]))
-  const stmts = list.map((s) => {
+  const stmts: D1PreparedStatement[] = []
+  for (const s of list) {
     const old = JSON.parse(s.config) as Config
     const cfg = { ...cleanConfig(only, old), version: old.version + 1 }
-    return env.DB.prepare('UPDATE stations SET config = ? WHERE id = ?').bind(JSON.stringify(cfg), s.id)
-  })
+    const bad = pinProblem(cfg)
+    if (bad) return json({ error: `${s.id}: ${bad}` }, 422)
+    stmts.push( env.DB.prepare('UPDATE stations SET config = ? WHERE id = ?').bind(JSON.stringify(cfg), s.id))
+  }
   for (let i = 0; i < stmts.length; i += 50) await env.DB.batch(stmts.slice(i, i + 50))
   await audit(env, actor, 'config.massa', body.ids === 'all' ? 'todas' : list.map((s) => s.id).join(','), fields.join(','))
   await notifyLive(env, null)

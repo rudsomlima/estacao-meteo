@@ -5,6 +5,7 @@ import type { SaveResult } from '../hooks/useNetwork'
 import { SESSION_TOKEN, useToken } from '../hooks/useToken'
 import { useCanEdit, useIsAdmin, useSession } from '../lib/session'
 import { CHEMS, CHEM_KEYS } from '../lib/battery'
+import { ENV_SENSORS, PIN_DEFAULTS, PINS, pinProblem, pinValue, USABLE_PINS, type PinKey } from '../lib/pins'
 import type { BatteryChem, Source, Station, StationConfig } from '../types'
 
 export interface Field { key: keyof StationConfig; label: string; hint: string; min: number; max: number; step: number; unit: string; digits?: number }
@@ -48,6 +49,8 @@ export default function ConfigPanel({ station, source, onChange, onSave, onNewKe
   const [key, setKey] = useState('')
   const [copied, setCopied] = useState(false)
   const cfg = station.config
+  const pinErr = pinProblem(cfg)
+  const sensor = ENV_SENSORS.find((x) => x.id === (cfg.env_sensor ?? 1)) ?? ENV_SENSORS[1]
 
   const setCfg = (patch: Partial<StationConfig>) => onChange({ ...station, config: { ...cfg, ...patch } })
   const setMeta = (patch: Partial<Station>) => onChange({ ...station, ...patch })
@@ -91,6 +94,36 @@ export default function ConfigPanel({ station, source, onChange, onSave, onNewKe
             <input type="number" min={100} max={100000} step={100} className={input} value={cfg.battery_mah} onChange={(e) => setCfg({ battery_mah: Number(e.target.value) })} />
           </label>
           <p className="text-xs text-ink-3 sm:col-span-2">Ao trocar o tipo, os limites de economia e de hibernação abaixo recebem valores sugeridos para ele. O divisor de tensão do firmware precisa cobrir a tensão cheia da bateria escolhida.</p>
+        </fieldset>
+
+        <fieldset className="grid gap-3 sm:grid-cols-2">
+          <legend className="mb-2 font-display text-lg font-semibold">Sensores e pinos</legend>
+          <label className="grid gap-1 text-sm font-medium sm:col-span-2">Sensor de ambiente
+            <select className={input} value={cfg.env_sensor ?? 1} onChange={(e) => setCfg({ env_sensor: Number(e.target.value) })}>
+              {ENV_SENSORS.map((x) => <option key={x.id} value={x.id}>{x.label}</option>)}
+            </select>
+            <span className="text-xs font-normal text-ink-3">{sensor.hint}</span>
+          </label>
+          {PINS.map((p) => {
+            const v = pinValue(cfg, p.key)
+            const taken = new Set(PINS.filter((o) => o.key !== p.key).map((o) => pinValue(cfg, o.key)))
+            const limit = p.key === 'pin_rain' ? 5 : p.key === 'pin_vbat' ? 4 : 99
+            return (
+              <label key={p.key} className="grid gap-1 text-sm font-medium">{p.label}
+                <select className={input} value={v} onChange={(e) => setCfg({ [p.key]: Number(e.target.value) } as Partial<StationConfig>)}>
+                  {USABLE_PINS.filter((n) => n <= limit || n === v).map((n) => (
+                    <option key={n} value={n} disabled={taken.has(n)}>GPIO{n}{n === PIN_DEFAULTS[p.key as PinKey] ? ' (padrão)' : ''}{taken.has(n) ? ' · em uso' : ''}</option>
+                  ))}
+                </select>
+                <span className="text-xs font-normal text-ink-3">{p.hint}</span>
+              </label>
+            )
+          })}
+          <div className="sm:col-span-2">
+            {pinErr && <p role="alert" className="mb-2 flex items-center gap-1.5 text-sm text-bad"><TriangleAlert className="h-4 w-4 shrink-0" aria-hidden /> {pinErr}</p>}
+            <button type="button" onClick={() => setCfg({ ...PIN_DEFAULTS })} className="rounded-lg border border-line px-3 py-1.5 text-xs hover:bg-card-hover">Voltar aos pinos padrão</button>
+            <p className="mt-2 text-xs text-ink-3">Mudar um pino reinicia a placa quando ela recebe a configuração, e a fiação precisa estar igual ao que está aqui. Ficam de fora os pinos de boot (8 e 9), da USB (18 e 19) e da memória flash (11 a 17).</p>
+          </div>
         </fieldset>
 
         <label className="flex items-start gap-3 rounded-xl border border-line bg-bg p-3 text-sm">
@@ -160,7 +193,7 @@ export default function ConfigPanel({ station, source, onChange, onSave, onNewKe
         )}
 
         <div className="flex flex-wrap items-center gap-3">
-          <button type="submit" disabled={busy || !dirty || !editable} className="flex items-center gap-2 rounded-xl bg-blue px-4 py-2.5 text-sm font-semibold text-white transition-opacity disabled:opacity-40">
+          <button type="submit" disabled={busy || !dirty || !editable || !!pinErr} className="flex items-center gap-2 rounded-xl bg-blue px-4 py-2.5 text-sm font-semibold text-white transition-opacity disabled:opacity-40">
             <Save className="h-4 w-4" aria-hidden /> {busy ? 'Salvando…' : 'Salvar configuração'}
           </button>
           {source === 'api' && editable && admin && (

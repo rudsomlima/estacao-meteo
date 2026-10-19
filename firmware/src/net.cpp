@@ -192,7 +192,7 @@ static String buildBody(const Sample *s, uint8_t n) {
   for (uint8_t i = 0; i < n; i++) {
     JsonObject o = arr.add<JsonObject>();
     o["age"] = now > s[i].t ? now - s[i].t : 0;
-    o["temp"] = r2(s[i].temp); o["hum"] = r2(s[i].hum); o["pres"] = r2(s[i].pres);
+    o["temp"] = r2(s[i].temp); if (!isnan(s[i].hum)) o["hum"] = r2(s[i].hum); o["pres"] = r2(s[i].pres);
     o["wind"] = r2(s[i].wind); o["gust"] = r2(s[i].gust); o["dir"] = roundf(s[i].dir);
     o["rain"] = r2(s[i].rain); o["vbat"] = r2(s[i].vbat); o["rssi"] = rssi;
   }

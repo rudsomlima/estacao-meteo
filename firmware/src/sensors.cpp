@@ -17,12 +17,11 @@ float batteryVolts() {
 }
 
 // ---------------- BME280 ----------------
-Env readEnv(uint8_t samples) {
-  Env e{false, 0, 0, 0};
-  if (!(bme.begin(0x76, &Wire) || bme.begin(0x77, &Wire))) return e;
+static bool readBme(uint8_t n, bool only76, Env &e) {
+  if (!(bme.begin(0x76, &Wire) || (!only76 && bme.begin(0x77, &Wire)))) return false;
   bme.setSampling(Adafruit_BME280::MODE_FORCED, Adafruit_BME280::SAMPLING_X1, Adafruit_BME280::SAMPLING_X1,
                   Adafruit_BME280::SAMPLING_X1, Adafruit_BME280::FILTER_OFF);
-  const uint8_t n = constrain(samples, 1, 32);
+  e.t = e.h = e.p = 0;
   for (uint8_t i = 0; i < n; i++) {
     bme.takeForcedMeasurement();
     e.t += bme.readTemperature();
@@ -31,7 +30,90 @@ Env readEnv(uint8_t samples) {
     delay(15);
   }
   e.t /= n; e.h = constrain(e.h / n, 0.0f, 100.0f); e.p /= n;
-  e.ok = true;
+  return true;
+}
+
+// ---------------- MS5611 (GY-63): pressão e temperatura, sem umidade ----------------
+static uint16_t msC[7];
+
+static bool msCmd(uint8_t a, uint8_t c) { Wire.beginTransmission(a); Wire.write(c); return Wire.endTransmission() == 0; }
+
+static bool msAdc(uint8_t a, uint32_t &v) {
+  Wire.beginTransmission(a); Wire.write((uint8_t)0x00);
+  if (Wire.endTransmission() != 0 || Wire.requestFrom((int)a, 3) != 3) return false;
+  v = (uint32_t)Wire.read() << 16; v |= (uint32_t)Wire.read() << 8; v |= Wire.read();
+  return v != 0;
+}
+
+static bool msInit(uint8_t a) {
+  if (!msCmd(a, 0x1E)) return false;  // reset
+  delay(3);
+  uint16_t any = 0;
+  for (uint8_t i = 0; i < 7; i++) {   // PROM: C1..C6 em 0xA2..0xAC (msC[1..6])
+    Wire.beginTransmission(a); Wire.write((uint8_t)(0xA0 + 2 * i));
+    if (Wire.endTransmission(false) != 0 || Wire.requestFrom((int)a, 2) != 2) return false;
+    msC[i] = (Wire.read() << 8) | Wire.read();
+    any |= msC[i];
+  }
+  return any != 0 && msC[1] != 0;
+}
+
+/** Uma conversão com a compensação de segunda ordem do datasheet. t em °C, p em hPa. */
+static bool msOnce(uint8_t a, float &t, float &p) {
+  uint32_t d1, d2;
+  if (!msCmd(a, 0x48)) return false;  // D1 (pressão), OSR 4096
+  delay(10);
+  if (!msAdc(a, d1)) return false;
+  if (!msCmd(a, 0x58)) return false;  // D2 (temperatura)
+  delay(10);
+  if (!msAdc(a, d2)) return false;
+  const int64_t dT = (int64_t)d2 - ((int64_t)msC[5] << 8);
+  int64_t temp = 2000 + dT * msC[6] / 8388608LL;
+  int64_t off = ((int64_t)msC[2] << 16) + (((int64_t)msC[4] * dT) >> 7);
+  int64_t sens = ((int64_t)msC[1] << 15) + (((int64_t)msC[3] * dT) >> 8);
+  if (temp < 2000) {
+    const int64_t t2 = (dT * dT) >> 31;
+    int64_t off2 = 5 * (temp - 2000) * (temp - 2000) / 2, sens2 = off2 / 2;
+    if (temp < -1500) { off2 += 7 * (temp + 1500) * (temp + 1500); sens2 += 11 * (temp + 1500) * (temp + 1500) / 2; }
+    temp -= t2; off -= off2; sens -= sens2;
+  }
+  const int64_t pr = ((((int64_t)d1 * sens) >> 21) - off) >> 15;  // centésimos de mbar
+  t = temp / 100.0f;
+  p = pr / 100.0f;
+  return p > 300 && p < 1200;
+}
+
+/** addr 0 = tenta 0x77 e depois 0x76. */
+static bool readMs(uint8_t n, uint8_t addr, Env &e) {
+  uint8_t a = addr;
+  if (!a) a = msInit(0x77) ? 0x77 : (msInit(0x76) ? 0x76 : 0);
+  else if (!msInit(a)) a = 0;
+  if (!a) return false;
+  float t = 0, p = 0;
+  uint8_t ok = 0;
+  for (uint8_t i = 0; i < n; i++) {
+    float ti, pi;
+    if (msOnce(a, ti, pi)) { t += ti; p += pi; ok++; }
+  }
+  if (!ok) return false;
+  e.t = t / ok; e.p = p / ok; e.h = NAN;
+  return true;
+}
+
+Env readEnv(uint8_t samples) {
+  Env e{false, NAN, NAN, NAN};
+  const uint8_t n = constrain(samples, 1, 32);
+  switch (cfg.envSensor) {
+    case 1: e.ok = readBme(n, false, e); break;
+    case 2: e.ok = readMs(min<uint8_t>(n, 8), 0, e); break;
+    case 3: {  // temperatura e umidade do BME280 (0x76), pressão do MS5611 (0x77)
+      Env ms{false, NAN, NAN, NAN};
+      e.ok = readBme(n, true, e);
+      if (e.ok && readMs(min<uint8_t>(n, 8), 0x77, ms)) e.p = ms.p;
+      break;
+    }
+    default: break;  // 0: sem sensor, só o sinal de vida
+  }
   return e;
 }
 
