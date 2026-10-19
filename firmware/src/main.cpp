@@ -59,6 +59,9 @@ RTC_DATA_ATTR static bool rtcCharging = false;
 
 static bool coldBoot = false;
 
+/** Abaixo disto não há célula ligada (pino flutuando ou só a USB): uma LiPo nunca desce a 2 V em uso, e o pino solto oscila de 0,5 a 1,5 V. */
+static constexpr float NO_BATTERY_V = 2.0f;
+
 // ---------------- sono ----------------
 /**
  * Com um computador plugado a placa não entra em deep sleep: a porta USB sumiria (e não daria para gravar sem apertar RESET).
@@ -113,8 +116,8 @@ static void sleepFor(uint32_t seconds, bool rainWake) {
  */
 static void updateLevel(float vbat) {
   const float h = 0.05f;
-  // sem bateria ligada (placa na USB ou o pino flutuando) a leitura é ~0,7 V: não é bateria fraca, e tratar assim espaçaria os envios
-  if (vbat < 1.0f) { rtcLevel = 0; rtcCharging = false; return; }
+  // sem bateria ligada (placa na USB ou o pino flutuando) a leitura oscila em torno de 1 V: não é bateria fraca, e tratar assim pararia os envios
+  if (vbat < NO_BATTERY_V) { rtcLevel = 0; rtcCharging = false; return; }
   if (rtcLevel == 2) { if (vbat > cfg.criticalV + h) rtcLevel = 1; }
   else if (vbat < cfg.criticalV) rtcLevel = 2;
   if (rtcLevel == 1) { if (vbat > cfg.slowBelowV + h) rtcLevel = 0; }
@@ -167,8 +170,8 @@ static bool portalDue(uint8_t fails) { return fails == 3 || fails == 9 || fails 
 static void sendIfDue(bool urgent) {
   const bool missing = wifiSsid.isEmpty() || serverUrl.isEmpty() || (deviceKey.isEmpty() && claimCode.isEmpty()) || (signedMode() && stationId.isEmpty());
   const bool forcePortal = coldBoot && digitalRead(PIN_BOOT) == LOW;
-  // sem o BME280 não há leituras para juntar, mas a estação continua mandando o sinal de vida (bateria e Wi-Fi) no mesmo ritmo
-  const bool due = urgent || coldBoot || rtcCount >= cfg.sendEvery || rtcCount >= MAX_BATCH || rtcCount + rtcSkipped >= cfg.sendEvery;
+  // sem o BME280 não há leituras para juntar: a estação manda o sinal de vida (bateria e Wi-Fi) a cada intervalo, sem esperar o lote
+  const bool due = urgent || coldBoot || rtcCount >= cfg.sendEvery || rtcCount >= MAX_BATCH || rtcSkipped > 0;
   const bool wasCold = coldBoot;
   coldBoot = false;  // só o primeiro ciclo envia por ser boot a frio
   if (!due || (missing && !wasCold)) return;
@@ -222,7 +225,7 @@ static void windowCycle() {
   const float vbat = batteryVolts();
   updateLevel(vbat);
   LOG("bateria %.2f V (nivel %u%s)\n", vbat, rtcLevel, rtcCharging ? ", carregando" : "");
-  if (vbat > 1.0f && rtcLevel == 2) { sleepFor(3600, false); return; }  // protege a célula
+  if (vbat >= NO_BATTERY_V && rtcLevel == 2) { sleepFor(3600, false); return; }  // protege a célula
 
   const bool urgent = measureAndStore(vbat, cfg.windWindowS);
   sendIfDue(urgent);
@@ -239,7 +242,7 @@ static void continuousCycle() {
   const float vbat = batteryVolts();
   updateLevel(vbat);
   LOG("bateria %.2f V (nivel %u%s)\n", vbat, rtcLevel, rtcCharging ? ", carregando" : "");
-  if (vbat > 1.0f && rtcLevel == 2) { sleepFor(3600, false); return; }
+  if (vbat >= NO_BATTERY_V && rtcLevel == 2) { sleepFor(3600, false); return; }
 
   const uint32_t interval = min<uint32_t>(nextInterval(), MAX_WIND_SECONDS);
   const bool urgent = measureAndStore(vbat, (uint16_t)interval);  // o vento é medido pelo intervalo inteiro
