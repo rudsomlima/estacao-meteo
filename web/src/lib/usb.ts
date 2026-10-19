@@ -109,6 +109,8 @@ export class Link {
   log: string[] = []
 
   private port: Port
+  /** o que a placa disse no último "hello" (inclui o id da estação em que ela está configurada) */
+  info: DeviceInfo | null = null
 
   constructor(port: Port) {
     this.port = port
@@ -165,7 +167,7 @@ export class Link {
     while (Date.now() < end) {
       await this.send({ cmd: 'hello' }).catch(() => undefined)
       const r = await this.next(700, isHello)
-      if (r) return r as unknown as DeviceInfo
+      if (r) { this.info = r as unknown as DeviceInfo; return this.info }
     }
     return null
   }
@@ -195,6 +197,31 @@ export class Link {
       const r = await this.next(4000, (o) => 'restarting' in o || 'error' in o)
       if (!r) return { ok: false, error: 'a placa não respondeu' }
       return { ok: r.ok === true, error: typeof r.error === 'string' ? r.error : undefined }
+    } finally { this.busy = false }
+  }
+
+  get usable() { return this.alive && this.info !== null }
+
+  /**
+   * Manda a configuração inteira pelo cabo e a placa aplica na hora (a mesma que o servidor entregaria no próximo envio).
+   * A linha tem ~600 bytes: vai em pedaços pequenos para não estourar o buffer da porta da placa.
+   */
+  async applyConfig(config: Record<string, unknown>): Promise<{ ok: boolean; version?: number; restarting?: boolean; error?: string }> {
+    this.busy = true
+    try {
+      const slim = Object.fromEntries(Object.entries(config).filter(([, v]) => typeof v === 'number'))
+      const bytes = new TextEncoder().encode(JSON.stringify({ cmd: 'config', config: slim }) + '\n')
+      const answer = this.next(6000, (o) => 'version' in o || 'error' in o)
+      for (let i = 0; i < bytes.length; i += 48) {
+        await this.writer?.write(bytes.slice(i, i + 48))
+        await sleep(4)
+      }
+      const r = await answer
+      if (!r) return { ok: false, error: 'a placa não respondeu' }
+      if (r.ok !== true) return { ok: false, error: r.error === 'comando' ? 'o firmware da placa é antigo e não aceita configuração pelo cabo (atualize o firmware)' : String(r.error ?? 'recusada') }
+      return { ok: true, version: Number(r.version), restarting: r.restarting === true }
+    } catch {
+      return { ok: false, error: 'falha ao escrever na porta' }
     } finally { this.busy = false }
   }
 
@@ -254,4 +281,23 @@ export class Link {
     try { this.writer?.releaseLock() } catch { /* idem */ }
     try { await this.port.close() } catch { /* idem */ }
   }
+}
+
+/** Versões de configuração que foram aplicadas pelo cabo, por estação: o site mostra "entregue pelo cabo USB". */
+const viaCable = new Map<string, { version: number; at: number }>()
+export const appliedViaCable = (id: string, version: number) => {
+  const c = viaCable.get(id)
+  return c && c.version === version ? c.at : null
+}
+
+/**
+ * Se a placa desta estação está ligada ao computador por USB (e reconhecida pelo site), aplica a configuração nela
+ * na hora. Devolve null se não há placa dessa estação no cabo (a configuração segue pelo servidor, no próximo envio).
+ */
+export async function pushConfigToUsb(stationId: string, config: object): Promise<{ ok: boolean; version?: number; restarting?: boolean; error?: string } | null> {
+  const l = active
+  if (!l || !l.usable || l.info?.id !== stationId) return null
+  const r = await l.applyConfig(config as Record<string, unknown>)
+  if (r.ok && r.version !== undefined) viaCable.set(stationId, { version: r.version, at: Date.now() / 1000 })
+  return r
 }

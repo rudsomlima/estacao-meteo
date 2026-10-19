@@ -2,6 +2,7 @@ import { Check, CircleDashed, Hourglass, TriangleAlert } from 'lucide-react'
 import { useNow } from '../hooks/useNow'
 import { ago } from '../lib/derive'
 import { serverNow } from '../lib/clock'
+import { appliedViaCable } from '../lib/usb'
 import type { Station } from '../types'
 
 interface Step { key: string; title: string; detail: string; state: 'done' | 'doing' | 'todo' | 'warn' }
@@ -25,7 +26,8 @@ export default function ConfigStatus({ station }: { station: Station }) {
   const seen = station.last_seen
   const sinceSeen = seen ? now - seen : null
   const online = sinceSeen !== null && sinceSeen < every * 2.5 + 30
-  const sent = station.cfg_sent === v
+  const cableAt = appliedViaCable(station.id, v) // aplicada pelo cabo USB neste navegador
+  const sent = station.cfg_sent === v || cableAt !== null
   const applied = station.cfg_applied === v
 
   const steps: Step[] = [
@@ -41,7 +43,9 @@ export default function ConfigStatus({ station }: { station: Station }) {
     {
       key: 'sent',
       title: 'Configuração entregue',
-      detail: sent || applied
+      detail: cableAt !== null
+        ? `entregue pelo cabo USB ${ago(cableAt)}; ela envia agora para o servidor confirmar`
+        : sent || applied
         ? `entregue${station.cfg_sent_at ? ` ${ago(station.cfg_sent_at)}` : ''}`
         : 'vai na resposta do próximo envio da estação',
       state: sent || applied ? 'done' : online ? 'doing' : 'todo',

@@ -161,6 +161,10 @@ Como funciona: ao ligar com o cabo num computador, o firmware escuta a USB por 1
 - **A porta é de um programa só.** O aviso do site solta a porta quando você troca de janela por alguns segundos (para o PlatformIO ou o monitor serial poderem usá-la) e a retoma quando você volta. Se o site disser que a porta está em uso, feche o monitor serial, a IDE ou a outra aba.
 - O site precisa estar em `https://` ou `localhost`, e a placa não alcança `localhost`, então o endereço gravado nela deve ser o publicado ou o IP do computador.
 
+
+### Configuração aplicada pelo cabo
+
+Com a placa desta estação ligada ao computador e reconhecida pelo site (painel *Placa USB detectada*), **salvar a configuração a aplica na hora, pelo cabo**: o site manda o comando `{"cmd":"config","config":{...}}` (a mesma configuração que o servidor entregaria no próximo envio) e a placa responde `{"ok":true,"version":N,"restarting":false}`. Sem reiniciar, ela sai da espera, mede e envia já, para o servidor registrar a versão como aplicada. Se a mudança for de pinos ou do modo do vento, a placa reinicia sozinha (`"restarting":true`). Só vale se o `id` da placa for o da estação que está sendo salva; se não houver placa no cabo, a configuração segue pelo servidor, como antes. O firmware precisa ser o 0.4.1 ou mais novo.
 ## Modo bancada (sem cabo serial)
 
 Ao ligar a estação (boot a frio) com Wi-Fi já salvo, **depois de enviar a primeira leitura**, ela abre por `bench_min` minutos uma página local, em `http://estacao-xxxx.local` ou no IP que aparece no log. A página mostra as leituras ao vivo e tem botões para **calibrar a biruta** e **mostrar o ângulo do norte**, sem monitor serial. A página não tem senha: qualquer um na sua rede enquanto ela estiver aberta pode vê-la, por isso ela é curta. O botão *Terminar* encerra antes. Depois a estação segue a rotina normal. Segurar o botão BOOT ao ligar pula o modo bancada e abre o portal Wi-Fi.

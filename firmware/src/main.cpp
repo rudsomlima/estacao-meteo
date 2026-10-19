@@ -74,7 +74,9 @@ static void usbWait(uint32_t seconds) {
   LOG("USB conectada: aguardando %us acordada (a porta continua disponivel para gravar)\n", (unsigned)seconds);
   const uint32_t t0 = millis();
   uint32_t goneSince = 0;
+  usbSendNow = false;
   while (millis() - t0 < seconds * 1000UL) {
+    if (usbSendNow) break;  // o site acabou de mandar uma configuração
     if (usbPlugged()) goneSince = 0;
     else if (!goneSince) goneSince = millis();
     else if (millis() - goneSince > 1500) break;  // cabo removido
@@ -93,7 +95,7 @@ static void sleepFor(uint32_t seconds, bool rainWake) {
     const uint32_t t0 = millis();
     usbWait(seconds);
     const uint32_t spent = (millis() - t0) / 1000;
-    if (spent >= seconds) return;
+    if (spent >= seconds || usbSendNow) return;
     seconds -= spent;
   }
   netOff();
@@ -171,8 +173,11 @@ static void sendIfDue(bool urgent) {
   const bool missing = wifiSsid.isEmpty() || serverUrl.isEmpty() || (deviceKey.isEmpty() && claimCode.isEmpty()) || (signedMode() && stationId.isEmpty());
   const bool forcePortal = coldBoot && digitalRead(PIN_BOOT) == LOW;
   // sem o BME280 não há leituras para juntar: a estação manda o sinal de vida (bateria e Wi-Fi) a cada intervalo, sem esperar o lote
-  const bool due = urgent || coldBoot || rtcCount >= cfg.sendEvery || rtcCount >= MAX_BATCH || rtcSkipped > 0;
+  const bool due = usbSendNow || urgent || coldBoot || rtcCount >= cfg.sendEvery || rtcCount >= MAX_BATCH || rtcSkipped > 0;
   const bool wasCold = coldBoot;
+  const bool nowByUsb = usbSendNow;
+  usbSendNow = false;
+  (void)nowByUsb;
   coldBoot = false;  // só o primeiro ciclo envia por ser boot a frio
   if (!due || (missing && !wasCold)) return;
 

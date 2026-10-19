@@ -1,4 +1,5 @@
 import { subscribeRefresh } from '../lib/refresh'
+import { pushConfigToUsb } from '../lib/usb'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { ApiError, createStation, deleteStation, fetchDaily, fetchEvents, fetchFirmware, fetchReadings, fetchStations, rotateKey, store, updateStation, type StationEdit } from '../lib/api'
 import { aggregateDaily, localTzMinutes } from '../lib/daily'
@@ -64,6 +65,14 @@ export function useNetwork() {
     try {
       const saved = await updateStation(s.id, edit, token)
       setStations((prev) => prev.map((p) => (p.id === s.id ? { ...p, ...saved } : p)))
+      // placa desta estação no cabo USB: aplica agora, sem esperar o próximo envio
+      const usb = await pushConfigToUsb(s.id, saved.config)
+      if (usb?.ok) {
+        return { ok: true, message: `Versão ${saved.config.version} salva e aplicada na placa pelo cabo USB${usb.restarting ? ' (a placa reiniciou para usar os pinos ou o modo novos)' : ''}. Ela envia agora para o servidor confirmar.` }
+      }
+      if (usb && !usb.ok) {
+        return { ok: true, message: `Versão ${saved.config.version} salva no servidor, mas a placa no cabo não aplicou (${usb.error}). Ela pega no próximo envio.` }
+      }
       return { ok: true, message: `Versão ${saved.config.version} salva no servidor. Acompanhe abaixo se a estação foi encontrada, recebeu e aplicou.` }
     } catch (e) {
       return { ok: false, message: explain(e) }

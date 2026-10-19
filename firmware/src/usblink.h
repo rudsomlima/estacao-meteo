@@ -7,6 +7,7 @@
  *   {"cmd":"hello"}                                  -> identificação, versão e se já está configurada
  *   {"cmd":"scan"}                                   -> redes Wi-Fi por perto
  *   {"cmd":"provision","ssid":"","pass":"","server":"","id":"","key":""}  -> grava a rede e a chave e reinicia
+ *   {"cmd":"config","config":{...}}                  -> aplica a configuração na hora (a mesma que o servidor entrega) e envia logo
  *   {"cmd":"restart"}                                -> reinicia
  * As respostas também são uma linha JSON.
  *
@@ -21,3 +22,5 @@ void usbOpen();
 /** Atende uma linha JSON pendente, se houver. Devolve true se atendeu. */
 bool usbPoll();
 bool usbHandleLine(const String &line);
+/** O site mandou uma configuração pela USB: o próximo ciclo começa já e envia, para o servidor saber que foi aplicada. */
+extern volatile bool usbSendNow;
