@@ -52,6 +52,7 @@ RTC_DATA_ATTR static Sample rtcBuf[MAX_BATCH];
 RTC_DATA_ATTR static uint8_t rtcCount = 0;
 RTC_DATA_ATTR static time_t rtcNextDue = 0;
 RTC_DATA_ATTR static uint8_t rtcFails = 0;
+RTC_DATA_ATTR static uint8_t rtcSkipped = 0;    // ciclos sem leitura (sensor ausente) desde o último envio: contam para o envio de sinal de vida
 RTC_DATA_ATTR static uint32_t rtcBootCount = 0;
 RTC_DATA_ATTR static uint8_t rtcLevel = 0;      // 0 normal, 1 economia, 2 crítico
 RTC_DATA_ATTR static bool rtcCharging = false;
@@ -112,6 +113,8 @@ static void sleepFor(uint32_t seconds, bool rainWake) {
  */
 static void updateLevel(float vbat) {
   const float h = 0.05f;
+  // sem bateria ligada (placa na USB ou o pino flutuando) a leitura é ~0,7 V: não é bateria fraca, e tratar assim espaçaria os envios
+  if (vbat < 1.0f) { rtcLevel = 0; rtcCharging = false; return; }
   if (rtcLevel == 2) { if (vbat > cfg.criticalV + h) rtcLevel = 1; }
   else if (vbat < cfg.criticalV) rtcLevel = 2;
   if (rtcLevel == 1) { if (vbat > cfg.slowBelowV + h) rtcLevel = 0; }
@@ -150,7 +153,7 @@ static bool measureAndStore(float vbat, uint16_t windSeconds) {
   const Env e = readEnv(cfg.samples);
   LOG("T=%.1f H=%.0f P=%.1f | vento %.1f m/s, rajada %.1f, dir %.0f%s (%u pulsos em %u s)\n", e.t, e.h, e.p, w.avg, w.gust,
       w.dir, w.dirOk ? "" : " (sem biruta)", (unsigned)w.pulses, w.seconds);
-  if (!e.ok) { LOG("BME280 nao respondeu: leitura descartada\n"); return false; }
+  if (!e.ok) { rtcSkipped = min<uint8_t>(rtcSkipped + 1, 250); LOG("BME280 nao respondeu: leitura descartada\n"); return false; }
 
   Sample s{(uint32_t)time(nullptr), e.t, e.h, e.p, w.avg, w.gust, w.dir, takeRainTips() * cfg.mmPerTip, vbat};
   pushSample(s);
@@ -161,7 +164,8 @@ static bool measureAndStore(float vbat, uint16_t windSeconds) {
 static void sendIfDue(bool urgent) {
   const bool missing = wifiSsid.isEmpty() || serverUrl.isEmpty() || (deviceKey.isEmpty() && claimCode.isEmpty()) || (signedMode() && stationId.isEmpty());
   const bool forcePortal = coldBoot && digitalRead(PIN_BOOT) == LOW;
-  const bool due = urgent || coldBoot || rtcCount >= cfg.sendEvery || rtcCount >= MAX_BATCH;
+  // sem o BME280 não há leituras para juntar, mas a estação continua mandando o sinal de vida (bateria e Wi-Fi) no mesmo ritmo
+  const bool due = urgent || coldBoot || rtcCount >= cfg.sendEvery || rtcCount >= MAX_BATCH || rtcCount + rtcSkipped >= cfg.sendEvery;
   const bool wasCold = coldBoot;
   coldBoot = false;  // só o primeiro ciclo envia por ser boot a frio
   if (!due || (missing && !wasCold)) return;
@@ -193,6 +197,7 @@ static void sendIfDue(bool urgent) {
   const PostResult r = postBatch(rtcBuf, rtcCount);
   if (r.ok) {
     rtcCount = 0;
+    rtcSkipped = 0;
     rtcFails = 0;
     clearEvents();
     if (r.modeChanged) { netOff(); LOG("modo de vento mudou: reiniciando\n"); ESP.restart(); }
