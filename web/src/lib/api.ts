@@ -1,4 +1,5 @@
 import { syncServerTime } from './clock'
+import { getSessionUser } from './session'
 import type { DailyRow, FirmwareInfo, Reading, Station, StationConfig, StationEvent } from '../types'
 
 export class ApiError extends Error {
@@ -9,7 +10,7 @@ export class ApiError extends Error {
   }
 }
 
-async function request<T>(url: string, init?: RequestInit, timeoutMs = 8000): Promise<T> {
+export async function request<T>(url: string, init?: RequestInit, timeoutMs = 8000): Promise<T> {
   const ctl = new AbortController()
   const timer = setTimeout(() => ctl.abort(), timeoutMs)
   try {
@@ -43,6 +44,15 @@ async function hmac(secret: string, message: string) {
  * válida por 2 minutos e só para este pedido. Exige contexto seguro (https ou localhost) por causa do Web Crypto.
  */
 export async function adminRequest<T>(method: string, path: string, token: string, body?: unknown, timeoutMs = 20000): Promise<T> {
+  // logado com o Google: o cookie de sessão autentica (o token de administrador não é usado)
+  if (getSessionUser()) {
+    const bin = body instanceof Uint8Array
+    return request<T>(path, {
+      method,
+      headers: body !== undefined && !bin ? { 'content-type': 'application/json' } : bin ? { 'content-type': 'application/octet-stream' } : {},
+      body: body === undefined ? undefined : bin ? (body as BodyInit) : JSON.stringify(body),
+    }, timeoutMs)
+  }
   if (!crypto.subtle) throw new ApiError(0, 'Este navegador só assina pedidos em https ou localhost.')
   const bytes = body === undefined ? new Uint8Array() : body instanceof Uint8Array ? body : enc.encode(JSON.stringify(body))
   const ts = Date.now()

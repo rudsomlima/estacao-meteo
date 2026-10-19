@@ -1,6 +1,7 @@
 import { ArrowRight, Pencil, Settings, Star, X } from 'lucide-react'
 import { useMemo } from 'react'
 import { useNow } from '../hooks/useNow'
+import { useCanEdit } from '../lib/session'
 import { useReadings } from '../hooks/useNetwork'
 import { go } from '../hooks/useRoute'
 import { batteryColor } from '../lib/colors'
@@ -46,6 +47,7 @@ export function NoReadings({ s }: { s: Station }) {
 
 export default function StationPanel({ station: s, source, onClose, onEdit }: { station: Station; source: Source; onClose: () => void; onEdit: () => void }) {
   useNow() // redesenha a cada segundo: as idades ("há 2min10s") andam sozinhas
+  const editable = useCanEdit(s, source)
   const { readings } = useReadings(s.id, source, 24)
   const f = useFmt()
   const prefs = usePrefs()
@@ -101,9 +103,11 @@ export default function StationPanel({ station: s, source, onClose, onEdit }: { 
         <button onClick={() => go(`s/${s.id}/config`)} className="flex items-center justify-center gap-1.5 rounded-xl border border-line px-3 py-2 text-xs hover:bg-card-hover">
           <Settings className="h-3.5 w-3.5" aria-hidden /> Configurações
         </button>
-        <button onClick={onEdit} className="col-span-2 flex items-center justify-center gap-1.5 rounded-xl border border-line px-3 py-2 text-xs hover:bg-card-hover">
-          <Pencil className="h-3.5 w-3.5" aria-hidden /> Editar ou remover estação
-        </button>
+        {editable && (
+          <button onClick={onEdit} className="col-span-2 flex items-center justify-center gap-1.5 rounded-xl border border-line px-3 py-2 text-xs hover:bg-card-hover">
+            <Pencil className="h-3.5 w-3.5" aria-hidden /> Editar ou remover estação
+          </button>
+        )}
       </div>
     </aside>
   )

@@ -1,5 +1,6 @@
 import { useEffect, useMemo, type ReactNode } from 'react'
 import Analyses from './components/Analyses'
+import AdminPage from './components/AdminPage'
 import GlobalSettings from './components/GlobalSettings'
 import StationSettings from './components/StationSettings'
 import { NoReadings } from './components/StationPanel'
@@ -130,6 +131,14 @@ function Routes({ net }: { net: Net }) {
 
   if (route.page === 'station') return <StationPage id={route.id} net={net} />
   if (route.page === 'settings') return <SettingsPage id={route.id} net={net} />
+  if (route.page === 'admin') {
+    return (
+      <>
+        <Navbar mode="admin" title="Administração" source={net.source} status={null} back={{ to: '', label: 'Rede' }} />
+        <main><AdminPage /></main>
+      </>
+    )
+  }
   if (route.page === 'config' || route.page === 'analyses') {
     const cfg = route.page === 'config'
     return (

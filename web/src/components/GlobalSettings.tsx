@@ -9,6 +9,7 @@ import TelegramPanel from './TelegramPanel'
 import { requestUsb } from './UsbDevice'
 import { usbSupported } from '../lib/usb'
 import { useLiveState } from '../lib/refresh'
+import { useSession } from '../lib/session'
 
 function Choice<K extends keyof Prefs>({ label, name, options, value }: { label: string; name: K; options: [Prefs[K], string][]; value: Prefs[K] }) {
   return (
@@ -32,6 +33,8 @@ function Choice<K extends keyof Prefs>({ label, name, options, value }: { label:
 export default function GlobalSettings({ stations, source }: { stations: Station[]; source: Source }) {
   const p = usePrefs()
   const live = useLiveState()
+  const { user, clientId } = useSession()
+  const isAdmin = !clientId || user?.role === 'admin' // sem login no servidor vale o token; com login, só administradores
   const favs = p.favorites.map((id) => stations.find((s) => s.id === id)).filter((s): s is Station => !!s)
   const others = stations.filter((s) => !p.favorites.includes(s.id))
 
@@ -144,6 +147,8 @@ export default function GlobalSettings({ stations, source }: { stations: Station
           <FlashPanel />
         </Panel>
 
+        {isAdmin ? (
+          <>
         <div id="telegram" className="scroll-mt-20" />
         <Panel id="g-telegram" title="Alertas no Telegram" hint="offline, bateria, rajada e chuva" defaultOpen={false}>
           <TelegramPanel stations={stations} source={source} />
@@ -153,6 +158,10 @@ export default function GlobalSettings({ stations, source }: { stations: Station
         <Panel id="g-dados" title="Dados e armazenamento" hint="exportar, backup e uso do banco" defaultOpen={false}>
           <DataPanel stations={stations} source={source} />
         </Panel>
+          </>
+        ) : (
+          <p className="rounded-xl border border-line px-4 py-3 text-sm text-ink-3">Alertas no Telegram e dados do banco são só do administrador.</p>
+        )}
       </div>
     </div>
   )

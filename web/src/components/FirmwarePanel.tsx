@@ -1,6 +1,7 @@
 import { AlertTriangle, Check, Upload } from 'lucide-react'
 import { useRef, useState } from 'react'
-import { useToken } from '../hooks/useToken'
+import { SESSION_TOKEN, useToken } from '../hooks/useToken'
+import { useCanEdit, useSession } from '../lib/session'
 import { ApiError, publishFirmware, unpublishFirmware } from '../lib/api'
 import type { FirmwareInfo, Source, Station } from '../types'
 
@@ -9,6 +10,8 @@ const input = 'num rounded-lg border border-line bg-bg px-3 py-2 text-sm font-no
 /** Publica o firmware para a estação baixar sozinha no próximo envio. */
 export default function FirmwarePanel({ station, info, source, onChanged }: { station: Station; info: FirmwareInfo | null; source: Source; onChanged: () => void }) {
   const [token, setToken] = useToken()
+  const editable = useCanEdit(station, source)
+  const { clientId } = useSession()
   const [version, setVersion] = useState('')
   const [file, setFile] = useState<File | null>(null)
   const [busy, setBusy] = useState(false)
@@ -59,7 +62,9 @@ export default function FirmwarePanel({ station, info, source, onChanged }: { st
         </div>
       </dl>
 
-      {source === 'demo' ? (
+      {source !== 'demo' && !editable ? (
+        <p className="text-sm text-ink-3">Só o dono da estação e os administradores publicam firmware.</p>
+      ) : source === 'demo' ? (
         <p className="text-sm text-ink-3">Disponível só com a API ligada. Na demonstração não há servidor para guardar o firmware.</p>
       ) : (
         <form onSubmit={publish} className="grid gap-3 text-sm font-medium">
@@ -71,9 +76,11 @@ export default function FirmwarePanel({ station, info, source, onChanged }: { st
               <input ref={fileRef} type="file" accept=".bin" className={input} onChange={(e) => setFile(e.target.files?.[0] ?? null)} required />
             </label>
           </div>
-          <label className="grid gap-1">Token de administrador
-            <input type="password" autoComplete="current-password" className={input} value={token} onChange={(e) => setToken(e.target.value)} required />
-          </label>
+          {!clientId && token !== SESSION_TOKEN && (
+            <label className="grid gap-1">Token de administrador
+              <input type="password" autoComplete="current-password" className={input} value={token} onChange={(e) => setToken(e.target.value)} required />
+            </label>
+          )}
           <div className="flex flex-wrap items-center gap-3">
             <button type="submit" disabled={busy} className="flex items-center gap-2 rounded-xl bg-blue px-4 py-2.5 font-semibold text-white disabled:opacity-50">
               <Upload className="h-4 w-4" aria-hidden /> {busy ? 'Enviando…' : 'Publicar'}

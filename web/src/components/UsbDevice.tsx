@@ -2,6 +2,8 @@ import { CircleCheck, MapPin, Usb, X } from 'lucide-react'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { go } from '../hooks/useRoute'
 import { useToken } from '../hooks/useToken'
+import { canEditStation, useSession } from '../lib/session'
+import GoogleLogin from './GoogleLogin'
 import { ApiError, createStation, fetchStations, rotateKey, store } from '../lib/api'
 import { DEFAULT_CONFIG } from '../lib/demo'
 import { ADDRESS_FULL, explainFlashError, flash } from '../lib/flash'
@@ -249,9 +251,11 @@ const NEW = '__new__'
 
 function Ready({ state, stations, source, onPickMap, onLost, onCreated, onDone }: { state: Extract<State, { s: 'ready' }>; stations: Station[]; source: Source; onPickMap: () => void; onCreated: () => unknown; onLost: () => void; onDone: (id: string, name: string) => void }) {
   const { info, link } = state
-  const known = stations.find((s) => s.id === info.id)
+  const session = useSession()
+  const mine = stations.filter((s) => canEditStation(s, source, session)) // só as estações que o usuário pode alterar
+  const known = mine.find((s) => s.id === info.id)
   const [token, setToken] = useToken()
-  const [sid, setSid] = useState(known?.id ?? (stations.length ? stations[0].id : NEW))
+  const [sid, setSid] = useState(known?.id ?? (mine.length ? mine[0].id : NEW))
   const [name, setName] = useState('')
   const [pos, setPos] = useState<{ lat: string; lon: string }>({ lat: '', lon: '' })
   const [nets, setNets] = useState<WifiNet[] | null>(null)
@@ -342,13 +346,18 @@ function Ready({ state, stations, source, onPickMap, onLost, onCreated, onDone }
 
       {source === 'demo' ? (
         <p className="text-xs text-ink-3">Para configurar a placa, o site precisa estar ligado à API (não está na demonstração).</p>
+      ) : session.clientId && !session.user ? (
+        <div className="grid gap-2">
+          <p className="text-ink-2">Entre com a sua conta Google para cadastrar esta placa numa estação sua.</p>
+          <GoogleLogin />
+        </div>
       ) : !open ? (
         <button onClick={() => setOpen(true)} className="w-fit rounded-lg border border-line px-3 py-1.5 text-xs hover:bg-card-hover">Configurar de novo</button>
       ) : (
         <div className="grid gap-2.5">
           <label className="grid gap-1 text-xs text-ink-3">Estação
             <select value={sid} onChange={(e) => setSid(e.target.value)} className={input}>
-              {stations.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
+              {mine.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
               <option value={NEW}>Nova estação…</option>
             </select>
           </label>

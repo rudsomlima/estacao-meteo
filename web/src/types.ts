@@ -63,6 +63,10 @@ export interface Station {
   rssi: number | null
   latest: Reading | null
   day: DaySummary | null
+  /** o usuário logado pode alterar esta estação (é o dono, ou administrador) */
+  can_edit?: boolean
+  /** só vem para o administrador */
+  owner_email?: string | null
 }
 
 /** Um dia local resumido (do endpoint /daily). */

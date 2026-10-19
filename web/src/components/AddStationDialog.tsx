@@ -2,7 +2,10 @@ import { Check, Copy, MapPin, X } from 'lucide-react'
 import PairingCode from './PairingCode'
 import { useEffect, useState } from 'react'
 import type { SaveResult } from '../hooks/useNetwork'
-import { store, type StationEdit } from '../lib/api'
+import { useToken, SESSION_TOKEN } from '../hooks/useToken'
+import type { StationEdit } from '../lib/api'
+import { useSession } from '../lib/session'
+import GoogleLogin from './GoogleLogin'
 import { CHEMS, CHEM_KEYS } from '../lib/battery'
 import { DEFAULT_CONFIG } from '../lib/demo'
 import type { BatteryChem, Station } from '../types'
@@ -34,7 +37,9 @@ export default function AddStationDialog({ open, picked, station, onClose, onPic
   const [alt, setAlt] = useState('0')
   const [chem, setChem] = useState<BatteryChem>('li')
   const [mah, setMah] = useState('3000')
-  const [token, setToken] = useState(() => store.get('meteo.token'))
+  const [token, setToken] = useToken()
+  const { user, clientId } = useSession()
+  const needLogin = !!clientId && !user // com login do Google no servidor, só quem entrou cadastra
   const [busy, setBusy] = useState(false)
   const [err, setErr] = useState('')
   const [key, setKey] = useState('')
@@ -63,7 +68,6 @@ export default function AddStationDialog({ open, picked, station, onClose, onPic
     if (!id || !name.trim()) return setErr('Dê um nome à estação.')
     if (!Number.isFinite(la) || !Number.isFinite(lo) || !lat || !lon) return setErr('Informe a latitude e a longitude, ou escolha o ponto no mapa.')
     setBusy(true)
-    store.set('meteo.token', token)
     if (station && onSave) {
       const r = await onSave({ ...station, name: name.trim(), city: city.trim(), lat: la, lon: lo, alt: Number(alt) || 0 }, token)
       setBusy(false)
@@ -86,7 +90,6 @@ export default function AddStationDialog({ open, picked, station, onClose, onPic
     if (!station || !onRemove) return
     setBusy(true)
     setErr('')
-    store.set('meteo.token', token)
     const r = await onRemove(station.id, token)
     setBusy(false)
     if (r.ok) close()
@@ -134,6 +137,12 @@ export default function AddStationDialog({ open, picked, station, onClose, onPic
             <button onClick={close} className="rounded-xl bg-blue px-4 py-2.5 font-semibold text-white">Concluir</button>
           </div>
         ) : (
+          needLogin ? (
+            <div className="mt-4 grid gap-3 text-sm">
+              <p className="text-ink-2">Para cadastrar uma estação, entre com a sua conta Google. Você poderá alterar todos os ajustes das estações que cadastrar.</p>
+              <GoogleLogin />
+            </div>
+          ) : (
           <form onSubmit={submit} className="mt-4 grid gap-3 text-sm font-medium">
             <div className="grid gap-3 sm:grid-cols-2">
               <label className={cell}>Nome<input className={field} value={name} onChange={(e) => setName(e.target.value)} placeholder="Serra" maxLength={40} required /></label>
@@ -158,7 +167,7 @@ export default function AddStationDialog({ open, picked, station, onClose, onPic
               )}
             </div>
             {editing && <p className="text-xs font-normal text-ink-3">Bateria, intervalo e calibração ficam em <b>Configurações</b> da estação.</p>}
-            <label className={cell}>Token de administrador<input type="password" autoComplete="current-password" className={field} value={token} onChange={(e) => setToken(e.target.value)} required /></label>
+            {!clientId && token !== SESSION_TOKEN && <label className={cell}>Token de administrador<input type="password" autoComplete="current-password" className={field} value={token} onChange={(e) => setToken(e.target.value)} required /></label>}
             {err && <p role="alert" className="text-bad">{err}</p>}
             <button type="submit" disabled={busy} className="rounded-xl bg-blue px-4 py-2.5 font-semibold text-white disabled:opacity-50">
               {busy ? (editing ? 'Salvando…' : 'Criando…') : editing ? 'Salvar alterações' : 'Criar estação'}
@@ -177,6 +186,7 @@ export default function AddStationDialog({ open, picked, station, onClose, onPic
               )
             )}
           </form>
+          )
         )}
       </div>
     </div>

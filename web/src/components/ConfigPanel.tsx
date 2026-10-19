@@ -2,13 +2,14 @@ import { Check, Copy, KeyRound, RefreshCw, Save, TriangleAlert } from 'lucide-re
 import PairingCode from './PairingCode'
 import { useState } from 'react'
 import type { SaveResult } from '../hooks/useNetwork'
-import { useToken } from '../hooks/useToken'
+import { SESSION_TOKEN, useToken } from '../hooks/useToken'
+import { useCanEdit, useSession } from '../lib/session'
 import { CHEMS, CHEM_KEYS } from '../lib/battery'
 import type { BatteryChem, Source, Station, StationConfig } from '../types'
 
-interface Field { key: keyof StationConfig; label: string; hint: string; min: number; max: number; step: number; unit: string; digits?: number }
+export interface Field { key: keyof StationConfig; label: string; hint: string; min: number; max: number; step: number; unit: string; digits?: number }
 
-const FIELDS: Field[] = [
+export const FIELDS: Field[] = [
   { key: 'interval_min', label: 'Intervalo entre envios', hint: 'Mais espaçado economiza bateria.', min: 1, max: 60, step: 1, unit: 'min' },
   { key: 'wind_window_s', label: 'Janela de medição do vento', hint: 'Tempo contando voltas do rotor em cada ciclo. Vale só no modo janela (sem contagem contínua).', min: 2, max: 30, step: 1, unit: 's' },
   { key: 'send_every', label: 'Enviar a cada', hint: 'Junta várias leituras e envia de uma vez. O Wi-Fi é o maior gasto de energia, então quanto maior, mais economia.', min: 1, max: 12, step: 1, unit: 'leituras' },
@@ -39,6 +40,8 @@ const input = 'num rounded-lg border border-line bg-bg px-3 py-2 text-sm font-no
 
 export default function ConfigPanel({ station, source, onChange, onSave, onNewKey, dirty }: Props) {
   const [token, setToken] = useToken()
+  const editable = useCanEdit(station, source)
+  const { clientId, user } = useSession()
   const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null)
   const [busy, setBusy] = useState(false)
   const [key, setKey] = useState('')
@@ -69,6 +72,12 @@ export default function ConfigPanel({ station, source, onChange, onSave, onNewKe
 
   return (
     <form onSubmit={submit}>
+      {!editable && (
+        <p role="status" className="mb-4 rounded-xl border border-warn/40 bg-warn/10 px-3 py-2 text-sm text-warn">
+          Somente leitura. {user ? 'Esta estação é de outra conta: só o dono e os administradores alteram os ajustes.' : 'Entre com o Google (canto superior direito) para alterar as suas estações.'}
+        </p>
+      )}
+      <fieldset disabled={!editable} className="grid gap-5 disabled:opacity-60">
       <div className="grid gap-5">
         <fieldset className="grid gap-3 sm:grid-cols-2">
           <legend className="mb-2 font-display text-lg font-semibold">Bateria</legend>
@@ -142,7 +151,7 @@ export default function ConfigPanel({ station, source, onChange, onSave, onNewKe
           ))}
         </div>
 
-        {source === 'api' && (
+        {source === 'api' && token !== SESSION_TOKEN && !clientId && (
           <label className="grid gap-1 text-sm font-medium">
             <span className="flex items-center gap-1.5"><KeyRound className="h-4 w-4" aria-hidden /> Token de administrador</span>
             <input type="password" autoComplete="current-password" className={input} value={token} onChange={(e) => setToken(e.target.value)} />
@@ -150,10 +159,10 @@ export default function ConfigPanel({ station, source, onChange, onSave, onNewKe
         )}
 
         <div className="flex flex-wrap items-center gap-3">
-          <button type="submit" disabled={busy || !dirty} className="flex items-center gap-2 rounded-xl bg-blue px-4 py-2.5 text-sm font-semibold text-white transition-opacity disabled:opacity-40">
+          <button type="submit" disabled={busy || !dirty || !editable} className="flex items-center gap-2 rounded-xl bg-blue px-4 py-2.5 text-sm font-semibold text-white transition-opacity disabled:opacity-40">
             <Save className="h-4 w-4" aria-hidden /> {busy ? 'Salvando…' : 'Salvar configuração'}
           </button>
-          {source === 'api' && (
+          {source === 'api' && editable && (
             <button type="button" onClick={rotate} className="flex items-center gap-2 rounded-xl border border-line px-4 py-2.5 text-sm hover:bg-card-hover">
               <RefreshCw className="h-4 w-4" aria-hidden /> Gerar chave nova
             </button>
@@ -165,7 +174,7 @@ export default function ConfigPanel({ station, source, onChange, onSave, onNewKe
           )}
         </div>
 
-        {source === 'api' && <PairingCode id={station.id} name={station.name} token={token} />}
+        {source === 'api' && editable && <PairingCode id={station.id} name={station.name} token={token} />}
 
         {key && (
           <div className="flex items-center gap-2 rounded-lg border border-line bg-bg p-3">
@@ -176,6 +185,7 @@ export default function ConfigPanel({ station, source, onChange, onSave, onNewKe
           </div>
         )}
       </div>
+      </fieldset>
     </form>
   )
 }

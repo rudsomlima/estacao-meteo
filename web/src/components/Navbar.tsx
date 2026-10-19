@@ -3,6 +3,7 @@ import { go } from '../hooks/useRoute'
 import { useNow } from '../hooks/useNow'
 import { scrollToId } from '../hooks/useLenis'
 import { ago } from '../lib/derive'
+import AuthMenu from './AuthMenu'
 import type { Source } from '../types'
 
 const STATION_LINKS = [
@@ -25,6 +26,7 @@ const ANALYSES_LINKS = [
   ['comparar', 'Comparar'],
   ['resumo', 'Resumo'],
 ]
+const ADMIN_LINKS: string[][] = []
 const SETTINGS_LINKS = [
   ['energia', 'Energia'],
   ['diagnostico', 'Diagnóstico'],
@@ -32,7 +34,7 @@ const SETTINGS_LINKS = [
 ]
 
 interface Props {
-  mode: 'map' | 'station' | 'settings' | 'config' | 'analyses'
+  mode: 'map' | 'station' | 'settings' | 'config' | 'analyses' | 'admin'
   title: string
   source: Source
   status: { color: string; text: string } | null
@@ -45,7 +47,7 @@ interface Props {
 
 export default function Navbar({ mode, title, source, status, lastTs, back, settingsTo }: Props) {
   useNow() // redesenha a cada segundo: as idades ("há 2min10s") andam sozinhas
-  const links = { station: STATION_LINKS, settings: SETTINGS_LINKS, config: CONFIG_LINKS, analyses: ANALYSES_LINKS, map: MAP_LINKS }[mode]
+  const links = { station: STATION_LINKS, settings: SETTINGS_LINKS, config: CONFIG_LINKS, analyses: ANALYSES_LINKS, map: MAP_LINKS, admin: ADMIN_LINKS }[mode]
   return (
     <header className="fixed inset-x-0 top-0 z-50 border-b border-line/70 bg-bg/70 backdrop-blur-xl">
       <nav className="mx-auto flex h-14 max-w-7xl items-center justify-between gap-3 px-4 sm:px-6">
@@ -101,6 +103,7 @@ export default function Navbar({ mode, title, source, status, lastTs, back, sett
             {status.text}{lastTs ? ` · ${ago(lastTs)}` : ''}{source === 'demo' && mode === 'station' ? '' : ''}
           </span>
         )}
+        <AuthMenu />
       </nav>
     </header>
   )

@@ -129,6 +129,39 @@ Campos com os limites que o servidor aplica (valores fora da faixa são ajustado
 | `battery_mah` | 100 a 100000 | `bench_min` | 0 a 30 (minutos do modo bancada; 0 desliga) |
 | `battery_chem` | `li`, `lfp`, `lipo`, `aa` | `wifi_tx_save` | 0 ou 1 (reduz a potência do Wi-Fi quando o sinal é bom) |
 
+## Login com Google, papéis e donos
+
+O site entra com o Google (Google Identity Services). O navegador manda o ID token para `POST /api/auth/google` (`{"credential": "..."}`); o Worker confere a assinatura RS256 com as chaves públicas do Google, o `aud` (o Client ID, em `GOOGLE_CLIENT_ID` no `wrangler.toml`), a validade e o e-mail verificado, e devolve um cookie de sessão assinado (`sess`, HttpOnly, SameSite=Lax, 30 dias).
+
+| Rota | O que faz |
+|---|---|
+| `GET /api/auth/config` | `{"clientId": ...}` para o botão de login. |
+| `GET /api/auth/me` | `{"user": {email, name, picture, role}}`, ou `{"user": null}`. |
+| `POST /api/auth/google` | Entra. Recusa token vencido, de outro cliente, sem e-mail verificado, com assinatura errada ou vindo de outra origem. |
+| `POST /api/auth/logout` | Apaga o cookie. |
+
+**Papéis.** `admin` (e-mails de `ADMIN_EMAILS` no `wrangler.toml`, ou promovidos por outro administrador) e `user`. O token de administrador antigo (HMAC) continua valendo para scripts e conta como administrador.
+
+**Donos.** Qualquer usuário logado cria estações (limite configurável por usuário) e vira dono. Só o dono e os administradores alteram, apagam, trocam a chave, geram código de pareamento ou publicam firmware de uma estação. Estação sem dono (criada pelo token antigo) é só dos administradores. A lista pública de estações traz `can_edit` para quem está logado, e `owner_email` só para administradores.
+
+## Administração (`/api/admin/*`, só administradores)
+
+| Rota | O que faz |
+|---|---|
+| `GET /overview` | Todas as estações com dono, firmware, versão de configuração (pedida × aplicada), bateria e sinal. |
+| `POST /config` | `{"ids": "all" ou [..], "config": {...}}`: aplica só os campos enviados em várias estações (cada uma soma 1 à versão). |
+| `GET`/`PUT /defaults` | Configuração padrão das estações novas e `max_stations_per_user`. |
+| `GET`/`POST /releases`, `DELETE /releases/:id` | Versões de firmware (`POST` com o binário no corpo e `?version=&notes=`). Uma cópia serve para várias estações. |
+| `POST /releases/:id/assign`, `POST /releases/unassign` | Atribui a versão a estações (`{"ids": ...}`) ou retira. |
+| `GET /rollout` | Resultado em cada estação: `ok` (já informa a versão nova), `falhou` (evento `ota_fail` depois de atribuir, com a etapa) ou `aguardando`. |
+| `GET /users`, `PUT`/`DELETE /users/:email` | Usuários, papel e remoção (as estações ficam sem dono). |
+| `PUT /stations/:id/owner` | Transfere a estação (`{"email": ...}`; vazio = sem dono). |
+| `POST /token/rotate`, `DELETE /token` | Troca o token de administrador (mostrado uma vez) ou volta ao segredo `ADMIN_TOKEN` do Worker. |
+| `POST /sessions/revoke` | Encerra todas as sessões. |
+| `GET /audit` | Registro de quem fez o quê. |
+
+Para bancos criados antes do login, rode uma vez `migrations/0002_usuarios_e_firmware.sql`.
+
 ## Tempo real (WebSocket)
 
 `GET /api/live` abre um WebSocket (sem autenticação, só leitura). Sempre que uma estação envia, ou é criada, alterada ou removida, o servidor manda a todos os conectados um aviso curto:

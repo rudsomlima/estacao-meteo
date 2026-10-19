@@ -6,11 +6,13 @@ export type Route =
   | { page: 'settings'; id: string }
   | { page: 'config'; id: null }
   | { page: 'analyses'; id: null }
+  | { page: 'admin'; id: null }
 
 function parse(): Route {
   const hash = location.hash.replace(/^#\/?/, '')
   if (hash.startsWith('config')) return { page: 'config', id: null }
   if (hash.startsWith('analises')) return { page: 'analyses', id: null }
+  if (hash.startsWith('admin')) return { page: 'admin', id: null }
   const m = hash.match(/^s\/([a-z0-9-]+)(\/config)?/)
   if (!m) return { page: 'map', id: null }
   return m[2] ? { page: 'settings', id: m[1] } : { page: 'station', id: m[1] }
