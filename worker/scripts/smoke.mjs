@@ -312,6 +312,8 @@ r2 = await call('POST', '/api/ingest', { body: { batch: [{ temp: 18, pres: 900, 
 check('aceita leitura sem umidade (MS5611) e a estação recebe sensor e pinos', r2.status === 200 && r2.json.config?.env_sensor === 2 && r2.json.config?.pin_sda === 5, r2.text)
 r2 = await call('GET', '/api/stations/serra/readings?hours=1')
 check('a leitura sem umidade fica nula', r2.json.some((x) => x.hum === null && x.pres === 900), r2.text)
+r2 = await call('GET', '/api/stations/serra')
+check('guarda a entrega da configuração (versão e hora)', typeof r2.json.cfg_sent === 'number' && r2.json.cfg_sent_at > 0 && r2.json.cfg_sent !== r2.json.cfg_applied, r2.text)
 r2 = await call('PUT', '/api/stations/serra', asBody(adm, { config: { env_sensor: 1, pin_sda: 6, pin_scl: 7 } }))
 check('volta ao BME280 e aos pinos padrão', r2.status === 200 && r2.json.config.env_sensor === 1, r2.text)
 

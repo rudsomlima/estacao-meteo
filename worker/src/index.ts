@@ -32,9 +32,9 @@ interface StationRow {
   id: string; name: string; city: string; lat: number; lon: number; alt: number; config: string; created_at: number
   key_hash: string; nonce: string; cfg_applied: number; last_seen: number | null; fw_version: string | null
   vbat: number | null; rssi: number | null; owner_email: string | null
-  cfg_applied_at: number | null; cmd: string | null; cmd_at: number | null; cmd_sent: number | null; cmd_done: number | null
+  cfg_applied_at: number | null; cfg_sent: number | null; cfg_sent_at: number | null; cmd: string | null; cmd_at: number | null; cmd_sent: number | null; cmd_done: number | null
 }
-const COLS = 'id,name,city,lat,lon,alt,config,created_at,key_hash,nonce,cfg_applied,last_seen,fw_version,vbat,rssi,owner_email,cfg_applied_at,cmd,cmd_at,cmd_sent,cmd_done'
+const COLS = 'id,name,city,lat,lon,alt,config,created_at,key_hash,nonce,cfg_applied,last_seen,fw_version,vbat,rssi,owner_email,cfg_applied_at,cfg_sent,cfg_sent_at,cmd,cmd_at,cmd_sent,cmd_done'
 const dec = new TextDecoder()
 
 // ---------------- autenticação ----------------
@@ -103,6 +103,8 @@ const publicStation = (s: StationRow, u: User | null = null) => ({
   id: s.id, name: s.name, city: s.city, lat: s.lat, lon: s.lon, alt: s.alt, config: JSON.parse(s.config) as Config,
   cfg_applied: s.cfg_applied, last_seen: s.last_seen, fw_version: s.fw_version, vbat: s.vbat, rssi: s.rssi,
   cfg_applied_at: s.cfg_applied_at,
+  cfg_sent: s.cfg_sent,
+  cfg_sent_at: s.cfg_sent_at,
   can_edit: canManage(u, s.owner_email),
   ...(u?.role === 'admin' ? { owner_email: s.owner_email } : {}),
   // comando pendente (reinício) e se a estação confirmou: só para quem pode mexer na estação
@@ -183,6 +185,11 @@ async function ingest(req: Request, env: Env, ctx: ExecutionContext) {
     env.DB.prepare('UPDATE stations SET cfg_applied = ?, cfg_applied_at = CASE WHEN ? != cfg_applied THEN ? ELSE cfg_applied_at END, last_seen = ?, fw_version = COALESCE(?, fw_version), nonce = ?, vbat = COALESCE(?, vbat), rssi = COALESCE(?, rssi) WHERE id = ?')
       .bind(Number.isFinite(reported) ? reported : st.cfg_applied, Number.isFinite(reported) ? reported : st.cfg_applied, nowTs, nowTs, fw, nonce, stV, stR, st.id),
   )
+  // configuração entregue na resposta: guarda a versão e o momento da primeira entrega (a estação confirma no envio seguinte)
+  const sendCfg = reported !== cfg.version
+  if (sendCfg) {
+    writes.push(env.DB.prepare('UPDATE stations SET cfg_sent_at = CASE WHEN cfg_sent = ? THEN cfg_sent_at ELSE ? END, cfg_sent = ? WHERE id = ?').bind(cfg.version, nowTs, cfg.version, st.id))
+  }
   // comando pendente: entrega na resposta; vira "confirmado" quando a estação volta com um reinício posterior à entrega
   let cmdOut: string | null = null
   if (st.cmd && !st.cmd_done) {
@@ -204,7 +211,7 @@ async function ingest(req: Request, env: Env, ctx: ExecutionContext) {
   return signedJson(auth, {
     ts: nowTs,
     stored: items.length,
-    config: reported !== cfg.version ? cfg : null,
+    config: sendCfg ? cfg : null,
     // só oferece atualização quando a versão publicada é DIFERENTE da instalada (não "mais nova")
     ota: fwMeta && fw !== fwMeta.version ? fwMeta : null,
     ...(cmdOut ? { cmd: cmdOut } : {}),

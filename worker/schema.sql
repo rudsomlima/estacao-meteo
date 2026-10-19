@@ -18,6 +18,8 @@ CREATE TABLE IF NOT EXISTS stations (
   rssi        REAL,
   owner_email TEXT,                       -- dono da estação (login Google); vazio = só o administrador mexe
   cfg_applied_at INTEGER,                 -- quando a estação confirmou a versão da configuração
+  cfg_sent    INTEGER,                    -- versão da configuração entregue por último à estação (na resposta do envio)
+  cfg_sent_at INTEGER,                    -- quando essa versão foi entregue pela primeira vez
   cmd         TEXT,                       -- comando pedido pelo administrador ("restart"); a estação o recebe no próximo envio
   cmd_at      INTEGER,                    -- quando foi pedido
   cmd_sent    INTEGER,                    -- quando a resposta com o comando foi entregue à estação

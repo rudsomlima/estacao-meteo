@@ -75,6 +75,9 @@ export interface Station {
   owner_email?: string | null
   /** quando a estação confirmou a versão atual da configuração */
   cfg_applied_at?: number | null
+  /** versão da configuração entregue por último à estação e quando foi entregue pela primeira vez */
+  cfg_sent?: number | null
+  cfg_sent_at?: number | null
   /** comando pedido pelo administrador (reinício) e as etapas: pedido, entregue à estação, confirmado por ela */
   command?: StationCommand | null
 }

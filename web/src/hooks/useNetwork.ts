@@ -64,7 +64,7 @@ export function useNetwork() {
     try {
       const saved = await updateStation(s.id, edit, token)
       setStations((prev) => prev.map((p) => (p.id === s.id ? { ...p, ...saved } : p)))
-      return { ok: true, message: `Versão ${saved.config.version} salva no servidor. Falta a estação aplicar: ela baixa no próximo envio e a confirmação aparece aqui.` }
+      return { ok: true, message: `Versão ${saved.config.version} salva no servidor. Acompanhe abaixo se a estação foi encontrada, recebeu e aplicou.` }
     } catch (e) {
       return { ok: false, message: explain(e) }
     }
