@@ -1,0 +1,89 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1060 700" width="1060" height="700" role="img" aria-label="Pinagem do ESP32-C3 SuperMini">
+<title>Pinagem do ESP32-C3 SuperMini</title>
+<rect width="1060" height="700" fill="#ffffff"/>
+<text x="40" y="40" font-size="24" fill="#0f172a" text-anchor="start" font-weight="700" font-family="'Helvetica Neue', Arial, sans-serif" >Pinagem do ESP32-C3 SuperMini</text>
+<text x="40" y="62" font-size="13" fill="#64748b" text-anchor="start" font-weight="400" font-family="'Helvetica Neue', Arial, sans-serif" >O que cada pino faz neste projeto (padrão) e o que o chip permite. Confira a serigrafia da sua placa: clones variam.</text>
+<rect x="400" y="110" width="260" height="480" rx="14" fill="#e0f2fe" stroke="#0284c7" stroke-width="2.4" />
+<rect x="490" y="102" width="80" height="30" rx="6" fill="#cbd5e1" stroke="#64748b" stroke-width="1.6" />
+<text x="530" y="122" font-size="12" fill="#0f172a" text-anchor="middle" font-weight="700" font-family="'Helvetica Neue', Arial, sans-serif" >USB-C</text>
+<rect x="470" y="180" width="120" height="120" rx="6" fill="#bae6fd" stroke="#0284c7" stroke-width="1.4" />
+<text x="530" y="235" font-size="15" fill="#0f172a" text-anchor="middle" font-weight="700" font-family="'Helvetica Neue', Arial, sans-serif" >ESP32-C3</text>
+<text x="530" y="255" font-size="11" fill="#64748b" text-anchor="middle" font-weight="400" font-family="'Helvetica Neue', Arial, sans-serif" >RISC-V · Wi-Fi · BLE</text>
+<text x="530" y="550" font-size="11" fill="#64748b" text-anchor="middle" font-weight="400" font-family="ui-monospace, 'SFMono-Regular', Menlo, Consolas, monospace" >botão BOOT = GPIO9</text>
+<text x="530" y="568" font-size="11" fill="#64748b" text-anchor="middle" font-weight="400" font-family="'Helvetica Neue', Arial, sans-serif" >(segurar ao ligar abre o portal)</text>
+<path d="M376,146 L400,146" fill="none" stroke="#d62828" stroke-width="3" stroke-linejoin="round" stroke-linecap="round"/>
+<circle cx="376" cy="146" r="5" fill="#d62828"/>
+<text x="362" y="144" font-size="14" fill="#d62828" text-anchor="end" font-weight="700" font-family="ui-monospace, 'SFMono-Regular', Menlo, Consolas, monospace" >5V</text>
+<text x="362" y="160" font-size="11" fill="#0f172a" text-anchor="end" font-weight="400" font-family="'Helvetica Neue', Arial, sans-serif" >entrada 5 V (USB ou painel/carregador)</text>
+<path d="M376,200 L400,200" fill="none" stroke="#1f2933" stroke-width="3" stroke-linejoin="round" stroke-linecap="round"/>
+<circle cx="376" cy="200" r="5" fill="#1f2933"/>
+<text x="362" y="198" font-size="14" fill="#1f2933" text-anchor="end" font-weight="700" font-family="ui-monospace, 'SFMono-Regular', Menlo, Consolas, monospace" >GND</text>
+<text x="362" y="214" font-size="11" fill="#0f172a" text-anchor="end" font-weight="400" font-family="'Helvetica Neue', Arial, sans-serif" >terra comum</text>
+<path d="M376,254 L400,254" fill="none" stroke="#d62828" stroke-width="3" stroke-linejoin="round" stroke-linecap="round"/>
+<circle cx="376" cy="254" r="5" fill="#d62828"/>
+<text x="362" y="252" font-size="14" fill="#d62828" text-anchor="end" font-weight="700" font-family="ui-monospace, 'SFMono-Regular', Menlo, Consolas, monospace" >3V3</text>
+<text x="362" y="268" font-size="11" fill="#0f172a" text-anchor="end" font-weight="400" font-family="'Helvetica Neue', Arial, sans-serif" >saída 3,3 V para os sensores</text>
+<path d="M376,308 L400,308" fill="none" stroke="#ea580c" stroke-width="3" stroke-linejoin="round" stroke-linecap="round"/>
+<circle cx="376" cy="308" r="5" fill="#ea580c"/>
+<text x="362" y="306" font-size="14" fill="#ea580c" text-anchor="end" font-weight="700" font-family="ui-monospace, 'SFMono-Regular', Menlo, Consolas, monospace" >GPIO4</text>
+<text x="362" y="322" font-size="11" fill="#0f172a" text-anchor="end" font-weight="400" font-family="'Helvetica Neue', Arial, sans-serif" >anemômetro (Hall)</text>
+<text x="362" y="335" font-size="10" fill="#64748b" text-anchor="end" font-weight="400" font-family="'Helvetica Neue', Arial, sans-serif" >ADC1 · acorda do deep sleep</text>
+<path d="M376,362 L400,362" fill="none" stroke="#7c3aed" stroke-width="3" stroke-linejoin="round" stroke-linecap="round"/>
+<circle cx="376" cy="362" r="5" fill="#7c3aed"/>
+<text x="362" y="360" font-size="14" fill="#7c3aed" text-anchor="end" font-weight="700" font-family="ui-monospace, 'SFMono-Regular', Menlo, Consolas, monospace" >GPIO3</text>
+<text x="362" y="376" font-size="11" fill="#0f172a" text-anchor="end" font-weight="400" font-family="'Helvetica Neue', Arial, sans-serif" >pluviômetro (Hall)</text>
+<text x="362" y="389" font-size="10" fill="#64748b" text-anchor="end" font-weight="400" font-family="'Helvetica Neue', Arial, sans-serif" >ADC1 · acorda do deep sleep</text>
+<path d="M376,416 L400,416" fill="none" stroke="#94a3b8" stroke-width="3" stroke-linejoin="round" stroke-linecap="round"/>
+<circle cx="376" cy="416" r="5" fill="#94a3b8"/>
+<text x="362" y="414" font-size="14" fill="#0f172a" text-anchor="end" font-weight="700" font-family="ui-monospace, 'SFMono-Regular', Menlo, Consolas, monospace" >GPIO2</text>
+<text x="362" y="430" font-size="11" fill="#0f172a" text-anchor="end" font-weight="400" font-family="'Helvetica Neue', Arial, sans-serif" >livre (evite)</text>
+<text x="362" y="443" font-size="10" fill="#64748b" text-anchor="end" font-weight="400" font-family="'Helvetica Neue', Arial, sans-serif" >ADC1 · acorda · pino de boot</text>
+<path d="M376,470 L400,470" fill="none" stroke="#94a3b8" stroke-width="3" stroke-linejoin="round" stroke-linecap="round"/>
+<circle cx="376" cy="470" r="5" fill="#94a3b8"/>
+<text x="362" y="468" font-size="14" fill="#0f172a" text-anchor="end" font-weight="700" font-family="ui-monospace, 'SFMono-Regular', Menlo, Consolas, monospace" >GPIO1</text>
+<text x="362" y="484" font-size="11" fill="#0f172a" text-anchor="end" font-weight="400" font-family="'Helvetica Neue', Arial, sans-serif" >livre</text>
+<text x="362" y="497" font-size="10" fill="#64748b" text-anchor="end" font-weight="400" font-family="'Helvetica Neue', Arial, sans-serif" >ADC1 · acorda do deep sleep</text>
+<path d="M376,524 L400,524" fill="none" stroke="#ca8a04" stroke-width="3" stroke-linejoin="round" stroke-linecap="round"/>
+<circle cx="376" cy="524" r="5" fill="#ca8a04"/>
+<text x="362" y="522" font-size="14" fill="#ca8a04" text-anchor="end" font-weight="700" font-family="ui-monospace, 'SFMono-Regular', Menlo, Consolas, monospace" >GPIO0</text>
+<text x="362" y="538" font-size="11" fill="#0f172a" text-anchor="end" font-weight="400" font-family="'Helvetica Neue', Arial, sans-serif" >bateria (divisor)</text>
+<text x="362" y="551" font-size="10" fill="#64748b" text-anchor="end" font-weight="400" font-family="'Helvetica Neue', Arial, sans-serif" >ADC1 · acorda do deep sleep</text>
+<path d="M660,146 L684,146" fill="none" stroke="#94a3b8" stroke-width="3" stroke-linejoin="round" stroke-linecap="round"/>
+<circle cx="684" cy="146" r="5" fill="#94a3b8"/>
+<text x="698" y="144" font-size="14" fill="#0f172a" text-anchor="start" font-weight="700" font-family="ui-monospace, 'SFMono-Regular', Menlo, Consolas, monospace" >GPIO5</text>
+<text x="698" y="160" font-size="11" fill="#0f172a" text-anchor="start" font-weight="400" font-family="'Helvetica Neue', Arial, sans-serif" >livre</text>
+<text x="698" y="173" font-size="10" fill="#64748b" text-anchor="start" font-weight="400" font-family="'Helvetica Neue', Arial, sans-serif" >ADC2 · acorda do deep sleep</text>
+<path d="M660,200 L684,200" fill="none" stroke="#1d4ed8" stroke-width="3" stroke-linejoin="round" stroke-linecap="round"/>
+<circle cx="684" cy="200" r="5" fill="#1d4ed8"/>
+<text x="698" y="198" font-size="14" fill="#1d4ed8" text-anchor="start" font-weight="700" font-family="ui-monospace, 'SFMono-Regular', Menlo, Consolas, monospace" >GPIO6</text>
+<text x="698" y="214" font-size="11" fill="#0f172a" text-anchor="start" font-weight="400" font-family="'Helvetica Neue', Arial, sans-serif" >SDA (I²C)</text>
+<path d="M660,254 L684,254" fill="none" stroke="#15803d" stroke-width="3" stroke-linejoin="round" stroke-linecap="round"/>
+<circle cx="684" cy="254" r="5" fill="#15803d"/>
+<text x="698" y="252" font-size="14" fill="#15803d" text-anchor="start" font-weight="700" font-family="ui-monospace, 'SFMono-Regular', Menlo, Consolas, monospace" >GPIO7</text>
+<text x="698" y="268" font-size="11" fill="#0f172a" text-anchor="start" font-weight="400" font-family="'Helvetica Neue', Arial, sans-serif" >SCL (I²C)</text>
+<path d="M660,308 L684,308" fill="none" stroke="#94a3b8" stroke-width="3" stroke-linejoin="round" stroke-linecap="round"/>
+<circle cx="684" cy="308" r="5" fill="#94a3b8"/>
+<text x="698" y="306" font-size="14" fill="#0f172a" text-anchor="start" font-weight="700" font-family="ui-monospace, 'SFMono-Regular', Menlo, Consolas, monospace" >GPIO8</text>
+<text x="698" y="322" font-size="11" fill="#0f172a" text-anchor="start" font-weight="400" font-family="'Helvetica Neue', Arial, sans-serif" >LED da placa (evite)</text>
+<text x="698" y="335" font-size="10" fill="#64748b" text-anchor="start" font-weight="400" font-family="'Helvetica Neue', Arial, sans-serif" >pino de boot</text>
+<path d="M660,362 L684,362" fill="none" stroke="#94a3b8" stroke-width="3" stroke-linejoin="round" stroke-linecap="round"/>
+<circle cx="684" cy="362" r="5" fill="#94a3b8"/>
+<text x="698" y="360" font-size="14" fill="#0f172a" text-anchor="start" font-weight="700" font-family="ui-monospace, 'SFMono-Regular', Menlo, Consolas, monospace" >GPIO9</text>
+<text x="698" y="376" font-size="11" fill="#0f172a" text-anchor="start" font-weight="400" font-family="'Helvetica Neue', Arial, sans-serif" >botão BOOT</text>
+<text x="698" y="389" font-size="10" fill="#64748b" text-anchor="start" font-weight="400" font-family="'Helvetica Neue', Arial, sans-serif" >pino de boot</text>
+<path d="M660,416 L684,416" fill="none" stroke="#94a3b8" stroke-width="3" stroke-linejoin="round" stroke-linecap="round"/>
+<circle cx="684" cy="416" r="5" fill="#94a3b8"/>
+<text x="698" y="414" font-size="14" fill="#0f172a" text-anchor="start" font-weight="700" font-family="ui-monospace, 'SFMono-Regular', Menlo, Consolas, monospace" >GPIO10</text>
+<text x="698" y="430" font-size="11" fill="#0f172a" text-anchor="start" font-weight="400" font-family="'Helvetica Neue', Arial, sans-serif" >livre</text>
+<path d="M660,470 L684,470" fill="none" stroke="#94a3b8" stroke-width="3" stroke-linejoin="round" stroke-linecap="round"/>
+<circle cx="684" cy="470" r="5" fill="#94a3b8"/>
+<text x="698" y="468" font-size="14" fill="#0f172a" text-anchor="start" font-weight="700" font-family="ui-monospace, 'SFMono-Regular', Menlo, Consolas, monospace" >GPIO20</text>
+<text x="698" y="484" font-size="11" fill="#0f172a" text-anchor="start" font-weight="400" font-family="'Helvetica Neue', Arial, sans-serif" >UART0 RX (evite)</text>
+<path d="M660,524 L684,524" fill="none" stroke="#94a3b8" stroke-width="3" stroke-linejoin="round" stroke-linecap="round"/>
+<circle cx="684" cy="524" r="5" fill="#94a3b8"/>
+<text x="698" y="522" font-size="14" fill="#0f172a" text-anchor="start" font-weight="700" font-family="ui-monospace, 'SFMono-Regular', Menlo, Consolas, monospace" >GPIO21</text>
+<text x="698" y="538" font-size="11" fill="#0f172a" text-anchor="start" font-weight="400" font-family="'Helvetica Neue', Arial, sans-serif" >UART0 TX (evite)</text>
+<text x="40" y="640" font-size="12" fill="#0f172a" text-anchor="start" font-weight="700" font-family="'Helvetica Neue', Arial, sans-serif" >Regras que o site, o servidor e o firmware aplicam ao trocar os pinos:</text>
+<text x="40" y="658" font-size="12" fill="#64748b" text-anchor="start" font-weight="400" font-family="'Helvetica Neue', Arial, sans-serif" >sem repetir pino · chuva em GPIO0 a 5 (acorda do deep sleep) · bateria em GPIO0 a 4 (ADC1) · nunca 8, 9 (boot), 11 a 17 (flash), 18 e 19 (USB).</text>
+<text x="40" y="676" font-size="12" fill="#64748b" text-anchor="start" font-weight="400" font-family="'Helvetica Neue', Arial, sans-serif" >GPIO2, 8 e 9 definem o modo de boot: não os use para sensores com pull-up forte ou que puxem o pino na partida.</text>
+</svg>

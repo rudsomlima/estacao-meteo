@@ -6,12 +6,15 @@ Tudo o que é preciso para montar uma estação: lista de materiais, ligações,
 
 ![Diagrama de ligação](img/ligacao.svg)
 
+> O diagrama mostra o BME280. Para o MS5611 (GY-63), veja [Módulos I²C](#módulos-i²c-endereços-e-ligação): a ligação é a mesma, mudam só o módulo e o endereço.
+
 ## Lista de materiais
 
 | Qtde | Item | Observações |
 |---|---|---|
 | 1 | **ESP32-C3** (módulo nu ou placa SuperMini) | Placas de desenvolvimento têm LED e regulador que gastam centenas de µA em sono. Para campo, remova o LED de energia ou use o módulo nu. |
 | 1 | **BME280** (temperatura, umidade, pressão) | Módulo de 3,3 V. Confira se é BME280 mesmo, e não BMP280, que não mede umidade. Endereço 0x76 (SDO em GND) ou 0x77. |
+| 0 ou 1 | **GY-63 com MS5611** (pressão e temperatura) | Opcional: no lugar do BME280 (se não precisar de umidade) ou junto com ele, para uma pressão mais precisa. Veja [Escolha do sensor de ambiente](#escolha-do-sensor-de-ambiente). |
 | 1 | **GY-273 com QMC5883L** (direção) | Endereço I²C **0x0D**. Alguns GY-273 vêm com HMC5883L (0x1E), que **não** funciona com este firmware. |
 | 1 | **Sensor Hall do anemômetro** | Ver [escolha do Hall](#escolha-do-sensor-hall). |
 | 1 | **Sensor Hall do pluviômetro** | Mesmo tipo do anemômetro. |
@@ -37,20 +40,86 @@ Tudo o que é preciso para montar uma estação: lista de materiais, ligações,
 
 Se o sensor não disparar, inverta o ímã. O A3144 liga só com polo sul na face marcada. Confira também a variante do DRV5032, porque as de amostragem lenta podem perder pulsos com o rotor girando rápido.
 
-## Ligações
+## Pinagem do ESP32-C3
+
+![Pinagem do ESP32-C3 SuperMini](img/pinagem.svg)
+
+Padrão do projeto (o site muda qualquer um deles em *Ajustes da estação → Sensores e pinos*):
 
 | Sinal | Pino do ESP32-C3 | Vai para |
 |---|---|---|
-| 3V3 | 3V3 | VCC do BME280, do GY-273 e dos Halls |
+| 3V3 | 3V3 | VCC do BME280, do MS5611, do GY-273 e dos Halls |
 | GND | GND | GND de tudo |
-| SDA | **GPIO6** | SDA do BME280 e do GY-273 |
-| SCL | **GPIO7** | SCL do BME280 e do GY-273 |
+| SDA | **GPIO6** | SDA do BME280, do MS5611 e do GY-273 |
+| SCL | **GPIO7** | SCL do BME280, do MS5611 e do GY-273 |
 | Vento | **GPIO4** | OUT do Hall do anemômetro, com pull-up para 3V3 |
 | Chuva | **GPIO3** | OUT do Hall do pluviômetro, com pull-up para 3V3. Acorda do deep sleep. |
 | Bateria | **GPIO0** (ADC) | Meio do divisor 1 MΩ + 1 MΩ, com 100 nF para o GND |
 | Portal | GPIO9 (BOOT) | Botão da placa. Segurar ao ligar abre o portal Wi-Fi |
 
-Por que esses pinos: só GPIO0 a GPIO5 acordam o ESP32-C3 do deep sleep, e GPIO2, GPIO8 e GPIO9 são pinos de boot. Os módulos I²C já trazem pull-up de 10 kΩ. Os pinos podem ser trocados em [firmware/src/config.h](../firmware/src/config.h).
+Por que esses pinos: só GPIO0 a GPIO5 acordam o ESP32-C3 do deep sleep, GPIO0 a GPIO4 são ADC1 (a leitura da bateria precisa de um deles), e GPIO2, GPIO8 e GPIO9 são pinos de boot. Os módulos I²C já trazem pull-up de 10 kΩ.
+
+### Trocar os pinos
+
+Se a sua placa ou a sua caixa pedem outra fiação, escolha os pinos no site e **ligue os fios do mesmo jeito**. Regras (iguais no site, no servidor e no firmware):
+
+| Função | Pinos aceitos | Motivo |
+|---|---|---|
+| Chuva | GPIO0 a 5 | Precisa acordar o chip do deep sleep. |
+| Bateria | GPIO0 a 4 | Precisa ser entrada analógica do ADC1 (o ADC2 não é usado). |
+| SDA, SCL, vento | GPIO0 a 7, 10, 20, 21 | Qualquer um livre. |
+| Nenhuma | GPIO8, 9, 11 a 19 | 8 e 9 são de boot, 11 a 17 da memória flash, 18 e 19 da USB. |
+
+Duas funções não podem usar o mesmo pino. Ao receber uma mudança de pino a placa reinicia sozinha, e só depois a medição passa a usar os pinos novos. Exemplo para liberar o GPIO6 e o GPIO7 (por exemplo, para outro uso na placa): SDA no GPIO5 e SCL no GPIO10. Nesse caso o pluviômetro continua no GPIO3 e o anemômetro no GPIO4.
+
+## Escolha do sensor de ambiente
+
+Em *Ajustes da estação → Sensores e pinos → Sensor de ambiente*:
+
+| Opção | Mede | Quando usar |
+|---|---|---|
+| **BME280** (padrão) | temperatura, umidade, pressão | Uso geral. Um módulo só. |
+| **MS5611 (GY-63)** | temperatura, pressão (resolução de cerca de 0,012 hPa) | Quando a umidade não interessa, ou para variação de pressão e altitude com mais precisão. O site mostra "—" na umidade. |
+| **BME280 + MS5611** | umidade e temperatura do BME280, pressão do MS5611 | O melhor dos dois. Cada módulo num endereço diferente. |
+| **Nenhum** | nada | Placa de bancada ou sem sensor: só manda o sinal de vida (bateria e Wi-Fi). |
+
+## Módulos I²C: endereços e ligação
+
+![Ligação dos módulos de ambiente](img/ligacao-i2c.svg)
+
+Os três módulos usam os mesmos quatro fios (3V3, GND, SDA, SCL) e se distinguem pelo **endereço I²C**:
+
+| Módulo | Chip | Endereço | Como escolher |
+|---|---|---|---|
+| BME280 | Bosch BME280 | **0x76** ou 0x77 | SDO no GND = 0x76; SDO no 3V3 = 0x77. CSB no 3V3 (modo I²C). |
+| GY-63 | MS5611 | **0x77** ou 0x76 | CSB no GND = 0x77; CSB no 3V3 = 0x76. PS no 3V3 (modo I²C). SDO solto. |
+| GY-273 | QMC5883L | **0x0D** (fixo) | Não muda. DRDY solto. |
+
+### Passo a passo do GY-63 (MS5611)
+
+1. Desligue a alimentação. Ligue **VCC** ao 3V3 do ESP32 (o módulo aceita 3 a 5 V, mas use 3,3 V para casar com o nível lógico do ESP32).
+2. **GND** ao GND.
+3. **SCL** ao pino SCL do ESP32 (GPIO7 no padrão) e **SDA** ao pino SDA (GPIO6).
+4. Confira os jumpers do módulo: **PS** em nível alto (3V3) para o modo I²C (a maioria dos GY-63 já vem assim) e **CSB** em GND para o endereço 0x77. Deixe **SDO** sem ligar.
+5. No site, em *Sensores e pinos*, escolha **MS5611 (GY-63)** (ou **BME280 + MS5611**, se os dois estiverem ligados) e salve.
+6. Na próxima conexão, a placa recebe a configuração. Na página da estação a pressão e a temperatura aparecem no envio seguinte. Se não aparecer, veja a [solução de problemas](solucao-de-problemas.md#leituras-estranhas).
+
+### Os dois juntos (BME280 + MS5611)
+
+- O BME280 em **0x76** (SDO no GND) e o MS5611 em **0x77** (CSB no GND). Nunca os dois no mesmo endereço.
+- Dois ou três módulos com pull-up de 10 kΩ cada em paralelo dão um pull-up equivalente de uns 3 kΩ, que está dentro do que o I²C a 100 kHz aceita. Se usar cabos longos (mais de 30 cm) ou mais módulos, remova os resistores de pull-up de alguns módulos, ou diminua o comprimento do cabo.
+- Mantenha os fios do barramento curtos e longe de cabos de potência. Um cabo de 4 fios trançado em pares (SDA com GND, SCL com GND) reduz ruído.
+
+### Cuidados com o MS5611
+
+- É **sensível à luz**: o furo do sensor expõe o gel. Deixe-o dentro do abrigo de radiação, sem luz direta, como o BME280.
+- Não é à prova d'água: proteja da chuva e da condensação (ventilação sem respingo).
+- A leitura é a do **nível da estação**, como a do BME280, e não é convertida para o nível do mar.
+- Não mede umidade. Com "MS5611" sozinho, o ponto de orvalho e a sensação térmica não aparecem no site.
+
+## Ligações da estação inteira
+
+![Diagrama de ligação](img/ligacao.svg)
 
 ### Divisor da bateria
 

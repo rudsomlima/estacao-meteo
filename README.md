@@ -87,10 +87,12 @@ Em outro terminal, `cd web && npm run dev` (o Vite encaminha `/api` para o Worke
 
 | Sensor | ESP32-C3 |
 |---|---|
-| BME280 e GY-273 (QMC5883L) | SDA = GPIO6, SCL = GPIO7 |
+| BME280, MS5611 (GY-63) e GY-273 (QMC5883L) | SDA = GPIO6, SCL = GPIO7 (os pinos e o sensor se escolhem no site) |
 | Hall do anemômetro | GPIO4 |
 | Hall do pluviômetro | GPIO3 (acorda do deep sleep) |
 | Bateria | GPIO0, divisor de 2× 1 MΩ |
+
+Pinagem completa, endereços I²C e o passo a passo do MS5611 estão em [docs/hardware.md](docs/hardware.md#pinagem-do-esp32-c3).
 
 ## Consumo estimado
 

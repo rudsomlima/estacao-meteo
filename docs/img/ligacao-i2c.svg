@@ -1,0 +1,104 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1060 860" width="1060" height="860" role="img" aria-label="Ligação dos módulos de ambiente (I2C)">
+<title>Ligação dos módulos de ambiente (I2C)</title>
+<rect width="1060" height="860" fill="#ffffff"/>
+<text x="40" y="40" font-size="24" fill="#0f172a" text-anchor="start" font-weight="700" font-family="'Helvetica Neue', Arial, sans-serif" >Módulos de ambiente no barramento I²C</text>
+<text x="40" y="62" font-size="13" fill="#64748b" text-anchor="start" font-weight="400" font-family="'Helvetica Neue', Arial, sans-serif" >Os sensores compartilham os mesmos 4 fios. O que muda entre eles é o endereço, escolhido com os jumpers de CSB e SDO.</text>
+<rect x="40" y="110" width="170" height="190" rx="10" fill="#e0f2fe" stroke="#0284c7" stroke-width="2.2" />
+<text x="125" y="134" font-size="15" fill="#0f172a" text-anchor="middle" font-weight="700" font-family="'Helvetica Neue', Arial, sans-serif" >ESP32-C3</text>
+<text x="125" y="152" font-size="11" fill="#64748b" text-anchor="middle" font-weight="400" font-family="'Helvetica Neue', Arial, sans-serif" >SuperMini</text>
+<text x="200" y="184" font-size="11" fill="#d62828" text-anchor="end" font-weight="400" font-family="ui-monospace, 'SFMono-Regular', Menlo, Consolas, monospace" >3V3</text>
+<path d="M210,180 L390,180" fill="none" stroke="#d62828" stroke-width="2.6" stroke-linejoin="round" stroke-linecap="round"/>
+<circle cx="390" cy="180" r="3.6" fill="#d62828"/>
+<text x="200" y="214" font-size="11" fill="#1f2933" text-anchor="end" font-weight="400" font-family="ui-monospace, 'SFMono-Regular', Menlo, Consolas, monospace" >GND</text>
+<path d="M210,210 L360,210" fill="none" stroke="#1f2933" stroke-width="2.6" stroke-linejoin="round" stroke-linecap="round"/>
+<circle cx="360" cy="210" r="3.6" fill="#1f2933"/>
+<text x="200" y="244" font-size="11" fill="#15803d" text-anchor="end" font-weight="400" font-family="ui-monospace, 'SFMono-Regular', Menlo, Consolas, monospace" >GPIO7 · SCL</text>
+<path d="M210,240 L330,240" fill="none" stroke="#15803d" stroke-width="2.6" stroke-linejoin="round" stroke-linecap="round"/>
+<circle cx="330" cy="240" r="3.6" fill="#15803d"/>
+<text x="200" y="274" font-size="11" fill="#1d4ed8" text-anchor="end" font-weight="400" font-family="ui-monospace, 'SFMono-Regular', Menlo, Consolas, monospace" >GPIO6 · SDA</text>
+<path d="M210,270 L300,270" fill="none" stroke="#1d4ed8" stroke-width="2.6" stroke-linejoin="round" stroke-linecap="round"/>
+<circle cx="300" cy="270" r="3.6" fill="#1d4ed8"/>
+<path d="M390,180 L390,790" fill="none" stroke="#d62828" stroke-width="2.6" stroke-linejoin="round" stroke-linecap="round"/>
+<path d="M360,210 L360,790" fill="none" stroke="#1f2933" stroke-width="2.6" stroke-linejoin="round" stroke-linecap="round"/>
+<path d="M330,240 L330,790" fill="none" stroke="#15803d" stroke-width="2.6" stroke-linejoin="round" stroke-linecap="round"/>
+<path d="M300,270 L300,790" fill="none" stroke="#1d4ed8" stroke-width="2.6" stroke-linejoin="round" stroke-linecap="round"/>
+<text x="300" y="812" font-size="11" fill="#1d4ed8" text-anchor="middle" font-weight="400" font-family="ui-monospace, 'SFMono-Regular', Menlo, Consolas, monospace" >SDA</text>
+<text x="330" y="812" font-size="11" fill="#15803d" text-anchor="middle" font-weight="400" font-family="ui-monospace, 'SFMono-Regular', Menlo, Consolas, monospace" >SCL</text>
+<text x="360" y="812" font-size="11" fill="#1f2933" text-anchor="middle" font-weight="400" font-family="ui-monospace, 'SFMono-Regular', Menlo, Consolas, monospace" >GND</text>
+<text x="390" y="812" font-size="11" fill="#d62828" text-anchor="middle" font-weight="400" font-family="ui-monospace, 'SFMono-Regular', Menlo, Consolas, monospace" >3V3</text>
+<rect x="520" y="110" width="500" height="190" rx="8" fill="#f8fafc" stroke="#94a3b8" stroke-width="1.6" />
+<text x="536" y="136" font-size="15" fill="#0f172a" text-anchor="start" font-weight="700" font-family="'Helvetica Neue', Arial, sans-serif" >BME280</text>
+<text x="536" y="154" font-size="11" fill="#64748b" text-anchor="start" font-weight="400" font-family="'Helvetica Neue', Arial, sans-serif" >temperatura · umidade · pressão (módulo de 3,3 V)</text>
+<path d="M390,186 L520,186" fill="none" stroke="#d62828" stroke-width="2.4" stroke-linejoin="round" stroke-linecap="round"/>
+<circle cx="390" cy="186" r="3.6" fill="#d62828"/>
+<circle cx="520" cy="186" r="3.6" fill="#d62828"/>
+<text x="530" y="190" font-size="11" fill="#d62828" text-anchor="start" font-weight="400" font-family="ui-monospace, 'SFMono-Regular', Menlo, Consolas, monospace" >VCC</text>
+<path d="M360,212 L520,212" fill="none" stroke="#1f2933" stroke-width="2.4" stroke-linejoin="round" stroke-linecap="round"/>
+<circle cx="360" cy="212" r="3.6" fill="#1f2933"/>
+<circle cx="520" cy="212" r="3.6" fill="#1f2933"/>
+<text x="530" y="216" font-size="11" fill="#1f2933" text-anchor="start" font-weight="400" font-family="ui-monospace, 'SFMono-Regular', Menlo, Consolas, monospace" >GND</text>
+<path d="M330,238 L520,238" fill="none" stroke="#15803d" stroke-width="2.4" stroke-linejoin="round" stroke-linecap="round"/>
+<circle cx="330" cy="238" r="3.6" fill="#15803d"/>
+<circle cx="520" cy="238" r="3.6" fill="#15803d"/>
+<text x="530" y="242" font-size="11" fill="#15803d" text-anchor="start" font-weight="400" font-family="ui-monospace, 'SFMono-Regular', Menlo, Consolas, monospace" >SCL</text>
+<path d="M300,264 L520,264" fill="none" stroke="#1d4ed8" stroke-width="2.4" stroke-linejoin="round" stroke-linecap="round"/>
+<circle cx="300" cy="264" r="3.6" fill="#1d4ed8"/>
+<circle cx="520" cy="264" r="3.6" fill="#1d4ed8"/>
+<text x="530" y="268" font-size="11" fill="#1d4ed8" text-anchor="start" font-weight="400" font-family="ui-monospace, 'SFMono-Regular', Menlo, Consolas, monospace" >SDA</text>
+<rect x="640" y="168" width="360" height="28" rx="6" fill="#ecfeff" stroke="#0891b2" stroke-width="1.4" />
+<text x="820" y="187" font-size="12" fill="#0e7490" text-anchor="middle" font-weight="700" font-family="'Helvetica Neue', Arial, sans-serif" >endereço 0x76  (SDO → GND)</text>
+<text x="650" y="218" font-size="11" fill="#0f172a" text-anchor="start" font-weight="400" font-family="ui-monospace, 'SFMono-Regular', Menlo, Consolas, monospace" >CSB → 3V3    (modo I²C)</text>
+<text x="650" y="236" font-size="11" fill="#0f172a" text-anchor="start" font-weight="400" font-family="ui-monospace, 'SFMono-Regular', Menlo, Consolas, monospace" >SDO → GND    ⇒ 0x76</text>
+<text x="650" y="254" font-size="11" fill="#0f172a" text-anchor="start" font-weight="400" font-family="ui-monospace, 'SFMono-Regular', Menlo, Consolas, monospace" >SDO → 3V3    ⇒ 0x77</text>
+<text x="650" y="278" font-size="10" fill="#64748b" text-anchor="start" font-weight="400" font-family="'Helvetica Neue', Arial, sans-serif" >Confira se é BME280 mesmo: o BMP280 não mede umidade.</text>
+<rect x="520" y="330" width="500" height="190" rx="8" fill="#f8fafc" stroke="#94a3b8" stroke-width="1.6" />
+<text x="536" y="356" font-size="15" fill="#0f172a" text-anchor="start" font-weight="700" font-family="'Helvetica Neue', Arial, sans-serif" >MS5611  ·  módulo GY-63</text>
+<text x="536" y="374" font-size="11" fill="#64748b" text-anchor="start" font-weight="400" font-family="'Helvetica Neue', Arial, sans-serif" >pressão e temperatura (sem umidade)</text>
+<path d="M390,406 L520,406" fill="none" stroke="#d62828" stroke-width="2.4" stroke-linejoin="round" stroke-linecap="round"/>
+<circle cx="390" cy="406" r="3.6" fill="#d62828"/>
+<circle cx="520" cy="406" r="3.6" fill="#d62828"/>
+<text x="530" y="410" font-size="11" fill="#d62828" text-anchor="start" font-weight="400" font-family="ui-monospace, 'SFMono-Regular', Menlo, Consolas, monospace" >VCC</text>
+<path d="M360,432 L520,432" fill="none" stroke="#1f2933" stroke-width="2.4" stroke-linejoin="round" stroke-linecap="round"/>
+<circle cx="360" cy="432" r="3.6" fill="#1f2933"/>
+<circle cx="520" cy="432" r="3.6" fill="#1f2933"/>
+<text x="530" y="436" font-size="11" fill="#1f2933" text-anchor="start" font-weight="400" font-family="ui-monospace, 'SFMono-Regular', Menlo, Consolas, monospace" >GND</text>
+<path d="M330,458 L520,458" fill="none" stroke="#15803d" stroke-width="2.4" stroke-linejoin="round" stroke-linecap="round"/>
+<circle cx="330" cy="458" r="3.6" fill="#15803d"/>
+<circle cx="520" cy="458" r="3.6" fill="#15803d"/>
+<text x="530" y="462" font-size="11" fill="#15803d" text-anchor="start" font-weight="400" font-family="ui-monospace, 'SFMono-Regular', Menlo, Consolas, monospace" >SCL</text>
+<path d="M300,484 L520,484" fill="none" stroke="#1d4ed8" stroke-width="2.4" stroke-linejoin="round" stroke-linecap="round"/>
+<circle cx="300" cy="484" r="3.6" fill="#1d4ed8"/>
+<circle cx="520" cy="484" r="3.6" fill="#1d4ed8"/>
+<text x="530" y="488" font-size="11" fill="#1d4ed8" text-anchor="start" font-weight="400" font-family="ui-monospace, 'SFMono-Regular', Menlo, Consolas, monospace" >SDA</text>
+<rect x="640" y="388" width="360" height="28" rx="6" fill="#ecfeff" stroke="#0891b2" stroke-width="1.4" />
+<text x="820" y="407" font-size="12" fill="#0e7490" text-anchor="middle" font-weight="700" font-family="'Helvetica Neue', Arial, sans-serif" >endereço 0x77  (CSB → GND)</text>
+<text x="650" y="438" font-size="11" fill="#0f172a" text-anchor="start" font-weight="400" font-family="ui-monospace, 'SFMono-Regular', Menlo, Consolas, monospace" >PS  → 3V3    (modo I²C; muitos módulos já trazem)</text>
+<text x="650" y="456" font-size="11" fill="#0f172a" text-anchor="start" font-weight="400" font-family="ui-monospace, 'SFMono-Regular', Menlo, Consolas, monospace" >CSB → GND    ⇒ 0x77</text>
+<text x="650" y="474" font-size="11" fill="#0f172a" text-anchor="start" font-weight="400" font-family="ui-monospace, 'SFMono-Regular', Menlo, Consolas, monospace" >CSB → 3V3    ⇒ 0x76</text>
+<text x="650" y="492" font-size="11" fill="#0f172a" text-anchor="start" font-weight="400" font-family="ui-monospace, 'SFMono-Regular', Menlo, Consolas, monospace" >SDO: deixar solto (é do modo SPI)</text>
+<text x="650" y="516" font-size="10" fill="#64748b" text-anchor="start" font-weight="400" font-family="'Helvetica Neue', Arial, sans-serif" >Sensível à luz: abrigue do sol direto.</text>
+<rect x="520" y="550" width="500" height="190" rx="8" fill="#f8fafc" stroke="#94a3b8" stroke-width="1.6" />
+<text x="536" y="576" font-size="15" fill="#0f172a" text-anchor="start" font-weight="700" font-family="'Helvetica Neue', Arial, sans-serif" >GY-273  ·  QMC5883L</text>
+<text x="536" y="594" font-size="11" fill="#64748b" text-anchor="start" font-weight="400" font-family="'Helvetica Neue', Arial, sans-serif" >bússola da biruta (direção do vento)</text>
+<path d="M390,626 L520,626" fill="none" stroke="#d62828" stroke-width="2.4" stroke-linejoin="round" stroke-linecap="round"/>
+<circle cx="390" cy="626" r="3.6" fill="#d62828"/>
+<circle cx="520" cy="626" r="3.6" fill="#d62828"/>
+<text x="530" y="630" font-size="11" fill="#d62828" text-anchor="start" font-weight="400" font-family="ui-monospace, 'SFMono-Regular', Menlo, Consolas, monospace" >VCC</text>
+<path d="M360,652 L520,652" fill="none" stroke="#1f2933" stroke-width="2.4" stroke-linejoin="round" stroke-linecap="round"/>
+<circle cx="360" cy="652" r="3.6" fill="#1f2933"/>
+<circle cx="520" cy="652" r="3.6" fill="#1f2933"/>
+<text x="530" y="656" font-size="11" fill="#1f2933" text-anchor="start" font-weight="400" font-family="ui-monospace, 'SFMono-Regular', Menlo, Consolas, monospace" >GND</text>
+<path d="M330,678 L520,678" fill="none" stroke="#15803d" stroke-width="2.4" stroke-linejoin="round" stroke-linecap="round"/>
+<circle cx="330" cy="678" r="3.6" fill="#15803d"/>
+<circle cx="520" cy="678" r="3.6" fill="#15803d"/>
+<text x="530" y="682" font-size="11" fill="#15803d" text-anchor="start" font-weight="400" font-family="ui-monospace, 'SFMono-Regular', Menlo, Consolas, monospace" >SCL</text>
+<path d="M300,704 L520,704" fill="none" stroke="#1d4ed8" stroke-width="2.4" stroke-linejoin="round" stroke-linecap="round"/>
+<circle cx="300" cy="704" r="3.6" fill="#1d4ed8"/>
+<circle cx="520" cy="704" r="3.6" fill="#1d4ed8"/>
+<text x="530" y="708" font-size="11" fill="#1d4ed8" text-anchor="start" font-weight="400" font-family="ui-monospace, 'SFMono-Regular', Menlo, Consolas, monospace" >SDA</text>
+<rect x="640" y="608" width="360" height="28" rx="6" fill="#ecfeff" stroke="#0891b2" stroke-width="1.4" />
+<text x="820" y="627" font-size="12" fill="#0e7490" text-anchor="middle" font-weight="700" font-family="'Helvetica Neue', Arial, sans-serif" >endereço 0x0D  (fixo)</text>
+<text x="650" y="658" font-size="11" fill="#0f172a" text-anchor="start" font-weight="400" font-family="ui-monospace, 'SFMono-Regular', Menlo, Consolas, monospace" >DRDY: deixar solto</text>
+<text x="650" y="682" font-size="10" fill="#64748b" text-anchor="start" font-weight="400" font-family="'Helvetica Neue', Arial, sans-serif" >Se o seu GY-273 for HMC5883L (0x1E), não funciona.</text>
+<text x="40" y="840" font-size="12" fill="#64748b" text-anchor="start" font-weight="400" font-family="'Helvetica Neue', Arial, sans-serif" >Em "BME280 + MS5611" o BME280 fica em 0x76 e o MS5611 em 0x77. Dois módulos no mesmo endereço não funcionam.</text>
+</svg>
