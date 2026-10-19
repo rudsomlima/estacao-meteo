@@ -253,6 +253,11 @@ const asBody = (cookie, body) => ({ body, headers: { cookie } })
 
 let r2 = await call('GET', '/api/auth/config')
 check('informa o Client ID do Google', r2.json?.clientId === CLIENT_ID, r2.text)
+// entrada sem senha (só dev: DEV_LOGIN=1 no .dev.vars e pedido de localhost)
+r2 = await call('POST', '/api/auth/dev', { body: { role: 'user' } })
+check('entrada sem senha como usuário (dev)', r2.status === 200 && r2.json?.user?.role === 'user' && /sess=/.test(r2.headers.get('set-cookie') ?? ''), r2.text)
+r2 = await call('POST', '/api/auth/dev', { body: { role: 'admin' } })
+check('entrada sem senha como administrador (dev)', r2.status === 200 && r2.json?.user?.role === 'admin', r2.text)
 r2 = await call('GET', '/api/auth/me')
 check('sem login, /me devolve user nulo', r2.status === 200 && r2.json?.user === null)
 r2 = (await login('rudsomlima@gmail.com')).r

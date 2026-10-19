@@ -1,13 +1,13 @@
 import { LogIn, LogOut, ShieldCheck, UserRound } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
 import { go } from '../hooks/useRoute'
-import { signOut } from '../lib/auth'
+import { signInDev, signOut } from '../lib/auth'
 import { useSession } from '../lib/session'
 import GoogleLogin from './GoogleLogin'
 
 /** Entrar com o Google, ou o menu de quem já entrou (painel do administrador e sair). Só aparece se o servidor tem login configurado. */
 export default function AuthMenu() {
-  const { user, clientId, loaded } = useSession()
+  const { user, clientId, loaded, devLogin } = useSession()
   const [open, setOpen] = useState(false)
   const box = useRef<HTMLDivElement>(null)
 
@@ -27,7 +27,7 @@ export default function AuthMenu() {
     return () => window.removeEventListener('meteo:login', on)
   }, [])
 
-  if (!loaded || !clientId) return null
+  if (!loaded || (!clientId && !devLogin)) return null
 
   return (
     <div ref={box} className="relative shrink-0">
@@ -59,7 +59,14 @@ export default function AuthMenu() {
           ) : (
             <div className="grid gap-3">
               <p className="text-ink-2">Entre com sua conta Google para cadastrar e configurar as suas estações.</p>
-              <GoogleLogin onDone={() => setOpen(false)} />
+              {clientId && <GoogleLogin onDone={() => setOpen(false)} />}
+              {devLogin && (
+                <div className="grid gap-2 border-t border-line pt-3">
+                  <p className="num text-xs text-warn">Modo de desenvolvimento: sem senha</p>
+                  <button onClick={() => void signInDev('admin').then(() => setOpen(false))} className="rounded-lg border border-line px-3 py-2 text-left hover:bg-card-hover">Entrar como administrador</button>
+                  <button onClick={() => void signInDev('user').then(() => setOpen(false))} className="rounded-lg border border-line px-3 py-2 text-left hover:bg-card-hover">Entrar como usuário comum</button>
+                </div>
+              )}
             </div>
           )}
         </div>

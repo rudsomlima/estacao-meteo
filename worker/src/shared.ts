@@ -6,6 +6,8 @@ export interface Env {
   /** Client ID do Google (público) e e-mails dos administradores, separados por vírgula: veja wrangler.toml */
   GOOGLE_CLIENT_ID?: string
   ADMIN_EMAILS?: string
+  /** só em desenvolvimento (.dev.vars): "1" liga a entrada sem senha em localhost. Nunca defina em produção. */
+  DEV_LOGIN?: string
   /** só para testes: aponta as chaves do Google para um servidor local */
   GOOGLE_JWKS_URL?: string
   ADMIN_TOKEN: string

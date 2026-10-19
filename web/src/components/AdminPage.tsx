@@ -9,6 +9,7 @@ import AdminConfig from './admin/AdminConfig'
 import AdminFirmware from './admin/AdminFirmware'
 import { AdminSecurity, AdminUsers } from './admin/AdminUsersSecurity'
 import { Section, useLoad } from './admin/ui'
+import { signInDev } from '../lib/auth'
 import GoogleLogin from './GoogleLogin'
 
 const TABS = [
@@ -58,19 +59,22 @@ function Overview({ stations, users }: { stations: AdminStation[]; users: number
 
 /** Painel do administrador: todas as estações, configuração em massa, firmware com acompanhamento, usuários e segurança. */
 export default function AdminPage() {
-  const { user, clientId, loaded } = useSession()
+  const { user, clientId, loaded, devLogin } = useSession()
   const [tab, setTab] = useState<Tab>(() => (TABS.some(([k]) => k === store.get(TAB_KEY)) ? (store.get(TAB_KEY) as Tab) : 'geral'))
   const { data, error, reload } = useLoad(getOverview, user?.role === 'admin')
 
   const pick = (t: Tab) => { setTab(t); store.set(TAB_KEY, t) }
 
   if (!loaded) return <div className="px-4 pt-24 text-sm text-ink-3">Carregando…</div>
-  if (!clientId) return <div className="mx-auto max-w-2xl px-4 pt-24"><h1 className="font-display text-3xl font-bold">Administração</h1><p className="mt-3 text-ink-2">O login com Google não está configurado neste servidor (<span className="num">GOOGLE_CLIENT_ID</span>).</p></div>
+  if (!clientId && !devLogin) return <div className="mx-auto max-w-2xl px-4 pt-24"><h1 className="font-display text-3xl font-bold">Administração</h1><p className="mt-3 text-ink-2">O login com Google não está configurado neste servidor (<span className="num">GOOGLE_CLIENT_ID</span>).</p></div>
   if (!user) return (
     <div className="mx-auto max-w-2xl px-4 pt-24">
       <h1 className="font-display text-3xl font-bold">Administração</h1>
       <p className="mt-3 text-ink-2">Entre com a conta Google de administrador.</p>
-      <div className="mt-4"><GoogleLogin /></div>
+      <div className="mt-4 grid gap-3">
+        {clientId && <GoogleLogin />}
+        {devLogin && <button onClick={() => void signInDev('admin')} className="w-fit rounded-xl border border-line px-4 py-2 text-sm hover:bg-card-hover">Entrar como administrador (modo dev, sem senha)</button>}
+      </div>
     </div>
   )
   if (user.role !== 'admin') return <div className="mx-auto max-w-2xl px-4 pt-24"><h1 className="font-display text-3xl font-bold">Administração</h1><p className="mt-3 text-ink-2">A conta <b>{user.email}</b> não é administradora.</p></div>

@@ -445,9 +445,21 @@ async function telegramTest(env: Env, raw: Uint8Array) {
 }
 
 // ---------------- login com Google ----------------
+/** Entrada sem senha só para desenvolvimento: precisa de DEV_LOGIN=1 (que só existe no .dev.vars) E de o pedido vir de localhost. */
+const devLoginOn = (req: Request, env: Env) => env.DEV_LOGIN === '1' && ['localhost', '127.0.0.1', '[::1]'].includes(new URL(req.url).hostname)
+
 async function authRoute(req: Request, env: Env, raw: Uint8Array): Promise<Response | null> {
   const p = new URL(req.url).pathname
-  if (p === '/api/auth/config' && req.method === 'GET') return json({ clientId: env.GOOGLE_CLIENT_ID ?? null })
+  if (p === '/api/auth/config' && req.method === 'GET') return json({ clientId: env.GOOGLE_CLIENT_ID ?? null, devLogin: devLoginOn(req, env) })
+  if (p === '/api/auth/dev' && req.method === 'POST') {
+    if (!devLoginOn(req, env)) return json({ error: 'rota não encontrada' }, 404)
+    const role = parseJson(raw)?.role === 'user' ? 'user' : 'admin'
+    const email = role === 'admin' ? 'dev-admin@localhost' : 'dev-user@localhost'
+    const now = Math.floor(Date.now() / 1000)
+    await env.DB.prepare("INSERT INTO users (email, name, picture, role, created_at, last_login) VALUES (?,?,'',?,?,?) ON CONFLICT(email) DO UPDATE SET role = excluded.role, last_login = excluded.last_login").bind(email, role === 'admin' ? 'Dev (administrador)' : 'Dev (usuário)', role, now, now).run()
+    const user: User = { email, name: role === 'admin' ? 'Dev (administrador)' : 'Dev (usuário)', picture: '', role }
+    return json({ user }, 200, { 'set-cookie': sessionCookie(req, await newSession(env, email)) })
+  }
   if (p === '/api/auth/me' && req.method === 'GET') {
     const u = await getUser(req, env)
     return json({ user: u })

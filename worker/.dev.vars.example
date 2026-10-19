@@ -5,3 +5,5 @@ TELEGRAM_API=http://127.0.0.1:8799
 
 # So para os testes: o npm run smoke sobe um servidor de chaves do Google falso nesta porta. Em producao NAO defina.
 GOOGLE_JWKS_URL=http://127.0.0.1:8798/jwks
+# So em desenvolvimento: libera o botao "Entrar sem senha" em localhost. NUNCA defina em producao.
+DEV_LOGIN=1

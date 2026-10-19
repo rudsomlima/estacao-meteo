@@ -4,8 +4,8 @@ import { getSession, setSession, type AuthUser } from './session'
 /** Descobre se há login com Google no servidor e quem está logado (cookie de sessão). Chamado uma vez ao abrir o site. */
 export async function loadAuth() {
   try {
-    const [cfg, me] = await Promise.all([request<{ clientId: string | null }>('/api/auth/config'), request<{ user: AuthUser | null }>('/api/auth/me')])
-    setSession({ clientId: cfg.clientId, user: me.user, loaded: true })
+    const [cfg, me] = await Promise.all([request<{ clientId: string | null; devLogin?: boolean }>('/api/auth/config'), request<{ user: AuthUser | null }>('/api/auth/me')])
+    setSession({ clientId: cfg.clientId, devLogin: import.meta.env.DEV && cfg.devLogin === true, user: me.user, loaded: true })
   } catch {
     setSession({ loaded: true }) // sem API (demonstração): nada de login
   }
@@ -13,6 +13,13 @@ export async function loadAuth() {
 
 export async function signInWithGoogle(credential: string): Promise<AuthUser> {
   const r = await request<{ user: AuthUser }>('/api/auth/google', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ credential }) })
+  setSession({ user: r.user })
+  return r.user
+}
+
+/** Só em desenvolvimento (o servidor recusa fora de localhost e o botão nem existe no site publicado). */
+export async function signInDev(role: 'admin' | 'user'): Promise<AuthUser> {
+  const r = await request<{ user: AuthUser }>('/api/auth/dev', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ role }) })
   setSession({ user: r.user })
   return r.user
 }

@@ -2,9 +2,9 @@ import { useSyncExternalStore } from 'react'
 
 /** Quem está logado neste navegador (login com Google). Só guarda o estado; as chamadas estão em auth.ts. */
 export interface AuthUser { email: string; name: string; picture: string; role: 'admin' | 'user' }
-interface State { user: AuthUser | null; clientId: string | null; loaded: boolean }
+interface State { user: AuthUser | null; clientId: string | null; loaded: boolean; devLogin: boolean }
 
-let state: State = { user: null, clientId: null, loaded: false }
+let state: State = { user: null, clientId: null, loaded: false, devLogin: false }
 const subs = new Set<() => void>()
 
 export const getSession = () => state
