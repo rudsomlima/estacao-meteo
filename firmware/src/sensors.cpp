@@ -9,7 +9,10 @@
 static Adafruit_BME280 bme;
 
 // ---------------- bateria ----------------
+float simVbat = -1;  // >= 0: tensão simulada pelo comando USB "simvbat" (testes); a placa volta ao normal ao reiniciar
+
 float batteryVolts() {
+  if (simVbat >= 0) return simVbat;
   analogSetPinAttenuation(PIN_VBAT, ADC_11db);
   uint32_t mv = 0;
   for (int i = 0; i < 16; i++) { mv += analogReadMilliVolts(PIN_VBAT); delayMicroseconds(200); }

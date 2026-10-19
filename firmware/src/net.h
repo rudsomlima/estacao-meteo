@@ -30,6 +30,7 @@ struct PostResult {
   bool modeChanged;  // a configuração nova trocou o modo de vento: reinicie
   OtaOffer ota;
   String cmd;        // comando do administrador ("restart"), entregue na resposta
+  bool cfgApplied;  // a resposta trouxe uma configuração nova e ela foi aplicada: confirme logo ao servidor
 };
 
 /**

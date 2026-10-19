@@ -30,7 +30,7 @@ Instale o PlatformIO com `pip install platformio` ou pela extensão do VS Code.
 3. Escolha o Wi-Fi e a senha, o **endereço do site** (`https://...workers.dev`) e a **chave do dispositivo** (mostrada ao criar a estação no site).
 4. Salve. A estação mede, envia a primeira leitura e passa a seguir a rotina.
 
-Para reabrir o portal: segure o botão **BOOT** (GPIO9) ao ligar. Com o cabo num computador o portal não abre sozinho (a configuração é pelo site, pela USB); para usá-lo mesmo assim, segure BOOT ao ligar.
+Para reabrir o portal: ligue a placa e, **nos primeiros 6 segundos**, aperte o botão **BOOT** (GPIO9) por meio segundo. **Não segure o BOOT ao ligar**: com o GPIO9 em nível baixo no reset o ESP32-C3 entra em modo de gravação e o firmware nem executa (foi o motivo de o portal "não abrir" nas versões antigas). Com o cabo num computador o portal não abre sozinho (a configuração é pelo site, pela USB); para usá-lo mesmo assim, aperte BOOT nessa janela, ou mande `{"cmd":"portal"}` pela USB.
 
 ## Como funciona um ciclo
 
@@ -148,7 +148,7 @@ Se a placa estiver dormindo (a porta não aparece), o site avisa para apertar RE
 1. Grave a placa uma vez, por cabo, com o endereço do seu site embutido (veja *Gravar o firmware pelo navegador*; o portal deixa de pedi-lo). Envie já gravada para quem vai instalar.
 2. No site, **Adicionar estação** (ou, numa estação existente, *Configurações → Gerar código de pareamento*). O site mostra um código como `K7F-29Q` e um texto pronto para mandar a quem instala.
 3. Quem instala liga a placa, conecta o celular em `EstacaoMeteo-XXXX`, escolhe a rede do local e digita o código. Pronto.
-4. Assim que conecta ao Wi-Fi, a placa troca o código pela chave (`POST /api/claim`) e passa a enviar. Se faltar internet naquele momento, ela guarda o código e tenta de novo nos próximos ciclos. Se o código estiver errado ou vencido, ela o descarta: gere outro e refaça o portal (segure BOOT ao ligar).
+4. Assim que conecta ao Wi-Fi, a placa troca o código pela chave (`POST /api/claim`) e passa a enviar. Se faltar internet naquele momento, ela guarda o código e tenta de novo nos próximos ciclos. Se o código estiver errado ou vencido, ela o descarta: gere outro e refaça o portal (aperte BOOT nos primeiros 6 s depois de ligar).
 
 O pareamento só funciona com o endereço em `https://`, porque a chave viaja na resposta. Os campos *ID* e *chave* do portal continuam existindo como alternativa manual.
 
@@ -162,12 +162,22 @@ Como funciona: ao ligar com o cabo num computador, o firmware escuta a USB por 1
 - O site precisa estar em `https://` ou `localhost`, e a placa não alcança `localhost`, então o endereço gravado nela deve ser o publicado ou o IP do computador.
 
 
+### Comandos de diagnóstico pela USB
+
+Além de `hello`, `scan`, `provision`, `config` e `restart`, a placa entende (uma linha JSON por comando):
+
+| Comando | Para que serve |
+|---|---|
+| `{"cmd":"diag"}` | Devolve **tudo o que a placa tem guardado** (todos os campos da configuração, inclusive pinos e sensor) e o estado do ciclo: nível de bateria, se está carregando, leituras no lote, falhas seguidas de Wi-Fi, intervalo atual e quanto falta para o próximo ciclo. |
+| `{"cmd":"simvbat","v":3.4}` | Simula a tensão da bateria (`v` negativo desliga). Serve para testar economia, hibernação e carga sem uma bateria ligada. Some ao reiniciar. |
+| `{"cmd":"portal"}` | Abre o portal Wi-Fi (3 min) como se o BOOT tivesse sido apertado. |
+
 ### Configuração aplicada pelo cabo
 
 Com a placa desta estação ligada ao computador e reconhecida pelo site (painel *Placa USB detectada*), **salvar a configuração a aplica na hora, pelo cabo**: o site manda o comando `{"cmd":"config","config":{...}}` (a mesma configuração que o servidor entregaria no próximo envio) e a placa responde `{"ok":true,"version":N,"restarting":false}`. Sem reiniciar, ela sai da espera, mede e envia já, para o servidor registrar a versão como aplicada. Se a mudança for de pinos ou do modo do vento, a placa reinicia sozinha (`"restarting":true`). Só vale se o `id` da placa for o da estação que está sendo salva; se não houver placa no cabo, a configuração segue pelo servidor, como antes. O firmware precisa ser o 0.4.1 ou mais novo.
 ## Modo bancada (sem cabo serial)
 
-Ao ligar a estação (boot a frio) com Wi-Fi já salvo, **depois de enviar a primeira leitura**, ela abre por `bench_min` minutos uma página local, em `http://estacao-xxxx.local` ou no IP que aparece no log. A página mostra as leituras ao vivo e tem botões para **calibrar a biruta** e **mostrar o ângulo do norte**, sem monitor serial. A página não tem senha: qualquer um na sua rede enquanto ela estiver aberta pode vê-la, por isso ela é curta. O botão *Terminar* encerra antes. Depois a estação segue a rotina normal. Segurar o botão BOOT ao ligar pula o modo bancada e abre o portal Wi-Fi.
+Ao ligar a estação (boot a frio) com Wi-Fi já salvo, **depois de enviar a primeira leitura**, ela abre por `bench_min` minutos uma página local, em `http://estacao-xxxx.local` ou no IP que aparece no log. A página mostra as leituras ao vivo e tem botões para **calibrar a biruta** e **mostrar o ângulo do norte**, sem monitor serial. A página não tem senha: qualquer um na sua rede enquanto ela estiver aberta pode vê-la, por isso ela é curta. O botão *Terminar* encerra antes. Depois a estação segue a rotina normal. Apertar o botão BOOT nos primeiros 6 s depois de ligar pula o modo bancada e abre o portal Wi-Fi.
 
 O modo bancada gasta bateria (Wi-Fi ligado). Em campo, ponha `bench_min` em 0.
 

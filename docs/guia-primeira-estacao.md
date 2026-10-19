@@ -118,7 +118,7 @@ Para gerar outro código numa estação que já existe: página da estação →
 
 Use se a USB não funcionou.
 
-1. Ligue a placa **com bateria ou carregador, sem o cabo num computador** (com o cabo, ela espera a configuração pelo site). Sem Wi-Fi salvo, ela cria a rede **EstacaoMeteo-XXXX**. Se já tinha Wi-Fi salvo, **segure o botão BOOT** (GPIO9) enquanto liga.
+1. Ligue a placa **com bateria ou carregador, sem o cabo num computador** (com o cabo, ela espera a configuração pelo site). Sem Wi-Fi salvo, ela cria a rede **EstacaoMeteo-XXXX**. Se já tinha Wi-Fi salvo, **ligue a placa e, nos primeiros 6 segundos, aperte o botão BOOT** (GPIO9) por meio segundo. Não o segure ao ligar: com BOOT apertado no reset o ESP32-C3 entra em modo de gravação e não executa o firmware.
 2. No celular, conecte nessa rede. Uma página de configuração abre sozinha (se não abrir, vá a `192.168.4.1`).
 3. Escolha o Wi-Fi e a senha, informe o **endereço do site** e o **código de pareamento** (ou, à mão, o **ID** e a **chave do dispositivo**).
 4. Salve. A placa mede, envia a primeira leitura e passa a seguir a rotina.

@@ -65,7 +65,18 @@ WindResult windMeasure(uint16_t seconds) {
   const int64_t t0 = esp_timer_get_time();
   int64_t nextSec = t0 + 1000000, nextDir = t0 + dirPeriod;
 
-  bool plugged = usbPlugged();
+  // Cabo no computador: uma vez visto, só se considera removido depois de 1,5 s SEM sinal da USB com a placa ACORDADA. O light
+  // sleep corta o clock da USB e a placa deixaria de "ver" o cabo por conta própria (ficava presa em light sleep, sem porta).
+  static bool wasPlugged = false;
+  static uint32_t goneMs = 0;
+  auto cablePlugged = []() {
+    if (usbPlugged()) { wasPlugged = true; goneMs = 0; return true; }
+    if (!wasPlugged) return false;
+    if (!goneMs) goneMs = millis();
+    if (millis() - goneMs > 1500) { wasPlugged = false; goneMs = 0; return false; }
+    return true;
+  };
+  bool plugged = cablePlugged();
   while (sec < seconds) {
     const int64_t now = esp_timer_get_time();
     pollPins(now);
@@ -79,7 +90,7 @@ WindResult windMeasure(uint16_t seconds) {
       bucket[sec++] = (uint16_t)min<uint32_t>(windCount - lastCount, 65535);
       lastCount = windCount;
       nextSec += 1000000;
-      plugged = usbPlugged();  // o cabo pode ter sido plugado ou tirado durante uma medição longa
+      plugged = cablePlugged();  // o cabo pode ter sido plugado ou tirado durante uma medição longa
       continue;
     }
     // Com um computador plugado não há light sleep: ele derrubaria a porta USB no meio da medição.

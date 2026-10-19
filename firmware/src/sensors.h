@@ -3,6 +3,7 @@
 
 /** Tensão da bateria em volts (média de 16 leituras do ADC, já com o divisor). */
 float batteryVolts();
+extern float simVbat;
 
 /** Lê o sensor de ambiente escolhido na configuração (BME280, MS5611 ou os dois). Média de `samples` leituras. */
 Env readEnv(uint8_t samples);

@@ -17,7 +17,8 @@
   Atualização pelo ar: quando o servidor oferece uma versão diferente, baixa, confere o SHA-256 e reinicia.
 
   Primeiro uso: sem rede salva a estação abre o ponto de acesso "EstacaoMeteo-XXXX" (portal cativo).
-  Para reabrir o portal depois, segure o botão BOOT ao ligar.
+  Para reabrir o portal depois, aperte o botão BOOT nos primeiros 6 s depois de ligar (NÃO o segure ao ligar: com GPIO9 em
+  nível baixo no reset o ESP32-C3 entra em modo de gravação e o firmware nem roda). Pelo cabo, o site manda {"cmd":"portal"}.
   Modo bancada: ao ligar (depois do primeiro envio), abre uma página local por `bench_min` minutos com as leituras ao vivo
   e a calibração da biruta, sem cabo.
 
@@ -58,6 +59,7 @@ RTC_DATA_ATTR static uint8_t rtcLevel = 0;      // 0 normal, 1 economia, 2 crít
 RTC_DATA_ATTR static bool rtcCharging = false;
 
 static bool coldBoot = false;
+static bool bootPortal = false;  // BOOT apertado nos primeiros segundos depois de ligar: abre o portal Wi-Fi
 
 /** Abaixo disto não há célula ligada (pino flutuando ou só a USB): uma LiPo nunca desce a 2 V em uso, e o pino solto oscila de 0,5 a 1,5 V. */
 static constexpr float NO_BATTERY_V = 2.0f;
@@ -140,6 +142,18 @@ static uint32_t nextInterval() {
   return base;
 }
 
+/** Estado do ciclo para o comando USB "diag". */
+void diagFill(JsonObject o) {
+  o["level"] = rtcLevel;
+  o["charging"] = rtcCharging;
+  o["batch"] = rtcCount;
+  o["skipped"] = rtcSkipped;
+  o["fails"] = rtcFails;
+  o["boots"] = rtcBootCount;
+  o["interval_s"] = nextInterval();
+  o["next_due_in"] = (long)(rtcNextDue - time(nullptr));
+}
+
 // ---------------- lote de leituras ----------------
 static void pushSample(const Sample &s) {
   if (rtcCount == MAX_BATCH) {
@@ -171,7 +185,7 @@ static bool portalDue(uint8_t fails) { return fails == 3 || fails == 9 || fails 
 /** Envia o lote quando completa N leituras, quando há urgência, no primeiro boot ou quando o lote enche. */
 static void sendIfDue(bool urgent) {
   const bool missing = wifiSsid.isEmpty() || serverUrl.isEmpty() || (deviceKey.isEmpty() && claimCode.isEmpty()) || (signedMode() && stationId.isEmpty());
-  const bool forcePortal = coldBoot && digitalRead(PIN_BOOT) == LOW;
+  const bool forcePortal = coldBoot && (bootPortal || digitalRead(PIN_BOOT) == LOW);
   // sem o BME280 não há leituras para juntar: a estação manda o sinal de vida (bateria e Wi-Fi) a cada intervalo, sem esperar o lote
   const bool due = usbSendNow || urgent || coldBoot || rtcCount >= cfg.sendEvery || rtcCount >= MAX_BATCH || rtcSkipped > 0;
   const bool wasCold = coldBoot;
@@ -217,6 +231,8 @@ static void sendIfDue(bool urgent) {
     clearEvents();
     if (r.modeChanged) { netOff(); LOG("modo de vento mudou: reiniciando\n"); ESP.restart(); }
     otaMaybeUpdate(r.ota, vbat);  // reinicia sozinha se atualizar
+    // configuração nova aplicada: confirma agora, na mesma conexão (um envio sem leituras), em vez de esperar o próximo lote
+    if (r.cfgApplied && r.cmd != "restart") { LOG("configuracao nova aplicada: confirmando ao servidor\n"); postBatch(rtcBuf, 0); }
     if (r.cmd == "restart") { LOG("reinicio pedido pelo administrador\n"); netOff(); delay(200); ESP.restart(); }  // o reinício que chega no envio seguinte confirma o comando
   } else {
     rtcFails = min<uint8_t>(rtcFails + 1, 250);  // as leituras e os eventos ficam guardados e vão no próximo envio
@@ -226,20 +242,26 @@ static void sendIfDue(bool urgent) {
 }
 
 // ---------------- modo janela: deep sleep entre ciclos ----------------
+/** millis() em que o ciclo atual começou. Zero no primeiro (conta desde o boot). Com o cabo no computador a placa não dorme e o
+ *  millis() não zera entre os ciclos: sem esta referência o intervalo encurtava para 5 s depois do primeiro minuto. */
+static uint32_t cycleBase = 0;
+
 static void windowCycle() {
+  const uint32_t t0 = cycleBase;
   const float vbat = batteryVolts();
   updateLevel(vbat);
   LOG("bateria %.2f V (nivel %u%s)\n", vbat, rtcLevel, rtcCharging ? ", carregando" : "");
-  if (vbat >= NO_BATTERY_V && rtcLevel == 2) { sleepFor(3600, false); return; }  // protege a célula
+  if (vbat >= NO_BATTERY_V && rtcLevel == 2) { sleepFor(3600, false); cycleBase = millis(); return; }  // protege a célula
 
   const bool urgent = measureAndStore(vbat, cfg.windWindowS);
   sendIfDue(urgent);
 
   const uint32_t interval = nextInterval();
-  const uint32_t used = millis() / 1000;
+  const uint32_t used = (millis() - t0) / 1000;
   const uint32_t rest = interval > used + 5 ? interval - used : 5;
   rtcNextDue = time(nullptr) + rest;
   sleepFor(rest, true);  // sem computador plugado não volta daqui: o próximo ciclo começa no setup
+  cycleBase = millis();   // com o cabo ela volta: o próximo ciclo conta daqui
 }
 
 // ---------------- modo contínuo: light sleep o tempo todo ----------------
@@ -279,6 +301,16 @@ void setup() {
   Wire.begin(PIN_SDA, PIN_SCL);
   Wire.setClock(100000);
   if (coldBoot) {
+    // BOOT é o GPIO9: segurá-lo ao ligar coloca o ESP32-C3 em modo de gravação. Por isso o portal se abre apertando o botão
+    // DEPOIS que a placa liga, numa janela de 6 s (meio segundo apertado basta).
+    const uint32_t tb = millis();
+    while (millis() - tb < 6000 && !bootPortal) {
+      if (digitalRead(PIN_BOOT) == LOW) {
+        delay(400);
+        if (digitalRead(PIN_BOOT) == LOW) bootPortal = true;
+      }
+      delay(20);
+    }
     rtcRainTips = 0;
     rtcCount = 0;
     if (usbPlugged()) {  // sem computador do outro lado do cabo não se espera nada

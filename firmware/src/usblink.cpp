@@ -5,6 +5,7 @@
 #include "console.h"
 #include "log.h"
 #include "sensors.h"
+#include "net.h"
 #include "settings.h"
 
 volatile bool usbSendNow = false;
@@ -129,6 +130,42 @@ bool usbHandleLine(const String &line) {
       ESP.restart();
     }
     usbSendNow = true;  // sem reiniciar: sai da espera, mede e envia já
+  } else if (cmd == "diag") {
+    JsonDocument d;
+    d["ok"] = true;
+    d["fw"] = FW_VERSION;
+    JsonObject c = d["cfg"].to<JsonObject>();
+    c["interval_min"] = cfg.intervalMin; c["wind_window_s"] = cfg.windWindowS; c["gust_window_s"] = cfg.gustWindowS;
+    c["samples"] = cfg.samples; c["wifi_timeout_s"] = cfg.wifiTimeoutS; c["mm_per_tip"] = cfg.mmPerTip; c["k_wind"] = cfg.kWind;
+    c["dir_offset"] = cfg.dirOffset; c["slow_below_v"] = cfg.slowBelowV; c["slow_factor"] = cfg.slowFactor; c["critical_v"] = cfg.criticalV;
+    c["charge_above_v"] = cfg.chargeAboveV; c["charge_interval_min"] = cfg.chargeIntervalMin; c["bench_min"] = cfg.benchMin;
+    c["send_every"] = cfg.sendEvery; c["continuous_wind"] = cfg.continuousWind; c["urgent_gust_kmh"] = cfg.urgentGustKmh;
+    c["wifi_tx_save"] = cfg.wifiTxSave; c["env_sensor"] = cfg.envSensor; c["pin_sda"] = cfg.pinSda; c["pin_scl"] = cfg.pinScl;
+    c["pin_wind"] = cfg.pinWind; c["pin_rain"] = cfg.pinRain; c["pin_vbat"] = cfg.pinVbat; c["version"] = cfg.version;
+    diagFill(d["state"].to<JsonObject>());
+    d["vbat"] = batteryVolts();
+    d["simvbat"] = simVbat;
+    reply(d);
+  } else if (cmd == "simvbat") {
+    simVbat = in["v"] | -1.0f;
+    JsonDocument d;
+    d["ok"] = true;
+    d["simvbat"] = simVbat;
+    reply(d);
+  } else if (cmd == "portal") {
+    JsonDocument d;
+    d["ok"] = true;
+    d["portal"] = true;
+    reply(d);
+    Console.flush();
+    WiFi.mode(WIFI_STA);
+    const bool ok = runPortal();  // 3 min; só volta quando alguém salva ou o tempo acaba
+    netOff();
+    JsonDocument e;
+    e["ok"] = true;
+    e["portalDone"] = true;
+    e["saved"] = ok;
+    reply(e);
   } else if (cmd == "restart") {
     JsonDocument d;
     d["ok"] = true;

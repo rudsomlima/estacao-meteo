@@ -217,7 +217,7 @@ static String buildBody(const Sample *s, uint8_t n) {
 }
 
 PostResult postBatch(const Sample *s, uint8_t n) {
-  PostResult res{false, false, {false, "", 0, ""}};
+  PostResult res{false, false, {false, "", 0, ""}, "", false};
   if (signedMode() && stationId.isEmpty()) { LOG("modo assinado precisa do ID da estacao\n"); return res; }
   const String body = buildBody(s, n);
   const String secret = sha256Hex(deviceKey);
@@ -267,7 +267,7 @@ PostResult postBatch(const Sample *s, uint8_t n) {
     if (deserializeJson(reply, text)) return res;
     res.ok = true;
     if (signedMode() && reply["nonce"].is<const char *>()) strlcpy(rtcNonce, reply["nonce"].as<const char *>(), sizeof(rtcNonce));
-    if (reply["config"].is<JsonObject>()) res.modeChanged = applyRemoteConfig(reply["config"].as<JsonObjectConst>());
+    if (reply["config"].is<JsonObject>()) { res.modeChanged = applyRemoteConfig(reply["config"].as<JsonObjectConst>()); res.cfgApplied = true; }
     if (reply["cmd"].is<const char *>()) res.cmd = reply["cmd"].as<String>();
     if (reply["ota"].is<JsonObject>()) {
       res.ota.offered = true;
