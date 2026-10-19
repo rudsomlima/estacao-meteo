@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react'
 import type { SaveResult } from '../hooks/useNetwork'
 import { useToken, SESSION_TOKEN } from '../hooks/useToken'
 import type { StationEdit } from '../lib/api'
-import { useSession } from '../lib/session'
+import { useIsAdmin, useSession } from '../lib/session'
 import GoogleLogin from './GoogleLogin'
 import { CHEMS, CHEM_KEYS } from '../lib/battery'
 import { DEFAULT_CONFIG } from '../lib/demo'
@@ -39,7 +39,9 @@ export default function AddStationDialog({ open, picked, station, onClose, onPic
   const [mah, setMah] = useState('3000')
   const [token, setToken] = useToken()
   const { user, clientId } = useSession()
-  const needLogin = !!clientId && !user // com login do Google no servidor, só quem entrou cadastra
+  const admin = useIsAdmin()
+  const [owner, setOwner] = useState('')
+  const needLogin = !!clientId && !user
   const [busy, setBusy] = useState(false)
   const [err, setErr] = useState('')
   const [key, setKey] = useState('')
@@ -77,7 +79,7 @@ export default function AddStationDialog({ open, picked, station, onClose, onPic
     }
     const c = CHEMS[chem]
     const r = await onCreate(
-      { id, name: name.trim(), city: city.trim(), lat: la, lon: lo, alt: Number(alt) || 0,
+      { id, name: name.trim(), city: city.trim(), lat: la, lon: lo, alt: Number(alt) || 0, ...(owner.trim() ? { owner_email: owner.trim() } : {}),
         config: { ...DEFAULT_CONFIG, battery_chem: chem, battery_mah: Number(mah) || 3000, slow_below_v: c.slow_below_v, critical_v: c.critical_v } },
       token,
     )
@@ -137,9 +139,11 @@ export default function AddStationDialog({ open, picked, station, onClose, onPic
             <button onClick={close} className="rounded-xl bg-blue px-4 py-2.5 font-semibold text-white">Concluir</button>
           </div>
         ) : (
-          needLogin ? (
+          !editing && !admin && !needLogin ? (
+            <div className="mt-4 grid gap-3 text-sm"><p className="text-ink-2">Só administradores cadastram estações. Peça a um administrador para cadastrar a sua; depois você ajusta tudo pela página da estação.</p></div>
+          ) : needLogin ? (
             <div className="mt-4 grid gap-3 text-sm">
-              <p className="text-ink-2">Para cadastrar uma estação, entre com a sua conta Google. Você poderá alterar todos os ajustes das estações que cadastrar.</p>
+              <p className="text-ink-2">Para cadastrar uma estação, entre com a conta Google de administrador.</p>
               <GoogleLogin />
             </div>
           ) : (
@@ -166,13 +170,14 @@ export default function AddStationDialog({ open, picked, station, onClose, onPic
                 </>
               )}
             </div>
+            {!editing && admin && <label className={cell}>Dono (e-mail Google, opcional)<input className={field} type="email" value={owner} onChange={(e) => setOwner(e.target.value)} placeholder="quem vai ajustar esta estação" /></label>}
             {editing && <p className="text-xs font-normal text-ink-3">Bateria, intervalo e calibração ficam em <b>Configurações</b> da estação.</p>}
             {!clientId && token !== SESSION_TOKEN && <label className={cell}>Token de administrador<input type="password" autoComplete="current-password" className={field} value={token} onChange={(e) => setToken(e.target.value)} required /></label>}
             {err && <p role="alert" className="text-bad">{err}</p>}
             <button type="submit" disabled={busy} className="rounded-xl bg-blue px-4 py-2.5 font-semibold text-white disabled:opacity-50">
               {busy ? (editing ? 'Salvando…' : 'Criando…') : editing ? 'Salvar alterações' : 'Criar estação'}
             </button>
-            {editing && onRemove && (
+            {editing && onRemove && admin && (
               confirmDel ? (
                 <div className="grid gap-2 rounded-lg border border-bad/40 p-3 font-normal">
                   <p className="text-bad">Remover <b>{station?.name}</b> apaga a estação, a chave e <b>todas as leituras</b>. Não dá para desfazer.</p>

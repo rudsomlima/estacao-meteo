@@ -82,7 +82,7 @@ export const updateStation = (id: string, edit: StationEdit, token: string) =>
 
 export const deleteStation = (id: string, token: string) => adminRequest<{ ok: boolean }>('DELETE', `/api/stations/${id}`, token)
 
-export const createStation = (body: StationEdit & { id: string }, token: string) =>
+export const createStation = (body: StationEdit & { id: string; owner_email?: string }, token: string) =>
   adminRequest<{ id: string; key: string }>('POST', '/api/stations', token, { ...body, ...body.config })
 
 export const createClaim = (id: string, token: string) => adminRequest<{ id: string; code: string; expires_at: number }>('POST', `/api/stations/${id}/claim`, token, {})

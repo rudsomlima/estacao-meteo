@@ -20,8 +20,8 @@ export type Scope = string[] | 'all'
 
 export const getOverview = () => call<{ users: number; stations: AdminStation[] }>('GET', '/api/admin/overview')
 export const bulkConfig = (ids: Scope, config: Partial<StationConfig>) => call<{ ok: boolean; updated: number; fields: string[] }>('POST', '/api/admin/config', { ids, config })
-export const getDefaults = () => call<{ config: StationConfig; max_stations_per_user: number }>('GET', '/api/admin/defaults')
-export const putDefaults = (body: { config?: Partial<StationConfig>; max_stations_per_user?: number }) => call<{ config: StationConfig; max_stations_per_user: number }>('PUT', '/api/admin/defaults', body)
+export const getDefaults = () => call<{ config: StationConfig }>('GET', '/api/admin/defaults')
+export const putDefaults = (body: { config?: Partial<StationConfig> }) => call<{ config: StationConfig }>('PUT', '/api/admin/defaults', body)
 
 export const listReleases = () => call<Release[]>('GET', '/api/admin/releases')
 export const uploadRelease = (version: string, notes: string, bin: Uint8Array) =>
@@ -32,6 +32,7 @@ export const unassignRelease = (ids: Scope) => call<{ ok: boolean; unassigned: n
 export const getRollout = () => call<Rollout>('GET', '/api/admin/rollout')
 
 export const listUsers = () => call<AdminUser[]>('GET', '/api/admin/users')
+export const addUser = (email: string, role: 'admin' | 'user' = 'admin') => call<{ ok: boolean; email: string; role: string }>('POST', '/api/admin/users', { email, role })
 export const setUserRole = (email: string, role: 'admin' | 'user') => call<{ ok: boolean }>('PUT', `/api/admin/users/${encodeURIComponent(email)}`, { role })
 export const removeUser = (email: string) => call<{ ok: boolean }>('DELETE', `/api/admin/users/${encodeURIComponent(email)}`)
 export const setStationOwner = (id: string, email: string) => call<{ ok: boolean }>('PUT', `/api/admin/stations/${id}/owner`, { email })

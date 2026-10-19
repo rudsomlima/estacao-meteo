@@ -3,7 +3,7 @@ import PairingCode from './PairingCode'
 import { useState } from 'react'
 import type { SaveResult } from '../hooks/useNetwork'
 import { SESSION_TOKEN, useToken } from '../hooks/useToken'
-import { useCanEdit, useSession } from '../lib/session'
+import { useCanEdit, useIsAdmin, useSession } from '../lib/session'
 import { CHEMS, CHEM_KEYS } from '../lib/battery'
 import type { BatteryChem, Source, Station, StationConfig } from '../types'
 
@@ -41,6 +41,7 @@ const input = 'num rounded-lg border border-line bg-bg px-3 py-2 text-sm font-no
 export default function ConfigPanel({ station, source, onChange, onSave, onNewKey, dirty }: Props) {
   const [token, setToken] = useToken()
   const editable = useCanEdit(station, source)
+  const admin = useIsAdmin()
   const { clientId, user } = useSession()
   const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null)
   const [busy, setBusy] = useState(false)
@@ -162,7 +163,7 @@ export default function ConfigPanel({ station, source, onChange, onSave, onNewKe
           <button type="submit" disabled={busy || !dirty || !editable} className="flex items-center gap-2 rounded-xl bg-blue px-4 py-2.5 text-sm font-semibold text-white transition-opacity disabled:opacity-40">
             <Save className="h-4 w-4" aria-hidden /> {busy ? 'Salvando…' : 'Salvar configuração'}
           </button>
-          {source === 'api' && editable && (
+          {source === 'api' && editable && admin && (
             <button type="button" onClick={rotate} className="flex items-center gap-2 rounded-xl border border-line px-4 py-2.5 text-sm hover:bg-card-hover">
               <RefreshCw className="h-4 w-4" aria-hidden /> Gerar chave nova
             </button>
@@ -174,7 +175,7 @@ export default function ConfigPanel({ station, source, onChange, onSave, onNewKe
           )}
         </div>
 
-        {source === 'api' && editable && <PairingCode id={station.id} name={station.name} token={token} />}
+        {source === 'api' && editable && admin && <PairingCode id={station.id} name={station.name} token={token} />}
 
         {key && (
           <div className="flex items-center gap-2 rounded-lg border border-line bg-bg p-3">

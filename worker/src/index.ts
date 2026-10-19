@@ -15,7 +15,7 @@
 import {
   detectChat, DEFAULT_TEMPLATES, evaluateAfterIngest, evaluateOffline, loadTelegram, publicTelegram, render, saveTelegram, sendTelegram,
 } from './alerts'
-import { adminRoute, defaultConfig, maxStationsPerUser } from './admin'
+import { adminRoute, defaultConfig } from './admin'
 import { audit, type Actor, getActor, getUser, newSession, sessionCookie, upsertUser, verifyGoogleToken, type User } from './auth'
 import { cleanConfig } from './config'
 import { notifyLive } from './hub'
@@ -299,19 +299,15 @@ async function createStation(env: Env, actor: Actor, raw: Uint8Array) {
   if (!m.name || !Number.isFinite(m.lat) || !Number.isFinite(m.lon)) return json({ error: 'informe nome, latitude e longitude' }, 422)
   if (await env.DB.prepare('SELECT 1 FROM stations WHERE id = ?').bind(id).first()) return json({ error: 'já existe uma estação com esse id' }, 409)
 
-  // cota por usuário (o administrador não tem limite)
-  if (actor.role !== 'admin' && actor.email) {
-    const max = await maxStationsPerUser(env)
-    const have = await env.DB.prepare('SELECT COUNT(*) n FROM stations WHERE owner_email = ?').bind(actor.email).first<{ n: number }>()
-    if ((have?.n ?? 0) >= max) return json({ error: `limite de ${max} estações por usuário atingido` }, 403)
-  }
+  // o administrador pode já indicar quem é o dono (o usuário que vai ajustar a estação)
+  const owner = typeof body.owner_email === 'string' && /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(body.owner_email.trim()) ? body.owner_email.trim().toLowerCase() : null
   const key = newKey()
   const cfg = cleanConfig(body, await defaultConfig(env))
   await env.DB
     .prepare('INSERT INTO stations (id,name,city,lat,lon,alt,key_hash,config,created_at,nonce,owner_email) VALUES (?,?,?,?,?,?,?,?,?,?,?)')
-    .bind(id, m.name, m.city, m.lat, m.lon, m.alt, await sha256Hex(key), JSON.stringify(cfg), Math.floor(Date.now() / 1000), randomHex(8), actor.email)
+    .bind(id, m.name, m.city, m.lat, m.lon, m.alt, await sha256Hex(key), JSON.stringify(cfg), Math.floor(Date.now() / 1000), randomHex(8), owner)
     .run()
-  await audit(env, actor, 'estacao.criada', id)
+  await audit(env, actor, 'estacao.criada', id, owner ?? '')
   return json({ id, ...m, config: cfg, key }, 201)
 }
 
@@ -521,7 +517,8 @@ async function route(req: Request, env: Env, ctx: ExecutionContext): Promise<Res
 
   if (p.startsWith('/api/admin/')) return adminOnly ? ((await adminRoute(req, env, actor, raw)) ?? json({ error: 'rota não encontrada' }, 404)) : forbidden()
 
-  if (p === '/api/stations' && m === 'POST') return createStation(env, actor, raw)
+  // cadastrar dispositivos é só do administrador (o usuário comum ajusta as estações que são dele)
+  if (p === '/api/stations' && m === 'POST') return adminOnly ? createStation(env, actor, raw) : forbidden()
   if (p === '/api/usage' && m === 'GET') return adminOnly ? usage(env) : forbidden()
   if (p === '/api/settings/telegram') {
     if (!adminOnly) return forbidden()
@@ -550,6 +547,8 @@ async function route(req: Request, env: Env, ctx: ExecutionContext): Promise<Res
     if (!row) return json({ error: 'estação não encontrada' }, 404)
     if (!canManage(actor, row.owner_email)) return forbidden()
     if (!sub && m === 'PUT') return audited(env, actor, 'estacao.alterada', id, await updateStation(env, id, raw))
+    // remover, trocar a chave, parear e firmware: só administrador (o dono altera os ajustes, não o dispositivo)
+    if (!adminOnly) return forbidden()
     if (!sub && m === 'DELETE') return audited(env, actor, 'estacao.removida', id, await deleteStation(env, id))
     if (sub === 'key' && m === 'POST') return audited(env, actor, 'estacao.chave', id, await rotateKey(env, id))
     if (sub === 'claim' && m === 'POST') return createClaim(env, id)

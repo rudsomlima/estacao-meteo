@@ -5,7 +5,7 @@ compatibility_date = "2025-10-01"
 # O mesmo Worker serve o site (web/dist) e a API em /api/*
 # Login com Google: o Client ID é público (aparece na página de login). ADMIN_EMAILS são administradores desde o primeiro acesso.
 [vars]
-GOOGLE_CLIENT_ID = "173333641640-vlh8qcqkuig0mba7ev5g4vrigo1jtqlj.apps.googleusercontent.com"
+GOOGLE_CLIENT_ID = "727995599749-mk2q8n0556ni60vqsienpapsasuqto45.apps.googleusercontent.com"
 ADMIN_EMAILS = "rudsomlima@gmail.com"
 
 [assets]

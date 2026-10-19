@@ -2,7 +2,7 @@ import { CircleCheck, MapPin, Usb, X } from 'lucide-react'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { go } from '../hooks/useRoute'
 import { useToken } from '../hooks/useToken'
-import { canEditStation, useSession } from '../lib/session'
+import { canEditStation, useIsAdmin, useSession } from '../lib/session'
 import GoogleLogin from './GoogleLogin'
 import { ApiError, createStation, fetchStations, rotateKey, store } from '../lib/api'
 import { DEFAULT_CONFIG } from '../lib/demo'
@@ -57,7 +57,13 @@ type State =
  * Aviso que aparece sozinho quando uma placa ESP32 é plugada: reconhece a placa, grava o firmware se faltar,
  * configura Wi-Fi, endereço e chave e confirma quando chega a primeira leitura. Tudo num só lugar.
  */
-export default function UsbDevice({ stations, source, onChanged }: { stations: Station[]; source: Source; onChanged: () => unknown }) {
+/** Placas USB são só do administrador: para os outros o aviso nem existe (e a porta nunca é aberta). */
+export default function UsbDevice(props: { stations: Station[]; source: Source; onChanged: () => unknown }) {
+  const admin = useIsAdmin()
+  return admin ? <UsbDeviceAdmin {...props} /> : null
+}
+
+function UsbDeviceAdmin({ stations, source, onChanged }: { stations: Station[]; source: Source; onChanged: () => unknown }) {
   const [state, setState] = useState<State | null>(null)
   const [hidden, setHidden] = useState(false)
   const [picking, setPicking] = useState(false)

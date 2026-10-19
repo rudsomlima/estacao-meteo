@@ -12,8 +12,6 @@ const MAX_FIRMWARE = 1_600_000
 const CHUNK = 192 * 1024
 const dec = new TextDecoder()
 
-export const DEFAULT_MAX_STATIONS = 10
-
 interface StationLite { id: string; name: string; owner_email: string | null; config: string; last_seen: number | null; fw_version: string | null; cfg_applied: number; vbat: number | null; rssi: number | null }
 
 const parse = (raw: Uint8Array): Record<string, unknown> | null => {
@@ -25,12 +23,6 @@ export async function defaultConfig(env: Env): Promise<Config> {
   const saved = await getSetting(env, 'default_config')
   return cleanConfig(saved ? (JSON.parse(saved) as Record<string, unknown>) : {}, DEFAULT_CONFIG)
 }
-export async function maxStationsPerUser(env: Env) {
-  const raw = await getSetting(env, 'max_stations_per_user')
-  const v = raw === null ? NaN : Number(raw)
-  return Number.isFinite(v) && v >= 0 ? v : DEFAULT_MAX_STATIONS
-}
-
 /** Resolve "todas" ou uma lista de ids para estações que existem. */
 async function targets(env: Env, ids: unknown): Promise<StationLite[]> {
   const { results } = await env.DB.prepare('SELECT id, name, owner_email, config, last_seen, fw_version, cfg_applied, vbat, rssi FROM stations ORDER BY name').all<StationLite>()
@@ -79,7 +71,7 @@ async function bulkConfig(env: Env, actor: Actor, raw: Uint8Array) {
 }
 
 async function getDefaults(env: Env) {
-  return json({ config: await defaultConfig(env), max_stations_per_user: await maxStationsPerUser(env) })
+  return json({ config: await defaultConfig(env) })
 }
 async function putDefaults(env: Env, actor: Actor, raw: Uint8Array) {
   const body = parse(raw)
@@ -88,9 +80,6 @@ async function putDefaults(env: Env, actor: Actor, raw: Uint8Array) {
     const cfg = cleanConfig(body.config as Record<string, unknown>, await defaultConfig(env))
     const { version: _v, ...rest } = cfg
     await putSetting(env, 'default_config', JSON.stringify(rest))
-  }
-  if (typeof body.max_stations_per_user === 'number' && Number.isFinite(body.max_stations_per_user)) {
-    await putSetting(env, 'max_stations_per_user', String(Math.min(1000, Math.max(0, Math.round(body.max_stations_per_user)))))
   }
   await audit(env, actor, 'padroes.alterados')
   return getDefaults(env)
@@ -190,6 +179,21 @@ async function listUsers(env: Env) {
   return json(results)
 }
 
+/** Cadastra um e-mail antes de a pessoa entrar (por exemplo um novo administrador): no primeiro login com o Google ela já entra com o papel. */
+async function addUser(env: Env, actor: Actor, raw: Uint8Array) {
+  const body = parse(raw)
+  const email = typeof body?.email === 'string' ? body.email.trim().toLowerCase() : ''
+  const role = body?.role === 'user' ? 'user' : 'admin'
+  if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) return json({ error: 'e-mail inválido' }, 422)
+  const now = Math.floor(Date.now() / 1000)
+  await env.DB.prepare(
+    `INSERT INTO users (email, name, picture, role, created_at, last_login) VALUES (?, '', '', ?, ?, 0)
+     ON CONFLICT(email) DO UPDATE SET role = excluded.role`,
+  ).bind(email, role, now).run()
+  await audit(env, actor, 'usuario.adicionado', email, role)
+  return json({ ok: true, email, role }, 201)
+}
+
 async function updateUser(env: Env, actor: Actor, email: string, raw: Uint8Array) {
   const body = parse(raw)
   if (body?.role !== 'admin' && body?.role !== 'user') return json({ error: 'role precisa ser "admin" ou "user"' }, 422)
@@ -248,6 +252,7 @@ export async function adminRoute(req: Request, env: Env, actor: Actor, raw: Uint
   }
 
   if (p === '/users' && m === 'GET') return listUsers(env)
+  if (p === '/users' && m === 'POST') return addUser(env, actor, raw)
   const usr = p.match(/^\/users\/([^/]+)$/)
   if (usr) {
     const email = decodeURIComponent(usr[1]).toLowerCase()

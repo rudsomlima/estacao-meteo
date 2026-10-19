@@ -82,89 +82,15 @@ Há três jeitos de configurar a placa. Use o **Caminho A** se for a primeira ve
 
 ---
 
-## 3. Caminho A: pela USB (recomendado)
+## 3. Caminho A: pela USB (recomendado, só administrador)
 
-### 3.1 Gravar o firmware (só numa placa nova)
+Entre com a conta Google de administrador (botão **Entrar**, canto superior direito) e abra **Ajustes → Gravar firmware e deixar a placa pronta**.
 
-Plugue a placa no computador e abra **Ajustes → Gravar firmware**.
+1. Plugue a placa e clique em **Escolher a placa** (o navegador pede a porta serial uma vez).
+2. Escolha a **estação** (ou *Nova estação…*, com nome, local e, se quiser, o e-mail do dono) e informe a **rede Wi-Fi de 2,4 GHz** e a senha. O site pode lembrar a rede para as próximas placas.
+3. Clique em **Gravar e deixar a placa pronta**. O site grava o firmware, configura Wi-Fi, endereço do site e chave pela USB e avisa quando a primeira leitura chegar. Não há código para digitar: quem confirma é o seu login de administrador.
 
-![Painel Gravar firmware em Ajustes](img/guia/05-ajustes-gravar-firmware.png)
-
-1. Clique em **Escolher a placa**. O navegador abre uma janelinha com as portas seriais: escolha a que aparece ao plugar o cabo (algo como "USB JTAG/serial" ou "CP210x") e clique em **Conectar**.
-2. Em **Imagem** há uma só: o mesmo firmware serve para a bancada e para o campo. Com o cabo no computador, o site reconhece e configura a placa; sem o cabo (bateria, painel solar), ela segue o ciclo de baixo consumo.
-3. Clique em **Gravar firmware** e espere chegar a 100%. **Não desligue a placa nem feche a aba.**
-4. A placa reinicia sozinha.
-
-Você vê, abaixo do nome de cada imagem, o **site embutido** (por exemplo `http://192.168.1.2:8787`). É o endereço que a placa vai usar. Se estiver errado, veja o final deste guia.
-
-> Se aparecer a mensagem de que não foi possível conectar, veja "A gravação falha" em *Problemas comuns*.
-
-Se a placa já veio com o firmware, **pule para 3.2**.
-
-### 3.2 O aviso "Placa USB detectada"
-
-Com o site aberto no navegador, plugue a placa. Na primeira vez, é preciso autorizá-la: vá em **Ajustes → Placa USB** e clique em **Autorizar uma placa**.
-
-![Painel Placa USB em Ajustes](img/guia/04-ajustes-placa-usb.png)
-
-Depois de autorizada, a placa é reconhecida sozinha toda vez que você plugar o cabo. Aparece um aviso no canto inferior direito. Há três situações:
-
-**a) "Procurando o firmware da estação…"**: a placa tem alguns segundos depois de ligar para responder. Aguarde.
-
-Depois de reconhecida, **pode levar o tempo que precisar** para preencher o formulário: o site mantém a placa escutando sozinho e, se ela se perder, reinicia e reconecta por conta própria.
-
-**b) "conectada, mas ainda sem o firmware da estação"**: a placa está lá, mas sem o nosso firmware (ou ele não respondeu a tempo). Clique em **Gravar o firmware agora**, ou refaça o passo 3.1.
-
-![Placa sem firmware](img/guia/06-placa-sem-firmware.png)
-
-Dentro de **Já gravei e não reconheceu** estão as três causas mais comuns: a placa só escuta nos primeiros 10 s depois de ligar (aperte RESET ou replugue), e outro programa (monitor serial, IDE) pode estar com a porta.
-
-**c) "ESP32-C3 · firmware 0.2.0"**: reconhecida. É aqui que se configura.
-
-![Placa detectada e pronta para configurar](img/guia/07-placa-detectada.png)
-
-A segunda linha diz **"Placa nova, ainda sem configuração."**. Se a placa já foi configurada antes, aparece "Reconhecida: estação X" e o botão **Configurar de novo**.
-
-### 3.3 Configurar a placa
-
-Preencha o formulário do aviso:
-
-![Formulário de configuração da placa](img/guia/08-configurar-placa.png)
-
-| Campo | O que colocar |
-|---|---|
-| **Estação** | Escolha uma estação que já existe, ou **Nova estação…** para criar uma agora. |
-| **Nome / Latitude / Longitude** | Só para estação nova. Clique em **No mapa**: o aviso some, o site volta ao mapa e você clica no local da estação. O aviso reaparece com as coordenadas preenchidas e o resto do formulário intacto. Também dá para digitar as coordenadas. Dá para ajustar depois. |
-| **Rede Wi-Fi (2,4 GHz)** | A lista vem **da própria placa**, com o sinal em dBm (quanto mais perto de zero, melhor: -50 é ótimo, -80 é fraco). Escolha a rede. Se nenhuma aparecer, digite o nome. |
-| **Senha do Wi-Fi** | A senha da rede escolhida. Sem espaço sobrando no começo ou no fim. |
-| **Token de administrador** | O token da seção 0. Só aparece se este navegador ainda não o conhece. |
-| **Avançado → Endereço do site** | O endereço que a placa vai usar. Normalmente já vem certo. Confira com a tabela da seção 0. |
-
-Clique em **Criar a estação e configurar a placa** (ou **Configurar esta placa**, se a estação já existia).
-
-O que acontece por baixo: o site **gera uma chave nova**, entrega direto à placa pelo cabo e ela reinicia. Ninguém precisa copiar chave nenhuma.
-
-### 3.4 Esperar a primeira leitura
-
-Aparece **"Quase pronto"**. A placa reinicia, conecta no Wi-Fi e manda a primeira leitura. Leva de **10 a 60 segundos**.
-
-![Aguardando a primeira leitura](img/guia/09-aguardando-primeira-leitura.png)
-
-Quando a leitura chega, o aviso muda para **"Estação no ar"**:
-
-![Estação no ar](img/guia/10-estacao-no-ar.png)
-
-Clique em **Abrir a estação**.
-
-### 3.5 A página da estação
-
-![Página de uma estação](img/guia/11-pagina-da-estacao.png)
-
-Mostra vento, temperatura, umidade, pressão, chuva e bateria, com os gráficos das últimas horas. Se aparecer "ainda não enviou leituras", espere o intervalo configurado (10 min por padrão) ou veja *Problemas comuns*.
-
-**Pronto.** A partir daqui, o resto é opcional.
-
----
+Se a placa estiver dormindo, o site pede para apertar RESET e continua sozinho. Usuários comuns não veem este painel nem o aviso de placa USB.
 
 ## 4. Caminho B: código de pareamento
 

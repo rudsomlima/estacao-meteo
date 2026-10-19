@@ -5,6 +5,7 @@ import type { Source, Station } from '../types'
 import DataPanel from './DataPanel'
 import Panel from './Panel'
 import FlashPanel from './FlashPanel'
+import FlashSetup from './FlashSetup'
 import TelegramPanel from './TelegramPanel'
 import { requestUsb } from './UsbDevice'
 import { usbSupported } from '../lib/usb'
@@ -42,7 +43,7 @@ export default function GlobalSettings({ stations, source }: { stations: Station
     <div className="mx-auto max-w-4xl px-4 pb-24 pt-24 sm:px-6">
       <p className="num text-xs text-ink-3">Vale para o site inteiro</p>
       <h1 className="mt-1 font-display text-4xl font-extrabold tracking-tight sm:text-5xl">Ajustes</h1>
-      <p className="mt-2 max-w-2xl text-ink-2">Unidades, estações favoritas, alertas no Telegram e seus dados. A configuração de cada estação fica na página dela.</p>
+      <p className="mt-2 max-w-2xl text-ink-2">Unidades, estações favoritas e, para administradores, placas USB, firmware e alertas. A configuração de cada estação fica na página dela.</p>
 
       <div className="mt-10 grid gap-4">
         <div id="unidades" className="scroll-mt-20" />
@@ -129,6 +130,8 @@ export default function GlobalSettings({ stations, source }: { stations: Station
           </label>
         </Panel>
 
+        {isAdmin && (
+          <>
         <div id="placa" className="scroll-mt-20" />
         <Panel id="g-placa" title="Placa USB" hint="reconhece o ESP32 ao plugar e o configura">
           {usbSupported() ? (
@@ -143,10 +146,16 @@ export default function GlobalSettings({ stations, source }: { stations: Station
         </Panel>
 
         <div id="gravar" className="scroll-mt-20" />
-        <Panel id="g-gravar" title="Gravar firmware" hint="numa placa nova, pelo navegador" defaultOpen={false}>
-          <FlashPanel />
+        <Panel id="g-gravar" title="Gravar firmware e deixar a placa pronta" hint="grava, configura Wi-Fi, endereço e chave pela USB">
+          <FlashSetup stations={stations} />
+          <details className="mt-5 rounded-xl border border-line p-3 text-sm">
+            <summary className="cursor-pointer text-ink-2">Avançado: gravar só o firmware, ou um arquivo .bin</summary>
+            <div className="mt-3"><FlashPanel /></div>
+          </details>
         </Panel>
 
+          </>
+        )}
         {isAdmin ? (
           <>
         <div id="telegram" className="scroll-mt-20" />

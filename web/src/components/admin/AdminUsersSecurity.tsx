@@ -1,6 +1,6 @@
 import { Copy, KeyRound, LogOut, ShieldCheck, Trash2 } from 'lucide-react'
 import { useState } from 'react'
-import { getAudit, listUsers, removeUser, restoreAdminToken, revokeSessions, rotateAdminToken, setStationOwner, setUserRole, type AdminStation } from '../../lib/admin'
+import { addUser, getAudit, listUsers, removeUser, restoreAdminToken, revokeSessions, rotateAdminToken, setStationOwner, setUserRole, type AdminStation } from '../../lib/admin'
 import { ago } from '../../lib/derive'
 import { useSession } from '../../lib/session'
 import { btn, btnMain, errText, input, Msg, Section, useLoad } from './ui'
@@ -10,6 +10,7 @@ export function AdminUsers({ stations, onChanged }: { stations: AdminStation[]; 
   const { data: users, error, reload } = useLoad(listUsers, false)
   const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null)
   const [owner, setOwner] = useState<Record<string, string>>({})
+  const [newAdmin, setNewAdmin] = useState('')
 
   const run = async (f: () => Promise<unknown>, ok: string) => {
     setMsg(null)
@@ -18,7 +19,13 @@ export function AdminUsers({ stations, onChanged }: { stations: AdminStation[]; 
 
   return (
     <div className="grid gap-4">
-      <Section title="Usuários" hint="Quem entrou com o Google. Usuário comum cadastra e altera só as próprias estações; administrador altera tudo.">
+      <Section title="Usuários" hint="Quem entrou com o Google (e quem você adicionou). Usuário comum altera os ajustes só das estações que são dele; administrador cadastra dispositivos, grava firmware e altera tudo.">
+        <form className="flex flex-wrap items-end gap-3 rounded-xl border border-line p-3" onSubmit={(e) => { e.preventDefault(); void run(async () => { await addUser(newAdmin); setNewAdmin('') }, `${newAdmin.trim().toLowerCase()} agora é administrador. No primeiro acesso com o Google ela já entra com esse papel.`) }}>
+          <label className="grid gap-1 text-sm">Adicionar administrador (e-mail da conta Google)
+            <input className={`${input} w-72`} type="email" required placeholder="pessoa@gmail.com" value={newAdmin} onChange={(e) => setNewAdmin(e.target.value)} />
+          </label>
+          <button className={btnMain}>Adicionar administrador</button>
+        </form>
         {error && <p role="alert" className="text-sm text-bad">{error}</p>}
         <div className="overflow-x-auto rounded-xl border border-line">
           <table className="num w-full min-w-[560px] text-left text-sm">
@@ -33,7 +40,7 @@ export function AdminUsers({ stations, onChanged }: { stations: AdminStation[]; 
                     </select>
                   </td>
                   <td className="px-3 py-2">{u.stations}</td>
-                  <td className="px-3 py-2">{ago(u.last_login)}</td>
+                  <td className="px-3 py-2">{u.last_login ? ago(u.last_login) : 'ainda não entrou'}</td>
                   <td className="px-3 py-2 text-right">
                     <button className="inline-flex items-center gap-1 text-xs text-ink-3 hover:text-bad disabled:opacity-40" disabled={u.email === me?.email} onClick={() => { if (window.confirm(`Remover ${u.email}? As estações dele ficam sem dono (só administradores mexem).`)) void run(() => removeUser(u.email), 'Usuário removido.') }}><Trash2 className="h-3.5 w-3.5" aria-hidden /> remover</button>
                   </td>

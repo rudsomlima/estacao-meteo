@@ -60,9 +60,8 @@ export default function AdminConfig({ stations }: { stations: AdminStation[] }) 
   const { data: defaults, reload } = useLoad(load, false)
   const [dDraft, setDDraft] = useState<StationConfig>(DEFAULT_CONFIG)
   const [dOn, setDOn] = useState<Set<string>>(new Set())
-  const [max, setMax] = useState(10)
   const [dMsg, setDMsg] = useState<{ ok: boolean; text: string } | null>(null)
-  useEffect(() => { if (defaults) { setDDraft(defaults.config); setMax(defaults.max_stations_per_user) } }, [defaults])
+  useEffect(() => { if (defaults) setDDraft(defaults.config) }, [defaults])
 
   const payload = (d: StationConfig, keys: Set<string>) => Object.fromEntries([...keys].map((k) => [k, d[k as keyof StationConfig]])) as Draft
   const n = scopeCount(scope, stations.length)
@@ -82,7 +81,7 @@ export default function AdminConfig({ stations }: { stations: AdminStation[] }) 
   const saveDefaults = async () => {
     setBusy(true); setDMsg(null)
     try {
-      await putDefaults({ config: payload(dDraft, dOn.size ? dOn : new Set(Object.keys(dDraft).filter((k) => k !== 'version'))), max_stations_per_user: max })
+      await putDefaults({ config: payload(dDraft, dOn.size ? dOn : new Set(Object.keys(dDraft).filter((k) => k !== 'version'))) })
       reload()
       setDMsg({ ok: true, text: 'Padrão salvo. Vale para as estações cadastradas daqui para frente.' })
     } catch (e) { setDMsg({ ok: false, text: errText(e) }) }
@@ -101,13 +100,8 @@ export default function AdminConfig({ stations }: { stations: AdminStation[] }) 
         </div>
       </Section>
 
-      <Section title="Padrão para estações novas" hint="Toda estação cadastrada nasce com estes ajustes (quem cadastra pode mudá-los depois). Também define o limite de estações por usuário.">
+      <Section title="Padrão para estações novas" hint="Toda estação cadastrada nasce com estes ajustes (o dono pode mudá-los depois).">
         <Form draft={dDraft} on={dOn} onDraft={(d) => setDDraft(d as StationConfig)} onOn={setDOn} />
-        <label className="flex flex-wrap items-center gap-3 text-sm">
-          Máximo de estações por usuário comum
-          <input type="number" min={0} max={1000} className={`${input} w-24`} value={max} onChange={(e) => setMax(Number(e.target.value))} />
-          <span className="text-xs text-ink-3">administradores não têm limite; 0 impede usuários comuns de cadastrar</span>
-        </label>
         <div className="flex flex-wrap items-center gap-3">
           <button className={btnMain} onClick={saveDefaults} disabled={busy}>Salvar o padrão</button>
           <Msg m={dMsg} />

@@ -142,7 +142,18 @@ O site entra com o Google (Google Identity Services). O navegador manda o ID tok
 
 **Papéis.** `admin` (e-mails de `ADMIN_EMAILS` no `wrangler.toml`, ou promovidos por outro administrador) e `user`. O token de administrador antigo (HMAC) continua valendo para scripts e conta como administrador.
 
-**Donos.** Qualquer usuário logado cria estações (limite configurável por usuário) e vira dono. Só o dono e os administradores alteram, apagam, trocam a chave, geram código de pareamento ou publicam firmware de uma estação. Estação sem dono (criada pelo token antigo) é só dos administradores. A lista pública de estações traz `can_edit` para quem está logado, e `owner_email` só para administradores.
+**Quem pode o quê.** O papel vem do login: o site identifica sozinho se a conta é administradora ou usuária e libera o acesso correspondente.
+
+| | Visitante | Usuário | Administrador |
+|---|---|---|---|
+| Ver mapa, leituras e gráficos | sim | sim | sim |
+| Alterar os ajustes (nome, local, configuração) das estações **dele** | não | sim | todas |
+| Cadastrar dispositivos (estações) | não | não | sim |
+| Remover estação, trocar chave, código de pareamento | não | não | sim |
+| Placas USB, gravar firmware (pelo site e pelo ar) | não | não | sim |
+| Telegram, banco, usuários, token, auditoria | não | não | sim |
+
+O administrador cadastra a estação e pode já indicar o **dono** (`owner_email`), a conta que vai ajustá-la. Estação sem dono é só dos administradores. A lista pública de estações traz `can_edit` para quem está logado, e `owner_email` só para administradores.
 
 ## Administração (`/api/admin/*`, só administradores)
 
@@ -150,11 +161,11 @@ O site entra com o Google (Google Identity Services). O navegador manda o ID tok
 |---|---|
 | `GET /overview` | Todas as estações com dono, firmware, versão de configuração (pedida × aplicada), bateria e sinal. |
 | `POST /config` | `{"ids": "all" ou [..], "config": {...}}`: aplica só os campos enviados em várias estações (cada uma soma 1 à versão). |
-| `GET`/`PUT /defaults` | Configuração padrão das estações novas e `max_stations_per_user`. |
+| `GET`/`PUT /defaults` | Configuração padrão das estações novas. |
 | `GET`/`POST /releases`, `DELETE /releases/:id` | Versões de firmware (`POST` com o binário no corpo e `?version=&notes=`). Uma cópia serve para várias estações. |
 | `POST /releases/:id/assign`, `POST /releases/unassign` | Atribui a versão a estações (`{"ids": ...}`) ou retira. |
 | `GET /rollout` | Resultado em cada estação: `ok` (já informa a versão nova), `falhou` (evento `ota_fail` depois de atribuir, com a etapa) ou `aguardando`. |
-| `GET /users`, `PUT`/`DELETE /users/:email` | Usuários, papel e remoção (as estações ficam sem dono). |
+| `GET /users`, `POST /users`, `PUT`/`DELETE /users/:email` | Usuários; `POST {"email"}` adiciona um administrador antes de ele entrar; papel e remoção (as estações ficam sem dono). |
 | `PUT /stations/:id/owner` | Transfere a estação (`{"email": ...}`; vazio = sem dono). |
 | `POST /token/rotate`, `DELETE /token` | Troca o token de administrador (mostrado uma vez) ou volta ao segredo `ADMIN_TOKEN` do Worker. |
 | `POST /sessions/revoke` | Encerra todas as sessões. |

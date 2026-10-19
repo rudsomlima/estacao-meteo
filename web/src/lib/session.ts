@@ -27,3 +27,7 @@ export function canEditStation(s: { can_edit?: boolean }, source: 'api' | 'demo'
   return st.user ? !!s.can_edit : !st.clientId
 }
 export const useCanEdit = (s: { can_edit?: boolean }, source: 'api' | 'demo') => canEditStation(s, source, useSession())
+
+/** Só administradores cadastram dispositivos, usam placas USB e gravam firmware. Sem login do Google no servidor, vale o token (legado). */
+export const isAdminSession = (st: State = state) => (st.user ? st.user.role === 'admin' : !st.clientId && !st.devLogin)
+export const useIsAdmin = () => isAdminSession(useSession())

@@ -1,7 +1,7 @@
 import { AlertTriangle, Check, Upload } from 'lucide-react'
 import { useRef, useState } from 'react'
 import { SESSION_TOKEN, useToken } from '../hooks/useToken'
-import { useCanEdit, useSession } from '../lib/session'
+import { useIsAdmin, useSession } from '../lib/session'
 import { ApiError, publishFirmware, unpublishFirmware } from '../lib/api'
 import type { FirmwareInfo, Source, Station } from '../types'
 
@@ -10,7 +10,7 @@ const input = 'num rounded-lg border border-line bg-bg px-3 py-2 text-sm font-no
 /** Publica o firmware para a estação baixar sozinha no próximo envio. */
 export default function FirmwarePanel({ station, info, source, onChanged }: { station: Station; info: FirmwareInfo | null; source: Source; onChanged: () => void }) {
   const [token, setToken] = useToken()
-  const editable = useCanEdit(station, source)
+  const editable = useIsAdmin()
   const { clientId } = useSession()
   const [version, setVersion] = useState('')
   const [file, setFile] = useState<File | null>(null)
@@ -63,7 +63,7 @@ export default function FirmwarePanel({ station, info, source, onChanged }: { st
       </dl>
 
       {source !== 'demo' && !editable ? (
-        <p className="text-sm text-ink-3">Só o dono da estação e os administradores publicam firmware.</p>
+        <p className="text-sm text-ink-3">Só administradores publicam firmware.</p>
       ) : source === 'demo' ? (
         <p className="text-sm text-ink-3">Disponível só com a API ligada. Na demonstração não há servidor para guardar o firmware.</p>
       ) : (

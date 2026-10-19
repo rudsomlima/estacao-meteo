@@ -12,6 +12,7 @@ import { useFmt } from '../lib/units'
 import type { Source, Station } from '../types'
 import AddStationDialog from './AddStationDialog'
 import { PICKED_EVENT, PICK_EVENT } from './UsbDevice'
+import { useIsAdmin } from '../lib/session'
 import { MAP_LAYERS, type MapLayer } from '../lib/prefs'
 import Reveal, { SectionHead } from './Reveal'
 import StationPanel from './StationPanel'
@@ -30,6 +31,7 @@ interface Props {
 export default function MapPage({ stations, source, onCreate, onSave, onRemove }: Props) {
   useNow() // as idades ("há 2min10s") andam sozinhas
   const prefs = usePrefs()
+  const isAdmin = useIsAdmin()
   const f = useFmt()
   const [layers, setLayers] = useState<MapLayer[]>(prefs.layers)
   const toggleLayer = (k: MapLayer) => setLayers((cur) => (cur.includes(k) ? cur.filter((x) => x !== k) : [...cur, k]))
@@ -128,13 +130,13 @@ export default function MapPage({ stations, source, onCreate, onSave, onRemove }
           {full ? <Minimize2 className="h-4 w-4" aria-hidden /> : <Maximize2 className="h-4 w-4" aria-hidden />}
         </button>
 
-        <button
+        {isAdmin && <button
           onClick={() => setAdding(true)}
           className="glass absolute bottom-20 left-3 z-10 flex items-center gap-1.5 rounded-xl px-3.5 py-2 text-sm font-medium hover:border-line-hover sm:bottom-4 sm:left-auto sm:right-[68px] sm:top-auto"
           style={sel ? { display: undefined } : undefined}
         >
           <Plus className="h-4 w-4" aria-hidden /> Adicionar estação
-        </button>
+        </button>}
 
         {layers.includes('wind') && (
           <div className="glass num pointer-events-none absolute bottom-3 left-3 z-10 hidden items-center gap-2 rounded-lg px-3 py-1.5 text-[11px] text-ink-2 sm:flex">
@@ -152,8 +154,8 @@ export default function MapPage({ stations, source, onCreate, onSave, onRemove }
         {stations.length === 0 && (
           <div className="glass absolute inset-0 z-10 m-auto h-fit max-w-sm rounded-2xl p-6 text-center">
             <h2 className="font-display text-xl font-bold">Nenhuma estação ainda</h2>
-            <p className="mt-2 text-sm text-ink-2">Adicione a primeira para receber a chave do ESP32 e ver os dados aqui.</p>
-            <button onClick={() => setAdding(true)} className="mt-4 rounded-xl bg-blue px-4 py-2.5 text-sm font-semibold text-white">Adicionar estação</button>
+            <p className="mt-2 text-sm text-ink-2">{isAdmin ? 'Adicione a primeira para receber a chave do ESP32 e ver os dados aqui.' : 'Um administrador ainda não cadastrou estações.'}</p>
+            {isAdmin && <button onClick={() => setAdding(true)} className="mt-4 rounded-xl bg-blue px-4 py-2.5 text-sm font-semibold text-white">Adicionar estação</button>}
           </div>
         )}
 

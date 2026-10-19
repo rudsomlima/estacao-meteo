@@ -52,7 +52,7 @@ export function explainFlashError(e: unknown): { text: string; waitForBoard: boo
  * Grava uma imagem na placa pelo navegador (esptool-js). A placa precisa de um cabo de dados; a USB nativa do
  * ESP32-C3 entra em modo de gravação sozinha. Pontes CH340/CP210x podem pedir para segurar BOOT e apertar RESET.
  */
-export async function flash(port: Port, image: FlashImage, opts: { eraseAll: boolean } & FlashEvents): Promise<string> {
+export async function flash(port: Port, image: FlashImage, opts: { eraseAll: boolean; keepLocked?: boolean } & FlashEvents): Promise<string> {
   await closeActiveLink() // o aviso de placa USB pode estar com a porta aberta
   setFlashing(true)
   const transport = new Transport(port as unknown as TransportPort, false)
@@ -84,6 +84,7 @@ export async function flash(port: Port, image: FlashImage, opts: { eraseAll: boo
   } finally {
     try { await transport.disconnect() } catch { /* já desconectou ao reiniciar */ }
     // dá tempo da USB reaparecer antes de o aviso de placa voltar a procurar o firmware
-    setTimeout(() => setFlashing(false), 2500)
+    // (quem configura a placa em seguida, como o FlashSetup, mantém a porta reservada e libera ao terminar: keepLocked)
+    if (!opts.keepLocked) setTimeout(() => setFlashing(false), 2500)
   }
 }
