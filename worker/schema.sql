@@ -15,7 +15,8 @@ CREATE TABLE IF NOT EXISTS stations (
   last_seen   INTEGER,                    -- último contato (segundos)
   fw_version  TEXT,                       -- versão do firmware que a estação disse ter
   vbat        REAL,                       -- bateria (V) e sinal Wi-Fi (dBm) do último contato, mesmo sem leitura de sensor
-  rssi        REAL
+  rssi        REAL,
+  owner_email TEXT                        -- dono da estação (login Google); vazio = só o administrador mexe
 );
 
 CREATE TABLE IF NOT EXISTS readings (
@@ -76,3 +77,47 @@ CREATE TABLE IF NOT EXISTS firmware_chunks (
   data       TEXT NOT NULL,
   PRIMARY KEY (station_id, idx)
 ) WITHOUT ROWID;
+
+-- Usuários que entraram com o Google. O papel "admin" vem de ADMIN_EMAILS (wrangler.toml) ou é dado por outro administrador.
+CREATE TABLE IF NOT EXISTS users (
+  email      TEXT PRIMARY KEY,
+  name       TEXT NOT NULL DEFAULT '',
+  picture    TEXT NOT NULL DEFAULT '',
+  role       TEXT NOT NULL DEFAULT 'user',   -- 'user' | 'admin'
+  created_at INTEGER NOT NULL,
+  last_login INTEGER NOT NULL
+);
+
+-- Versões de firmware (uma cópia só, atribuída a várias estações) e a quem cada uma foi atribuída.
+CREATE TABLE IF NOT EXISTS releases (
+  id         INTEGER PRIMARY KEY AUTOINCREMENT,
+  version    TEXT NOT NULL,
+  size       INTEGER NOT NULL,
+  sha256     TEXT NOT NULL,
+  chunks     INTEGER NOT NULL,
+  notes      TEXT NOT NULL DEFAULT '',
+  created_by TEXT NOT NULL DEFAULT '',
+  created_at INTEGER NOT NULL
+);
+CREATE TABLE IF NOT EXISTS release_chunks (
+  release_id INTEGER NOT NULL,
+  idx        INTEGER NOT NULL,
+  data       TEXT NOT NULL,
+  PRIMARY KEY (release_id, idx)
+) WITHOUT ROWID;
+CREATE TABLE IF NOT EXISTS fw_assign (
+  station_id  TEXT PRIMARY KEY,
+  release_id  INTEGER NOT NULL,
+  assigned_at INTEGER NOT NULL
+);
+
+-- Quem fez o quê (alterações de configuração, firmware, usuários, token).
+CREATE TABLE IF NOT EXISTS audit (
+  id     INTEGER PRIMARY KEY AUTOINCREMENT,
+  ts     INTEGER NOT NULL,
+  actor  TEXT NOT NULL,
+  action TEXT NOT NULL,
+  target TEXT NOT NULL DEFAULT '',
+  detail TEXT NOT NULL DEFAULT ''
+);
+CREATE INDEX IF NOT EXISTS audit_ts ON audit (ts DESC);

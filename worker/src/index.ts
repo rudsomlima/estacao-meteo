@@ -15,10 +15,13 @@
 import {
   detectChat, DEFAULT_TEMPLATES, evaluateAfterIngest, evaluateOffline, loadTelegram, publicTelegram, render, saveTelegram, sendTelegram,
 } from './alerts'
+import { adminRoute, defaultConfig, maxStationsPerUser } from './admin'
+import { audit, type Actor, getActor, getUser, newSession, sessionCookie, upsertUser, verifyGoogleToken, type User } from './auth'
+import { cleanConfig } from './config'
 import { notifyLive } from './hub'
 import { fromBase64, hmacHex, newKey, randomHex, same, sha256Hex, toBase64 } from './crypto'
 import {
-  type Config, DEFAULT_CONFIG, type Env, EVENT_KINDS, INTEGER_FIELDS, json, LIMITS, MAX_AGE_S, MAX_BATCH, CHEMS, READING_RANGES,
+  type Config, DEFAULT_CONFIG, type Env, EVENT_KINDS, json, MAX_AGE_S, MAX_BATCH, READING_RANGES,
 } from './shared'
 
 export { Hub } from './hub'
@@ -28,9 +31,9 @@ const MAX_FIRMWARE = 1_600_000
 interface StationRow {
   id: string; name: string; city: string; lat: number; lon: number; alt: number; config: string; created_at: number
   key_hash: string; nonce: string; cfg_applied: number; last_seen: number | null; fw_version: string | null
-  vbat: number | null; rssi: number | null
+  vbat: number | null; rssi: number | null; owner_email: string | null
 }
-const COLS = 'id,name,city,lat,lon,alt,config,created_at,key_hash,nonce,cfg_applied,last_seen,fw_version,vbat,rssi'
+const COLS = 'id,name,city,lat,lon,alt,config,created_at,key_hash,nonce,cfg_applied,last_seen,fw_version,vbat,rssi,owner_email'
 const dec = new TextDecoder()
 
 // ---------------- autenticação ----------------
@@ -43,19 +46,6 @@ function parseJson(raw: Uint8Array): Record<string, unknown> | null {
   } catch {
     return null
   }
-}
-
-/**
- * Administrador: X-Ts (ms) e X-Sig = HMAC-SHA256(ADMIN_TOKEN, `${ts}|${método}|${caminho+query}|${sha256(corpo)}`).
- * Quem escuta a rede vê só a assinatura, que vale por 2 minutos e para aquele pedido.
- */
-async function isAdmin(req: Request, env: Env, raw: Uint8Array) {
-  const ts = Number(req.headers.get('x-ts'))
-  const sig = req.headers.get('x-sig') ?? ''
-  if (!env.ADMIN_TOKEN || !Number.isFinite(ts) || Math.abs(Date.now() - ts) > 120_000) return false
-  const url = new URL(req.url)
-  const msg = `${ts}|${req.method}|${url.pathname}${url.search}|${await sha256Hex(raw)}`
-  return same(await hmacHex(env.ADMIN_TOKEN, msg), sig)
 }
 
 interface DeviceAuth { st: StationRow; secret: string; nonceUsed: string; signed: boolean }
@@ -93,19 +83,6 @@ async function signedJson(auth: DeviceAuth, body: unknown) {
 }
 
 // ---------------- configuração ----------------
-function cleanConfig(input: Record<string, unknown>, base: Config): Config {
-  const out: Config = { ...DEFAULT_CONFIG, ...base } // estações antigas não têm os campos novos
-  for (const [k, [lo, hi]] of Object.entries(LIMITS)) {
-    const v = input[k]
-    if (typeof v === 'number' && Number.isFinite(v)) {
-      const clamped = Math.min(hi, Math.max(lo, v))
-      ;(out as unknown as Record<string, number>)[k] = INTEGER_FIELDS.includes(k) ? Math.round(clamped) : clamped
-    }
-  }
-  if (typeof input.battery_chem === 'string' && CHEMS.includes(input.battery_chem)) out.battery_chem = input.battery_chem as Config['battery_chem']
-  return out
-}
-
 function meta(input: Record<string, unknown>, base?: Pick<StationRow, 'name' | 'city' | 'lat' | 'lon' | 'alt'>) {
   const str = (v: unknown, fb: string, max: number) => (typeof v === 'string' && v.trim() ? v.trim().slice(0, max) : fb)
   const num = (v: unknown, fb: number, lo: number, hi: number) => (typeof v === 'number' && Number.isFinite(v) ? Math.min(hi, Math.max(lo, v)) : fb)
@@ -118,10 +95,22 @@ function meta(input: Record<string, unknown>, base?: Pick<StationRow, 'name' | '
   }
 }
 
-const publicStation = (s: StationRow) => ({
+/** O dono pode mexer na estação; o administrador mexe em todas. */
+const canManage = (u: Pick<Actor, 'email' | 'role'> | null, owner: string | null) => !!u && (u.role === 'admin' || (!!u.email && u.email === owner))
+
+const publicStation = (s: StationRow, u: User | null = null) => ({
   id: s.id, name: s.name, city: s.city, lat: s.lat, lon: s.lon, alt: s.alt, config: JSON.parse(s.config) as Config,
   cfg_applied: s.cfg_applied, last_seen: s.last_seen, fw_version: s.fw_version, vbat: s.vbat, rssi: s.rssi,
+  can_edit: canManage(u, s.owner_email),
+  ...(u?.role === 'admin' ? { owner_email: s.owner_email } : {}),
 })
+
+/** Firmware oferecido à estação: o atribuído pelo administrador (versão única, várias estações) ou, se não há, o publicado só para ela. */
+async function otaFor(env: Env, id: string): Promise<{ version: string; size: number; sha256: string } | null> {
+  const a = await env.DB.prepare('SELECT r.version, r.size, r.sha256 FROM fw_assign a JOIN releases r ON r.id = a.release_id WHERE a.station_id = ?').bind(id).first<{ version: string; size: number; sha256: string }>()
+  if (a) return a
+  return env.DB.prepare('SELECT version, size, sha256 FROM firmware WHERE station_id = ?').bind(id).first<{ version: string; size: number; sha256: string }>()
+}
 
 const unauthorized = () => json({ error: 'não autorizado' }, 401)
 
@@ -195,7 +184,7 @@ async function ingest(req: Request, env: Env, ctx: ExecutionContext) {
     ])
   }
 
-  const fwMeta = await env.DB.prepare('SELECT version, size, sha256 FROM firmware WHERE station_id = ?').bind(st.id).first<{ version: string; size: number; sha256: string }>()
+  const fwMeta = await otaFor(env, st.id)
   ctx.waitUntil(notifyLive(env, st.id))
   if (latest) ctx.waitUntil(evaluateAfterIngest(env, { id: st.id, name: st.name, city: st.city, config: cfg }, latest).catch(() => undefined))
 
@@ -212,9 +201,13 @@ async function ingest(req: Request, env: Env, ctx: ExecutionContext) {
 async function firmwareDownload(req: Request, env: Env) {
   const auth = await authDevice(req, env, new Uint8Array())
   if (auth instanceof Response) return auth
-  const meta = await env.DB.prepare('SELECT version, size, sha256, chunks FROM firmware WHERE station_id = ?').bind(auth.st.id).first<{ version: string; size: number; sha256: string; chunks: number }>()
+  const rel = await env.DB.prepare('SELECT r.id, r.version, r.size, r.sha256 FROM fw_assign a JOIN releases r ON r.id = a.release_id WHERE a.station_id = ?').bind(auth.st.id).first<{ id: number; version: string; size: number; sha256: string }>()
+  const own = rel ? null : await env.DB.prepare('SELECT version, size, sha256 FROM firmware WHERE station_id = ?').bind(auth.st.id).first<{ version: string; size: number; sha256: string }>()
+  const meta = rel ?? own
   if (!meta) return json({ error: 'nenhum firmware publicado' }, 404)
-  const { results } = await env.DB.prepare('SELECT data FROM firmware_chunks WHERE station_id = ? ORDER BY idx').bind(auth.st.id).all<{ data: string }>()
+  const { results } = rel
+    ? await env.DB.prepare('SELECT data FROM release_chunks WHERE release_id = ? ORDER BY idx').bind(rel.id).all<{ data: string }>()
+    : await env.DB.prepare('SELECT data FROM firmware_chunks WHERE station_id = ? ORDER BY idx').bind(auth.st.id).all<{ data: string }>()
   const parts = results.map((r) => fromBase64(r.data))
   const out = new Uint8Array(parts.reduce((s, p) => s + p.length, 0))
   let o = 0
@@ -226,7 +219,7 @@ async function firmwareDownload(req: Request, env: Env) {
 }
 
 // ---------------- leitura pública ----------------
-async function listStations(env: Env) {
+async function listStations(env: Env, user: User | null) {
   const now = Math.floor(Date.now() / 1000)
   const [stations, latest, day] = await Promise.all([
     env.DB.prepare(`SELECT ${COLS} FROM stations ORDER BY name`).all<StationRow>(),
@@ -246,14 +239,14 @@ async function listStations(env: Env) {
       const l = last.get(s.id)
       const d = sum.get(s.id)
       const reading = l ? { ts: l.ts, temp: l.temp, hum: l.hum, pres: l.pres, wind: l.wind, gust: l.gust, dir: l.dir, rain: l.rain, vbat: l.vbat, rssi: l.rssi } : null
-      return { ...publicStation(s), latest: reading, day: d ? { rain: d.rain24, tmin: d.tmin, tmax: d.tmax, gust: d.gustmax } : null }
+      return { ...publicStation(s, user), latest: reading, day: d ? { rain: d.rain24, tmin: d.tmin, tmax: d.tmax, gust: d.gustmax } : null }
     }),
   )
 }
 
-async function getStation(env: Env, id: string) {
+async function getStation(env: Env, id: string, user: User | null) {
   const s = await env.DB.prepare(`SELECT ${COLS} FROM stations WHERE id = ?`).bind(id).first<StationRow>()
-  return s ? json(publicStation(s)) : json({ error: 'estação não encontrada' }, 404)
+  return s ? json(publicStation(s, user)) : json({ error: 'estação não encontrada' }, 404)
 }
 
 async function readings(url: URL, env: Env, id: string) {
@@ -289,14 +282,15 @@ async function events(url: URL, env: Env, id: string) {
 }
 
 async function firmwareInfo(env: Env, id: string) {
-  const f = await env.DB.prepare('SELECT version, size, sha256, uploaded_at FROM firmware WHERE station_id = ?').bind(id).first()
   const s = await env.DB.prepare('SELECT fw_version FROM stations WHERE id = ?').bind(id).first<{ fw_version: string | null }>()
   if (!s) return json({ error: 'estação não encontrada' }, 404)
-  return json({ published: f ?? null, installed: s.fw_version })
+  const f = await env.DB.prepare('SELECT version, size, sha256, uploaded_at FROM firmware WHERE station_id = ?').bind(id).first()
+  const a = await env.DB.prepare('SELECT r.version, r.size, r.sha256, a.assigned_at AS uploaded_at FROM fw_assign a JOIN releases r ON r.id = a.release_id WHERE a.station_id = ?').bind(id).first()
+  return json({ published: a ?? f ?? null, installed: s.fw_version, assigned: !!a })
 }
 
 // ---------------- administrador ----------------
-async function createStation(req: Request, env: Env, raw: Uint8Array) {
+async function createStation(env: Env, actor: Actor, raw: Uint8Array) {
   const body = parseJson(raw)
   if (!body) return json({ error: 'JSON inválido' }, 400)
   const id = String(body.id ?? '').toLowerCase()
@@ -305,12 +299,19 @@ async function createStation(req: Request, env: Env, raw: Uint8Array) {
   if (!m.name || !Number.isFinite(m.lat) || !Number.isFinite(m.lon)) return json({ error: 'informe nome, latitude e longitude' }, 422)
   if (await env.DB.prepare('SELECT 1 FROM stations WHERE id = ?').bind(id).first()) return json({ error: 'já existe uma estação com esse id' }, 409)
 
+  // cota por usuário (o administrador não tem limite)
+  if (actor.role !== 'admin' && actor.email) {
+    const max = await maxStationsPerUser(env)
+    const have = await env.DB.prepare('SELECT COUNT(*) n FROM stations WHERE owner_email = ?').bind(actor.email).first<{ n: number }>()
+    if ((have?.n ?? 0) >= max) return json({ error: `limite de ${max} estações por usuário atingido` }, 403)
+  }
   const key = newKey()
-  const cfg = cleanConfig(body, DEFAULT_CONFIG)
+  const cfg = cleanConfig(body, await defaultConfig(env))
   await env.DB
-    .prepare('INSERT INTO stations (id,name,city,lat,lon,alt,key_hash,config,created_at,nonce) VALUES (?,?,?,?,?,?,?,?,?,?)')
-    .bind(id, m.name, m.city, m.lat, m.lon, m.alt, await sha256Hex(key), JSON.stringify(cfg), Math.floor(Date.now() / 1000), randomHex(8))
+    .prepare('INSERT INTO stations (id,name,city,lat,lon,alt,key_hash,config,created_at,nonce,owner_email) VALUES (?,?,?,?,?,?,?,?,?,?,?)')
+    .bind(id, m.name, m.city, m.lat, m.lon, m.alt, await sha256Hex(key), JSON.stringify(cfg), Math.floor(Date.now() / 1000), randomHex(8), actor.email)
     .run()
+  await audit(env, actor, 'estacao.criada', id)
   return json({ id, ...m, config: cfg, key }, 201)
 }
 
@@ -443,6 +444,31 @@ async function telegramTest(env: Env, raw: Uint8Array) {
   return json(r, r.ok ? 200 : 502)
 }
 
+// ---------------- login com Google ----------------
+async function authRoute(req: Request, env: Env, raw: Uint8Array): Promise<Response | null> {
+  const p = new URL(req.url).pathname
+  if (p === '/api/auth/config' && req.method === 'GET') return json({ clientId: env.GOOGLE_CLIENT_ID ?? null })
+  if (p === '/api/auth/me' && req.method === 'GET') {
+    const u = await getUser(req, env)
+    return json({ user: u })
+  }
+  if (p === '/api/auth/google' && req.method === 'POST') {
+    const origin = req.headers.get('origin')
+    if (origin && new URL(origin).host !== new URL(req.url).host) return json({ error: 'origem não permitida' }, 403)
+    const body = parseJson(raw)
+    if (typeof body?.credential !== 'string') return json({ error: 'credential ausente' }, 422)
+    try {
+      const user = await upsertUser(env, await verifyGoogleToken(env, body.credential))
+      await audit(env, { email: user.email, role: user.role, via: 'session' }, 'login')
+      return json({ user }, 200, { 'set-cookie': sessionCookie(req, await newSession(env, user.email)) })
+    } catch (e) {
+      return json({ error: e instanceof Error ? e.message : 'não foi possível entrar' }, 401)
+    }
+  }
+  if (p === '/api/auth/logout' && req.method === 'POST') return json({ ok: true }, 200, { 'set-cookie': sessionCookie(req, '', 0) })
+  return null
+}
+
 // ---------------- roteador ----------------
 async function route(req: Request, env: Env, ctx: ExecutionContext): Promise<Response | null> {
   const url = new URL(req.url)
@@ -456,13 +482,15 @@ async function route(req: Request, env: Env, ctx: ExecutionContext): Promise<Res
   // tempo real: o navegador abre um WebSocket e é avisado quando algo muda
   if (p === '/api/live' && m === 'GET') return env.HUB.get(env.HUB.idFromName('rede')).fetch(req)
 
+  if (p.startsWith('/api/auth/')) return authRoute(req, env, await readRaw(req))
+
   // leitura pública
   if (m === 'GET') {
-    if (p === '/api/stations') return listStations(env)
+    if (p === '/api/stations') return listStations(env, await getUser(req, env))
     const g = p.match(/^\/api\/stations\/([a-z0-9-]+)(?:\/(readings|daily|events|firmware))?$/)
     if (g) {
       const [, id, sub] = g
-      if (!sub) return getStation(env, id)
+      if (!sub) return getStation(env, id, await getUser(req, env))
       if (sub === 'readings') return readings(url, env, id)
       if (sub === 'daily') return daily(url, env, id)
       if (sub === 'events') return events(url, env, id)
@@ -470,23 +498,30 @@ async function route(req: Request, env: Env, ctx: ExecutionContext): Promise<Res
     }
   }
 
-  // o resto exige o administrador
-  const isApiAdminRoute = p === '/api/stations' || p.startsWith('/api/stations/') || p.startsWith('/api/settings/') || p.startsWith('/api/telegram/') || p === '/api/usage'
-  if (!isApiAdminRoute) return null
+  // o resto exige login (usuário) ou o administrador
+  const isApiRoute = p === '/api/stations' || p.startsWith('/api/stations/') || p.startsWith('/api/settings/') || p.startsWith('/api/telegram/') || p === '/api/usage' || p.startsWith('/api/admin/')
+  if (!isApiRoute) return null
   const raw = await readRaw(req)
-  if (!(await isAdmin(req, env, raw))) return unauthorized()
+  const actor = await getActor(req, env, raw)
+  if (!actor) return unauthorized()
+  const forbidden = () => json({ error: 'sem permissão' }, 403)
+  const adminOnly = actor.role === 'admin'
 
-  if (p === '/api/stations' && m === 'POST') return createStation(req, env, raw)
-  if (p === '/api/usage' && m === 'GET') return usage(env)
+  if (p.startsWith('/api/admin/')) return adminOnly ? ((await adminRoute(req, env, actor, raw)) ?? json({ error: 'rota não encontrada' }, 404)) : forbidden()
+
+  if (p === '/api/stations' && m === 'POST') return createStation(env, actor, raw)
+  if (p === '/api/usage' && m === 'GET') return adminOnly ? usage(env) : forbidden()
   if (p === '/api/settings/telegram') {
+    if (!adminOnly) return forbidden()
     if (m === 'GET') return json(publicTelegram(await loadTelegram(env)))
     if (m === 'PUT') {
       const body = parseJson(raw)
       return body ? json(publicTelegram(await saveTelegram(env, body))) : json({ error: 'JSON inválido' }, 400)
     }
   }
-  if (p === '/api/telegram/test' && m === 'POST') return telegramTest(env, raw)
+  if (p === '/api/telegram/test' && m === 'POST') return adminOnly ? telegramTest(env, raw) : forbidden()
   if (p === '/api/telegram/detect-chat' && m === 'POST') {
+    if (!adminOnly) return forbidden()
     const body = parseJson(raw) ?? {}
     const tg = await loadTelegram(env)
     const token = typeof body.token === 'string' && body.token.trim() ? body.token.trim() : tg.token
@@ -498,14 +533,24 @@ async function route(req: Request, env: Env, ctx: ExecutionContext): Promise<Res
   const a = p.match(/^\/api\/stations\/([a-z0-9-]+)(?:\/(key|claim|firmware))?$/)
   if (a) {
     const [, id, sub] = a
-    if (!sub && m === 'PUT') return updateStation(env, id, raw)
-    if (!sub && m === 'DELETE') return deleteStation(env, id)
-    if (sub === 'key' && m === 'POST') return rotateKey(env, id)
+    // só o dono (ou o administrador) mexe na estação
+    const row = await env.DB.prepare('SELECT owner_email FROM stations WHERE id = ?').bind(id).first<{ owner_email: string | null }>()
+    if (!row) return json({ error: 'estação não encontrada' }, 404)
+    if (!canManage(actor, row.owner_email)) return forbidden()
+    if (!sub && m === 'PUT') return audited(env, actor, 'estacao.alterada', id, await updateStation(env, id, raw))
+    if (!sub && m === 'DELETE') return audited(env, actor, 'estacao.removida', id, await deleteStation(env, id))
+    if (sub === 'key' && m === 'POST') return audited(env, actor, 'estacao.chave', id, await rotateKey(env, id))
     if (sub === 'claim' && m === 'POST') return createClaim(env, id)
-    if (sub === 'firmware' && m === 'POST') return publishFirmware(url, env, id, raw)
+    if (sub === 'firmware' && m === 'POST') return audited(env, actor, 'estacao.firmware', id, await publishFirmware(url, env, id, raw))
     if (sub === 'firmware' && m === 'DELETE') return unpublishFirmware(env, id)
   }
   return json({ error: 'rota não encontrada' }, 404)
+}
+
+/** Registra na auditoria só o que deu certo. */
+async function audited(env: Env, actor: Actor, action: string, target: string, res: Response) {
+  if (res.ok) await audit(env, actor, action, target)
+  return res
 }
 
 export default {

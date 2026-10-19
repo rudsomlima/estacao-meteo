@@ -3,6 +3,11 @@ export interface Env {
   ASSETS: Fetcher
   /** ponto de encontro do tempo real (WebSocket), veja hub.ts */
   HUB: DurableObjectNamespace
+  /** Client ID do Google (público) e e-mails dos administradores, separados por vírgula: veja wrangler.toml */
+  GOOGLE_CLIENT_ID?: string
+  ADMIN_EMAILS?: string
+  /** só para testes: aponta as chaves do Google para um servidor local */
+  GOOGLE_JWKS_URL?: string
   ADMIN_TOKEN: string
   /** só para testes: aponta o Telegram para um servidor local */
   TELEGRAM_API?: string
