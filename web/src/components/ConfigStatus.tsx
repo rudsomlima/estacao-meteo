@@ -1,9 +1,12 @@
 import { Check, Hourglass } from 'lucide-react'
 import { useEffect, useState } from 'react'
+import { useNow } from '../hooks/useNow'
+import { ago } from '../lib/derive'
 import type { Station } from '../types'
 
 /** Mostra se a estação já pegou a última configuração salva ("pendente" ou "aplicada"). */
 export default function ConfigStatus({ station }: { station: Station }) {
+  useNow()
   const [now, setNow] = useState(() => Date.now() / 1000)
   useEffect(() => {
     const t = window.setInterval(() => setNow(Date.now() / 1000), 15_000)
@@ -14,7 +17,7 @@ export default function ConfigStatus({ station }: { station: Station }) {
   if (station.cfg_applied === v) {
     return (
       <p role="status" className="flex items-center gap-2 rounded-xl border border-ok/30 bg-ok/10 px-3 py-2 text-sm text-ok">
-        <Check className="h-4 w-4 shrink-0" aria-hidden /> Configuração v{v} aplicada: a estação confirmou que tem esta versão.
+        <Check className="h-4 w-4 shrink-0" aria-hidden /> Configuração v{v} aplicada na estação{station.cfg_applied_at ? ` (confirmada ${ago(station.cfg_applied_at)})` : ''}: ela informou que tem esta versão.
       </p>
     )
   }

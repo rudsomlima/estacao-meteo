@@ -1,7 +1,11 @@
 import { AlertTriangle, CircleCheck, Cpu, Download, ExternalLink, Power, Wrench } from 'lucide-react'
-import { useMemo } from 'react'
+import { useMemo, useState } from 'react'
 import { useNow } from '../hooks/useNow'
 import { ago } from '../lib/derive'
+import { cancelStationCommand, clearStationEvents, restartStation } from '../lib/admin'
+import { commandStatus } from '../lib/command'
+import { useIsAdmin } from '../lib/session'
+import { ApiError } from '../lib/api'
 import type { Reading, Station, StationEvent } from '../types'
 
 const RESET: Record<number, string> = {
@@ -30,6 +34,15 @@ function line(e: StationEvent) {
 /** Reinícios e eventos que a estação conta junto com as leituras. */
 export default function DiagnosticsPanel({ station, readings, events }: { station: Station; readings: Reading[]; events: StationEvent[] }) {
   useNow() // as idades ("há 2min10s") andam sozinhas
+  const admin = useIsAdmin()
+  const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null)
+  const [busy, setBusy] = useState(false)
+  const cmd = commandStatus(station.command)
+  const act = async (f: () => Promise<string>) => {
+    setBusy(true); setMsg(null)
+    try { setMsg({ ok: true, text: await f() }) } catch (e) { setMsg({ ok: false, text: e instanceof ApiError ? e.message : 'Falhou.' }) }
+    setBusy(false)
+  }
   const now = readings[readings.length - 1]
   const day = useMemo(() => {
     const since = Date.now() / 1000 - 86400
@@ -39,6 +52,21 @@ export default function DiagnosticsPanel({ station, readings, events }: { statio
 
   return (
     <div className="grid gap-4">
+      {admin && (
+        <div className="grid gap-2 rounded-xl border border-line p-3 text-sm">
+          <div className="flex flex-wrap items-center gap-2">
+            <button disabled={busy || (!!station.command && !station.command.done)} className="rounded-lg border border-line px-3 py-1.5 text-xs hover:bg-card-hover disabled:opacity-50"
+              onClick={() => { if (window.confirm(`Reiniciar a estação ${station.name}? Ela recebe o pedido no próximo envio e reinicia.`)) void act(async () => { await restartStation(station.id); return 'Reinício pedido. A estação recebe no próximo envio e a confirmação aparece aqui.' }) }}>Reiniciar a estação</button>
+            {station.command && !station.command.done && (
+              <button disabled={busy} className="rounded-lg border border-line px-3 py-1.5 text-xs hover:bg-card-hover disabled:opacity-50" onClick={() => void act(async () => { await cancelStationCommand(station.id); return 'Pedido cancelado.' })}>Cancelar o pedido</button>
+            )}
+            <button disabled={busy || events.length === 0} className="rounded-lg border border-line px-3 py-1.5 text-xs hover:bg-card-hover disabled:opacity-50"
+              onClick={() => { if (window.confirm('Apagar todos os eventos (reinícios, atualizações, modo bancada) desta estação? Não dá para desfazer.')) void act(async () => { const r = await clearStationEvents(station.id); return `${r.removed} evento(s) apagado(s).` }) }}>Limpar eventos</button>
+          </div>
+          {cmd.text && <p role="status" className={cmd.tone === 'ok' ? 'text-ok' : 'text-warn'}>{cmd.text}</p>}
+          {msg && <p role="status" className={msg.ok ? 'text-ok' : 'text-bad'}>{msg.text}</p>}
+        </div>
+      )}
       <dl className="num grid grid-cols-2 gap-3 text-sm sm:grid-cols-4">
         <div><dt className="flex items-center gap-1.5 text-xs text-ink-3"><Cpu className="h-3.5 w-3.5" aria-hidden /> Firmware</dt><dd>{station.fw_version ?? 'desconhecido'}</dd></div>
         <div><dt className="text-xs text-ink-3">Último contato</dt><dd>{station.last_seen ? ago(station.last_seen) : 'nunca'}</dd></div>

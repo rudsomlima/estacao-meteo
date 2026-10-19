@@ -48,6 +48,19 @@ function Form({ draft, on, onDraft, onOn }: { draft: StationConfig; on: Set<stri
   )
 }
 
+/** Quantas estações já confirmaram a configuração mais recente (atualiza sozinho quando elas enviam). */
+function Confirmations({ stations }: { stations: AdminStation[] }) {
+  const pending = stations.filter((s) => s.cfg_version !== s.cfg_applied)
+  const ok = stations.length - pending.length
+  return (
+    <div role="status" className={`rounded-xl border px-3 py-2 text-sm ${pending.length ? 'border-warn/30 bg-warn/10 text-warn' : 'border-ok/30 bg-ok/10 text-ok'}`}>
+      {pending.length === 0
+        ? `Todas as ${stations.length} estações confirmaram a configuração mais recente.`
+        : `${ok} de ${stations.length} já confirmaram. Aguardando: ${pending.slice(0, 8).map((s) => s.name).join(', ')}${pending.length > 8 ? '…' : ''}. A confirmação aparece aqui quando cada estação enviar.`}
+    </div>
+  )
+}
+
 export default function AdminConfig({ stations }: { stations: AdminStation[] }) {
   const [scope, setScope] = useState(initialScope)
   const [draft, setDraft] = useState<StationConfig>(DEFAULT_CONFIG)
@@ -98,6 +111,7 @@ export default function AdminConfig({ stations }: { stations: AdminStation[] }) 
           <button className={btn} onClick={() => { setOn(new Set()); setDraft(DEFAULT_CONFIG) }}>Limpar</button>
           <Msg m={msg} />
         </div>
+        <Confirmations stations={stations} />
       </Section>
 
       <Section title="Padrão para estações novas" hint="Toda estação cadastrada nasce com estes ajustes (o dono pode mudá-los depois).">

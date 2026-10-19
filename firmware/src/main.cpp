@@ -160,6 +160,9 @@ static bool measureAndStore(float vbat, uint16_t windSeconds) {
   return cfg.urgentGustKmh > 0 && w.gust * 3.6f >= cfg.urgentGustKmh;
 }
 
+/** Quantas falhas seguidas de Wi-Fi já se passaram para abrir o portal de novo: 3, 9, 27, 81, 243. */
+static bool portalDue(uint8_t fails) { return fails == 3 || fails == 9 || fails == 27 || fails == 81 || fails == 243; }
+
 /** Envia o lote quando completa N leituras, quando há urgência, no primeiro boot ou quando o lote enche. */
 static void sendIfDue(bool urgent) {
   const bool missing = wifiSsid.isEmpty() || serverUrl.isEmpty() || (deviceKey.isEmpty() && claimCode.isEmpty()) || (signedMode() && stationId.isEmpty());
@@ -177,18 +180,22 @@ static void sendIfDue(bool urgent) {
     return;
   }
   setCpuFrequencyMhz(160);
-  const bool viaPortal = missing || forcePortal;
+  // Wi-Fi que não conecta há vários envios (a estação foi levada para outro lugar, a senha mudou): abre o portal para o celular
+  // escolher outra rede. Só sem cabo no computador, e cada vez mais raro (após 3, 9, 27, 81 falhas) para não gastar a bateria.
+  const bool portalAfterFails = !missing && !forcePortal && portalDue(rtcFails) && !usbPlugged();
+  if (portalAfterFails) LOG("%u falhas seguidas de Wi-Fi: abrindo o portal EstacaoMeteo para escolher outra rede\n", (unsigned)rtcFails);
+  const bool viaPortal = missing || forcePortal || portalAfterFails;
   // modo bancada: só depois do primeiro envio, para a estação aparecer no site logo ao ser ligada
   const bool bench = wasCold && cfg.benchMin > 0 && (viaPortal || digitalRead(PIN_BOOT) == HIGH);
   const bool connected = viaPortal ? runPortal() : wifiConnect(cfg.wifiTimeoutS * 1000UL);
   if (!connected) {
-    rtcFails++;
+    rtcFails = min<uint8_t>(rtcFails + 1, 250);
     LOG("sem Wi-Fi (%u falhas seguidas), %u leituras aguardam\n", rtcFails, rtcCount);
     netOff();
     return;
   }
   if (!claimKey()) {  // ainda sem chave: o código não foi trocado
-    rtcFails++;
+    rtcFails = min<uint8_t>(rtcFails + 1, 250);
     netOff();
     return;
   }
@@ -202,8 +209,9 @@ static void sendIfDue(bool urgent) {
     clearEvents();
     if (r.modeChanged) { netOff(); LOG("modo de vento mudou: reiniciando\n"); ESP.restart(); }
     otaMaybeUpdate(r.ota, vbat);  // reinicia sozinha se atualizar
+    if (r.cmd == "restart") { LOG("reinicio pedido pelo administrador\n"); netOff(); delay(200); ESP.restart(); }  // o reinício que chega no envio seguinte confirma o comando
   } else {
-    rtcFails++;  // as leituras e os eventos ficam guardados e vão no próximo envio
+    rtcFails = min<uint8_t>(rtcFails + 1, 250);  // as leituras e os eventos ficam guardados e vão no próximo envio
   }
   if (bench) benchRun(cfg.benchMin);  // ainda conectada: aproveita para calibrar sem cabo
   netOff();

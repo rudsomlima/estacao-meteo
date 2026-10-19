@@ -1,7 +1,7 @@
 import { Send } from 'lucide-react'
 import { useCallback, useEffect, useState } from 'react'
 import { useToken } from '../hooks/useToken'
-import { ApiError, detectTelegramChat, getTelegram, saveTelegram, testTelegram, type TelegramSettings } from '../lib/api'
+import { ApiError, detectTelegramChat, getTelegram, saveTelegram, testTelegram, type TelegramSettings, type TgScope } from '../lib/api'
 import type { Source, Station } from '../types'
 
 const input = 'num w-full rounded-lg border border-line bg-bg px-3 py-2 text-sm font-normal'
@@ -28,7 +28,7 @@ const VARS: Record<string, string> = {
 }
 
 /** Alertas no Telegram: o aviso sai uma vez quando o nível muda (ok → offline), não a cada ciclo. */
-export default function TelegramPanel({ stations, source }: { stations: Station[]; source: Source }) {
+export default function TelegramPanel({ stations, source, scope = 'global' }: { stations: Station[]; source: Source; scope?: TgScope }) {
   const [token, setToken] = useToken()
   const [tg, setTg] = useState<TelegramSettings | null>(null)
   const [bot, setBot] = useState('')
@@ -40,8 +40,8 @@ export default function TelegramPanel({ stations, source }: { stations: Station[
 
   const load = useCallback(async () => {
     if (source !== 'api' || !token) return
-    try { setTg(await getTelegram(token)); setMsg(null) } catch (e) { fail(e, 'Não foi possível carregar.') }
-  }, [source, token])
+    try { setTg(await getTelegram(token, scope)); setMsg(null) } catch (e) { fail(e, 'Não foi possível carregar.') }
+  }, [source, token, scope])
   useEffect(() => { void load() }, [load])
 
   if (source === 'demo') {
@@ -50,13 +50,13 @@ export default function TelegramPanel({ stations, source }: { stations: Station[
 
   const patch = async (body: Record<string, unknown>, ok = 'Salvo.') => {
     setBusy(true)
-    try { setTg(await saveTelegram(body, token)); setMsg({ ok: true, text: ok }) } catch (e) { fail(e, 'Não foi possível salvar.') }
+    try { setTg(await saveTelegram(body, token, scope)); setMsg({ ok: true, text: ok }) } catch (e) { fail(e, 'Não foi possível salvar.') }
     setBusy(false)
   }
   const detect = async () => {
     setBusy(true)
     try {
-      const r = await detectTelegramChat(bot, token)
+      const r = await detectTelegramChat(bot, token, scope)
       if (r.ok && r.chatId) await patch({ ...(bot ? { token: bot } : {}), chatId: r.chatId }, `Conversa encontrada: ${r.title ?? r.chatId}.`)
       else setMsg({ ok: false, text: r.error ?? 'Mande uma mensagem ao bot e tente de novo.' })
     } catch (e) { fail(e, 'Não foi possível buscar.') }
@@ -65,7 +65,7 @@ export default function TelegramPanel({ stations, source }: { stations: Station[
   const test = async (kind: string) => {
     setBusy(true)
     try {
-      const r = await testTelegram(kind, token)
+      const r = await testTelegram(kind, token, scope)
       setMsg(r.ok ? { ok: true, text: 'Mensagem de teste enviada.' } : { ok: false, text: r.error ?? 'Falhou.' })
     } catch (e) { fail(e, 'Não foi possível enviar.') }
     setBusy(false)

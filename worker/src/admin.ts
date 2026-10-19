@@ -35,7 +35,7 @@ async function targets(env: Env, ids: unknown): Promise<StationLite[]> {
 // ---------------- visão geral ----------------
 async function overview(env: Env) {
   const [st, users, assign] = await Promise.all([
-    env.DB.prepare('SELECT id, name, city, owner_email, config, last_seen, fw_version, cfg_applied, vbat, rssi, created_at FROM stations ORDER BY name').all<StationLite & { city: string; created_at: number }>(),
+    env.DB.prepare('SELECT id, name, city, owner_email, config, last_seen, fw_version, cfg_applied, cfg_applied_at, vbat, rssi, created_at, cmd, cmd_at, cmd_sent, cmd_done FROM stations ORDER BY name').all<StationLite & { city: string; created_at: number; cfg_applied_at: number | null; cmd: string | null; cmd_at: number | null; cmd_sent: number | null; cmd_done: number | null }>(),
     env.DB.prepare('SELECT COUNT(*) n FROM users').first<{ n: number }>(),
     env.DB.prepare('SELECT a.station_id, r.version FROM fw_assign a JOIN releases r ON r.id = a.release_id').all<{ station_id: string; version: string }>(),
   ])
@@ -44,7 +44,7 @@ async function overview(env: Env) {
     users: users?.n ?? 0,
     stations: st.results.map((s) => {
       const c = JSON.parse(s.config) as Config
-      return { id: s.id, name: s.name, city: s.city, owner_email: s.owner_email, last_seen: s.last_seen, fw_version: s.fw_version, fw_target: target.get(s.id) ?? null, cfg_version: c.version, cfg_applied: s.cfg_applied, vbat: s.vbat, rssi: s.rssi, created_at: s.created_at }
+      return { id: s.id, name: s.name, city: s.city, owner_email: s.owner_email, last_seen: s.last_seen, fw_version: s.fw_version, fw_target: target.get(s.id) ?? null, cfg_version: c.version, cfg_applied: s.cfg_applied, cfg_applied_at: s.cfg_applied_at, command: s.cmd ? { name: s.cmd, at: s.cmd_at, sent: s.cmd_sent, done: s.cmd_done } : null, vbat: s.vbat, rssi: s.rssi, created_at: s.created_at }
     }),
   })
 }
@@ -223,6 +223,32 @@ async function setOwner(env: Env, actor: Actor, id: string, raw: Uint8Array) {
   return json({ ok: true })
 }
 
+// ---------------- comandos para a estação ----------------
+/** Pede que a estação reinicie. Ela recebe no próximo envio; a confirmação é o reinício dela, que chega no envio seguinte. */
+async function restartStation(env: Env, actor: Actor, id: string) {
+  const now = Math.floor(Date.now() / 1000)
+  const r = await env.DB.prepare("UPDATE stations SET cmd = 'restart', cmd_at = ?, cmd_sent = NULL, cmd_done = NULL WHERE id = ?").bind(now, id).run()
+  if (!r.meta.changes) return json({ error: 'estação não encontrada' }, 404)
+  await audit(env, actor, 'estacao.reiniciar', id)
+  await notifyLive(env, id)
+  return json({ ok: true, requested_at: now })
+}
+
+async function cancelCommand(env: Env, actor: Actor, id: string) {
+  await env.DB.prepare('UPDATE stations SET cmd = NULL, cmd_at = NULL, cmd_sent = NULL, cmd_done = NULL WHERE id = ?').bind(id).run()
+  await audit(env, actor, 'estacao.comando.cancelado', id)
+  await notifyLive(env, id)
+  return json({ ok: true })
+}
+
+/** Apaga os eventos (reinícios, atualizações, modo bancada) de uma estação: zera o diagnóstico. */
+async function clearEvents(env: Env, actor: Actor, id: string) {
+  const r = await env.DB.prepare('DELETE FROM events WHERE station_id = ?').bind(id).run()
+  await audit(env, actor, 'estacao.eventos.limpos', id, `${r.meta.changes} eventos`)
+  await notifyLive(env, id)
+  return json({ ok: true, removed: r.meta.changes })
+}
+
 // ---------------- segurança e auditoria ----------------
 async function auditLog(url: URL, env: Env) {
   const limit = Math.min(500, Math.max(1, Number(url.searchParams.get('limit')) || 100))
@@ -258,6 +284,12 @@ export async function adminRoute(req: Request, env: Env, actor: Actor, raw: Uint
     const email = decodeURIComponent(usr[1]).toLowerCase()
     if (m === 'PUT') return updateUser(env, actor, email, raw)
     if (m === 'DELETE') return deleteUser(env, actor, email)
+  }
+  const cmd = p.match(/^\/stations\/([a-z0-9-]+)\/(restart|command|events)$/)
+  if (cmd) {
+    if (cmd[2] === 'restart' && m === 'POST') return restartStation(env, actor, cmd[1])
+    if (cmd[2] === 'command' && m === 'DELETE') return cancelCommand(env, actor, cmd[1])
+    if (cmd[2] === 'events' && m === 'DELETE') return clearEvents(env, actor, cmd[1])
   }
   const own = p.match(/^\/stations\/([a-z0-9-]+)\/owner$/)
   if (own && m === 'PUT') return setOwner(env, actor, own[1], raw)

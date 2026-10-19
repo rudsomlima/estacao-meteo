@@ -67,7 +67,13 @@ export interface Station {
   can_edit?: boolean
   /** só vem para o administrador */
   owner_email?: string | null
+  /** quando a estação confirmou a versão atual da configuração */
+  cfg_applied_at?: number | null
+  /** comando pedido pelo administrador (reinício) e as etapas: pedido, entregue à estação, confirmado por ela */
+  command?: StationCommand | null
 }
+
+export interface StationCommand { name: string; at: number | null; sent: number | null; done: number | null }
 
 /** Um dia local resumido (do endpoint /daily). */
 export interface DailyRow {

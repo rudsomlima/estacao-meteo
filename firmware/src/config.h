@@ -29,7 +29,7 @@ constexpr uint32_t PORTAL_TIMEOUT_S = 180;
 // ---------------- versão ----------------
 // Mude a cada firmware que publicar pelo site: a estação só atualiza quando a versão publicada é DIFERENTE desta.
 #ifndef FW_VERSION
-#define FW_VERSION "0.3.1"
+#define FW_VERSION "0.3.2"
 #endif
 
 // ---------------- limites ----------------

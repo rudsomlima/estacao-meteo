@@ -16,7 +16,12 @@ CREATE TABLE IF NOT EXISTS stations (
   fw_version  TEXT,                       -- versão do firmware que a estação disse ter
   vbat        REAL,                       -- bateria (V) e sinal Wi-Fi (dBm) do último contato, mesmo sem leitura de sensor
   rssi        REAL,
-  owner_email TEXT                        -- dono da estação (login Google); vazio = só o administrador mexe
+  owner_email TEXT,                       -- dono da estação (login Google); vazio = só o administrador mexe
+  cfg_applied_at INTEGER,                 -- quando a estação confirmou a versão da configuração
+  cmd         TEXT,                       -- comando pedido pelo administrador ("restart"); a estação o recebe no próximo envio
+  cmd_at      INTEGER,                    -- quando foi pedido
+  cmd_sent    INTEGER,                    -- quando a resposta com o comando foi entregue à estação
+  cmd_done    INTEGER                     -- quando a estação confirmou (voltou a ligar depois de receber)
 );
 
 CREATE TABLE IF NOT EXISTS readings (

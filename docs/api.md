@@ -166,12 +166,24 @@ O administrador cadastra a estação e pode já indicar o **dono** (`owner_email
 | `POST /releases/:id/assign`, `POST /releases/unassign` | Atribui a versão a estações (`{"ids": ...}`) ou retira. |
 | `GET /rollout` | Resultado em cada estação: `ok` (já informa a versão nova), `falhou` (evento `ota_fail` depois de atribuir, com a etapa) ou `aguardando`. |
 | `GET /users`, `POST /users`, `PUT`/`DELETE /users/:email` | Usuários; `POST {"email"}` adiciona um administrador antes de ele entrar; papel e remoção (as estações ficam sem dono). |
+| `POST /stations/:id/restart`, `DELETE /stations/:id/command` | Pede que a estação reinicie (ela recebe no próximo envio, no campo `cmd` da resposta) ou cancela o pedido. A confirmação é o reinício dela: o envio seguinte traz um evento `boot` depois da entrega. O painel mostra pedido, entregue e confirmado. |
+| `DELETE /stations/:id/events` | Apaga os eventos da estação (zera o diagnóstico de reinícios). |
 | `PUT /stations/:id/owner` | Transfere a estação (`{"email": ...}`; vazio = sem dono). |
 | `POST /token/rotate`, `DELETE /token` | Troca o token de administrador (mostrado uma vez) ou volta ao segredo `ADMIN_TOKEN` do Worker. |
 | `POST /sessions/revoke` | Encerra todas as sessões. |
 | `GET /audit` | Registro de quem fez o quê. |
 
 Para bancos criados antes do login, rode uma vez `migrations/0002_usuarios_e_firmware.sql`.
+
+## Telegram por usuário
+
+Cada usuário configura o **seu** bot e chat para as estações **dele**: `GET`/`PUT /api/me/telegram`, `POST /api/me/telegram/test` e `/detect-chat` (mesmo formato do Telegram do servidor, em `/api/settings/telegram`, que continua só do administrador). A lista de estações monitoradas é limitada às do usuário. Ao avisar, o servidor usa o Telegram do dono da estação, se estiver ligado e completo; senão, o do administrador.
+
+## Confirmação de que a alteração chegou à estação
+
+- **Configuração:** a estação informa a versão que tem a cada envio (`cfg`). `cfg_applied` é a versão confirmada e `cfg_applied_at` a hora da confirmação; enquanto `config.version` for maior, está pendente.
+- **Firmware:** `GET /api/admin/rollout` mostra por estação se atualizou, falhou (e em que etapa) ou aguarda.
+- **Reinício:** `command` (`name`, `at`, `sent`, `done`) na estação, para quem pode alterá-la.
 
 ## Tempo real (WebSocket)
 

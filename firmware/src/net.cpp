@@ -268,6 +268,7 @@ PostResult postBatch(const Sample *s, uint8_t n) {
     res.ok = true;
     if (signedMode() && reply["nonce"].is<const char *>()) strlcpy(rtcNonce, reply["nonce"].as<const char *>(), sizeof(rtcNonce));
     if (reply["config"].is<JsonObject>()) res.modeChanged = applyRemoteConfig(reply["config"].as<JsonObjectConst>());
+    if (reply["cmd"].is<const char *>()) res.cmd = reply["cmd"].as<String>();
     if (reply["ota"].is<JsonObject>()) {
       res.ota.offered = true;
       res.ota.version = reply["ota"]["version"].as<String>();

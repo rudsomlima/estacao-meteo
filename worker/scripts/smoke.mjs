@@ -392,6 +392,52 @@ check('o token antigo deixa de valer', oldAdmin.status === 401, String(oldAdmin.
 }
 r2 = await call('DELETE', '/api/admin/token', as(adm))
 check('volta ao token do servidor', r2.status === 200 && (await admin('GET', '/api/usage')).status === 200)
+
+// ================= Telegram por usuário, comandos para a estação e confirmações
+r2 = await call('GET', '/api/me/telegram', as(ana))
+check('usuário lê o próprio Telegram', r2.status === 200 && r2.json?.tokenSet === false && r2.json.ownedStations.includes('ana-sitio'), r2.text.slice(0, 200))
+r2 = await call('PUT', '/api/me/telegram', asBody(ana, { token: '123:abc', chatId: '777', enabled: true, stations: ['ana-sitio', 'serra'] }))
+check('usuário configura o Telegram das suas estações (as dos outros são ignoradas)', r2.status === 200 && r2.json?.enabled === true && JSON.stringify(r2.json.stations) === '["ana-sitio"]', r2.text.slice(0, 200))
+r2 = await call('GET', '/api/me/telegram', as(beto))
+check('o Telegram de um usuário não aparece para outro', r2.json?.tokenSet === false && r2.json.chatId === '')
+sent.length = 0
+r2 = await call('POST', '/api/me/telegram/test', asBody(ana, { kind: 'gust' }))
+check('a mensagem de teste vai para o chat do usuário', r2.status === 200 && sent.some((m) => String(m.chat_id) === '777'), r2.text)
+r2 = await call('GET', '/api/settings/telegram', as(ana))
+check('o Telegram do servidor continua só do administrador', r2.status === 403)
+r2 = await admin('GET', '/api/me/telegram')
+check('o token antigo não tem Telegram de usuário', r2.status === 403)
+
+// confirmação da configuração aplicada
+let cfgNow = (await call('GET', '/api/stations', as(adm))).json.find((x) => x.id === 'ana-sitio')
+r2 = await call('POST', '/api/ingest', { body: { ...reading, fw: '0.3.1', cfg: cfgNow.config.version }, headers: { 'x-device-key': keyAna } })
+cfgNow = (await call('GET', '/api/stations', as(adm))).json.find((x) => x.id === 'ana-sitio')
+check('o servidor registra quando a estação confirmou a configuração', cfgNow.cfg_applied === cfgNow.config.version && cfgNow.cfg_applied_at > 0, JSON.stringify([cfgNow.cfg_applied, cfgNow.cfg_applied_at]))
+
+// reiniciar e limpar eventos
+r2 = await call('POST', '/api/admin/stations/ana-sitio/restart', asBody(ana, {}))
+check('usuário comum não manda a estação reiniciar', r2.status === 403)
+r2 = await call('POST', '/api/admin/stations/ana-sitio/restart', asBody(adm, {}))
+check('o administrador pede o reinício da estação', r2.status === 200 && r2.json?.ok === true, r2.text)
+r2 = await call('POST', '/api/ingest', { body: { ...reading, fw: '0.3.1', cfg: cfgNow.config.version }, headers: { 'x-device-key': keyAna } })
+check('a estação recebe o comando no próximo envio', r2.json?.cmd === 'restart', r2.text.slice(0, 200))
+let ov = (await call('GET', '/api/admin/overview', as(adm))).json.stations.find((x) => x.id === 'ana-sitio')
+check('o painel mostra o comando entregue, ainda sem confirmação', ov.command?.name === 'restart' && ov.command.sent > 0 && !ov.command.done, JSON.stringify(ov.command))
+r2 = await call('POST', '/api/ingest', { body: { ...reading, fw: '0.3.1', cfg: cfgNow.config.version }, headers: { 'x-device-key': keyAna } })
+check('sem confirmação, o comando é entregue de novo', r2.json?.cmd === 'restart')
+r2 = await call('POST', '/api/ingest', { body: { ...reading, fw: '0.3.1', cfg: cfgNow.config.version, events: [{ kind: 'boot', age: 0, reason: 3, count: 1, wake: 'power-on' }] }, headers: { 'x-device-key': keyAna } })
+check('depois do reinício o comando não é mais entregue', !r2.json?.cmd, r2.text.slice(0, 200))
+ov = (await call('GET', '/api/admin/overview', as(adm))).json.stations.find((x) => x.id === 'ana-sitio')
+check('o painel mostra o reinício confirmado pela estação', ov.command?.done > 0, JSON.stringify(ov.command))
+r2 = await call('GET', '/api/stations/ana-sitio/events?limit=50')
+check('há eventos registrados', Array.isArray(r2.json) && r2.json.length > 0)
+r2 = await call('DELETE', '/api/admin/stations/ana-sitio/events', as(ana))
+check('usuário comum não limpa os eventos', r2.status === 403)
+r2 = await call('DELETE', '/api/admin/stations/ana-sitio/events', as(adm))
+check('o administrador limpa os eventos', r2.status === 200 && r2.json?.removed > 0, r2.text)
+r2 = await call('GET', '/api/stations/ana-sitio/events?limit=50')
+check('a lista de eventos fica vazia', r2.json?.length === 0)
+
 for (const sid of ['ana-sitio', 'beto-casa']) await admin('DELETE', `/api/stations/${sid}`)
 await call('POST', '/api/admin/sessions/revoke', asBody(adm, {}))
 r2 = await call('GET', '/api/auth/me', as(adm))

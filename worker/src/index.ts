@@ -13,7 +13,7 @@
  *   GET|PUT /api/settings/telegram, POST /api/telegram/test, POST /api/telegram/detect-chat, GET /api/usage
  */
 import {
-  detectChat, DEFAULT_TEMPLATES, evaluateAfterIngest, evaluateOffline, loadTelegram, publicTelegram, render, saveTelegram, sendTelegram,
+  userKey, detectChat, DEFAULT_TEMPLATES, evaluateAfterIngest, evaluateOffline, loadTelegram, publicTelegram, render, saveTelegram, sendTelegram,
 } from './alerts'
 import { adminRoute, defaultConfig } from './admin'
 import { audit, type Actor, getActor, getUser, newSession, sessionCookie, upsertUser, verifyGoogleToken, type User } from './auth'
@@ -32,8 +32,9 @@ interface StationRow {
   id: string; name: string; city: string; lat: number; lon: number; alt: number; config: string; created_at: number
   key_hash: string; nonce: string; cfg_applied: number; last_seen: number | null; fw_version: string | null
   vbat: number | null; rssi: number | null; owner_email: string | null
+  cfg_applied_at: number | null; cmd: string | null; cmd_at: number | null; cmd_sent: number | null; cmd_done: number | null
 }
-const COLS = 'id,name,city,lat,lon,alt,config,created_at,key_hash,nonce,cfg_applied,last_seen,fw_version,vbat,rssi,owner_email'
+const COLS = 'id,name,city,lat,lon,alt,config,created_at,key_hash,nonce,cfg_applied,last_seen,fw_version,vbat,rssi,owner_email,cfg_applied_at,cmd,cmd_at,cmd_sent,cmd_done'
 const dec = new TextDecoder()
 
 // ---------------- autenticação ----------------
@@ -101,8 +102,11 @@ const canManage = (u: Pick<Actor, 'email' | 'role'> | null, owner: string | null
 const publicStation = (s: StationRow, u: User | null = null) => ({
   id: s.id, name: s.name, city: s.city, lat: s.lat, lon: s.lon, alt: s.alt, config: JSON.parse(s.config) as Config,
   cfg_applied: s.cfg_applied, last_seen: s.last_seen, fw_version: s.fw_version, vbat: s.vbat, rssi: s.rssi,
+  cfg_applied_at: s.cfg_applied_at,
   can_edit: canManage(u, s.owner_email),
   ...(u?.role === 'admin' ? { owner_email: s.owner_email } : {}),
+  // comando pendente (reinício) e se a estação confirmou: só para quem pode mexer na estação
+  ...(canManage(u, s.owner_email) && s.cmd ? { command: { name: s.cmd, at: s.cmd_at, sent: s.cmd_sent, done: s.cmd_done } } : {}),
 })
 
 /** Firmware oferecido à estação: o atribuído pelo administrador (versão única, várias estações) ou, se não há, o publicado só para ela. */
@@ -154,6 +158,7 @@ async function ingest(req: Request, env: Env, ctx: ExecutionContext) {
 
   // eventos do firmware (reinício, falha de atualização...)
   const evIns = env.DB.prepare('INSERT INTO events (station_id, ts, kind, data) VALUES (?,?,?,?)')
+  let lastBootTs = 0 // o reinício mais recente informado nesta remessa (confirma um comando de reinício)
   for (const e of Array.isArray(body.events) ? body.events.slice(0, 16) : []) {
     const ev = (e ?? {}) as Record<string, unknown>
     if (typeof ev.kind !== 'string' || !EVENT_KINDS.includes(ev.kind)) continue
@@ -162,6 +167,7 @@ async function ingest(req: Request, env: Env, ctx: ExecutionContext) {
     const text = JSON.stringify(data)
     if (text.length > 400) continue
     writes.push(evIns.bind(st.id, nowTs - age, ev.kind, text))
+    if (ev.kind === 'boot') lastBootTs = Math.max(lastBootTs, nowTs - age)
   }
 
   // bateria e sinal do contato (vêm junto mesmo sem leitura de sensor); sem eles, usa os da leitura mais recente
@@ -173,9 +179,15 @@ async function ingest(req: Request, env: Env, ctx: ExecutionContext) {
   const reported = Number(body.cfg)
   const nonce = auth.signed ? randomHex(8) : st.nonce
   writes.push(
-    env.DB.prepare('UPDATE stations SET cfg_applied = ?, last_seen = ?, fw_version = COALESCE(?, fw_version), nonce = ?, vbat = COALESCE(?, vbat), rssi = COALESCE(?, rssi) WHERE id = ?')
-      .bind(Number.isFinite(reported) ? reported : st.cfg_applied, nowTs, fw, nonce, stV, stR, st.id),
+    env.DB.prepare('UPDATE stations SET cfg_applied = ?, cfg_applied_at = CASE WHEN ? != cfg_applied THEN ? ELSE cfg_applied_at END, last_seen = ?, fw_version = COALESCE(?, fw_version), nonce = ?, vbat = COALESCE(?, vbat), rssi = COALESCE(?, rssi) WHERE id = ?')
+      .bind(Number.isFinite(reported) ? reported : st.cfg_applied, Number.isFinite(reported) ? reported : st.cfg_applied, nowTs, nowTs, fw, nonce, stV, stR, st.id),
   )
+  // comando pendente: entrega na resposta; vira "confirmado" quando a estação volta com um reinício posterior à entrega
+  let cmdOut: string | null = null
+  if (st.cmd && !st.cmd_done) {
+    if (st.cmd_sent && lastBootTs >= st.cmd_sent - 5) writes.push(env.DB.prepare('UPDATE stations SET cmd_done = ? WHERE id = ?').bind(nowTs, st.id))
+    else { cmdOut = st.cmd; writes.push(env.DB.prepare('UPDATE stations SET cmd_sent = ? WHERE id = ?').bind(nowTs, st.id)) }
+  }
   await env.DB.batch(writes)
   if (Math.random() < 0.01) {
     await env.DB.batch([
@@ -186,7 +198,7 @@ async function ingest(req: Request, env: Env, ctx: ExecutionContext) {
 
   const fwMeta = await otaFor(env, st.id)
   ctx.waitUntil(notifyLive(env, st.id))
-  if (latest) ctx.waitUntil(evaluateAfterIngest(env, { id: st.id, name: st.name, city: st.city, config: cfg }, latest).catch(() => undefined))
+  if (latest) ctx.waitUntil(evaluateAfterIngest(env, { id: st.id, name: st.name, city: st.city, config: cfg, owner_email: st.owner_email }, latest).catch(() => undefined))
 
   return signedJson(auth, {
     ts: nowTs,
@@ -194,6 +206,7 @@ async function ingest(req: Request, env: Env, ctx: ExecutionContext) {
     config: reported !== cfg.version ? cfg : null,
     // só oferece atualização quando a versão publicada é DIFERENTE da instalada (não "mais nova")
     ota: fwMeta && fw !== fwMeta.version ? fwMeta : null,
+    ...(cmdOut ? { cmd: cmdOut } : {}),
     ...(auth.signed ? { nonce } : {}),
   })
 }
@@ -430,9 +443,9 @@ async function usage(env: Env) {
   })
 }
 
-async function telegramTest(env: Env, raw: Uint8Array) {
+async function telegramTest(env: Env, raw: Uint8Array, key = 'telegram') {
   const body = parseJson(raw) ?? {}
-  const tg = await loadTelegram(env)
+  const tg = await loadTelegram(env, key)
   const kind = typeof body.kind === 'string' && body.kind in DEFAULT_TEMPLATES ? body.kind : 'gust'
   const vars = { station: 'Estação de teste', city: 'Cidade', minutes: 75, pct: 12, vbat: '3.38', gust: 72, dir: 'SO', rain: '1.2', window: tg.rules.rainStart.windowMin }
   const text = render(tg.templates[kind] ?? DEFAULT_TEMPLATES[kind], vars)
@@ -507,13 +520,36 @@ async function route(req: Request, env: Env, ctx: ExecutionContext): Promise<Res
   }
 
   // o resto exige login (usuário) ou o administrador
-  const isApiRoute = p === '/api/stations' || p.startsWith('/api/stations/') || p.startsWith('/api/settings/') || p.startsWith('/api/telegram/') || p === '/api/usage' || p.startsWith('/api/admin/')
+  const isApiRoute = p.startsWith('/api/me/') || p === '/api/stations' || p.startsWith('/api/stations/') || p.startsWith('/api/settings/') || p.startsWith('/api/telegram/') || p === '/api/usage' || p.startsWith('/api/admin/')
   if (!isApiRoute) return null
   const raw = await readRaw(req)
   const actor = await getActor(req, env, raw)
   if (!actor) return unauthorized()
   const forbidden = () => json({ error: 'sem permissão' }, 403)
   const adminOnly = actor.role === 'admin'
+
+  // Telegram de cada usuário, para as estações dele (o administrador tem o do servidor em /api/settings/telegram)
+  if (p.startsWith('/api/me/telegram')) {
+    if (!actor.email) return forbidden() // o token antigo não é uma pessoa
+    const key = userKey(actor.email)
+    const owned = (await env.DB.prepare('SELECT id FROM stations WHERE owner_email = ?').bind(actor.email).all<{ id: string }>()).results.map((r) => r.id)
+    if (p === '/api/me/telegram' && m === 'GET') return json({ ...publicTelegram(await loadTelegram(env, key)), ownedStations: owned })
+    if (p === '/api/me/telegram' && m === 'PUT') {
+      const body = parseJson(raw)
+      if (!body) return json({ error: 'JSON inválido' }, 400)
+      await audit(env, actor, 'telegram.usuario')
+      return json({ ...publicTelegram(await saveTelegram(env, body, key, owned)), ownedStations: owned })
+    }
+    if (p === '/api/me/telegram/test' && m === 'POST') return telegramTest(env, raw, key)
+    if (p === '/api/me/telegram/detect-chat' && m === 'POST') {
+      const body = parseJson(raw) ?? {}
+      const token = typeof body.token === 'string' && body.token.trim() ? body.token.trim() : (await loadTelegram(env, key)).token
+      if (!token) return json({ error: 'informe o token do bot' }, 422)
+      const r = await detectChat(env, token)
+      return json(r, r.ok ? 200 : 502)
+    }
+    return json({ error: 'rota não encontrada' }, 404)
+  }
 
   if (p.startsWith('/api/admin/')) return adminOnly ? ((await adminRoute(req, env, actor, raw)) ?? json({ error: 'rota não encontrada' }, 404)) : forbidden()
 

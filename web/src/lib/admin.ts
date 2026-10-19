@@ -1,12 +1,12 @@
 import { adminRequest } from './api'
-import type { StationConfig } from '../types'
+import type { StationCommand, StationConfig } from '../types'
 
 /** Rotas do administrador (/api/admin/*). A sessão do Google autentica; o token de administrador não é usado aqui. */
 const call = <T>(method: string, path: string, body?: unknown, timeoutMs?: number) => adminRequest<T>(method, path, '', body, timeoutMs)
 
 export interface AdminStation {
   id: string; name: string; city: string; owner_email: string | null; last_seen: number | null; fw_version: string | null
-  fw_target: string | null; cfg_version: number; cfg_applied: number; vbat: number | null; rssi: number | null; created_at: number
+  fw_target: string | null; cfg_version: number; cfg_applied: number; cfg_applied_at: number | null; command: StationCommand | null; vbat: number | null; rssi: number | null; created_at: number
 }
 export interface AdminUser { email: string; name: string; picture: string; role: 'admin' | 'user'; created_at: number; last_login: number; stations: number }
 export interface Release { id: number; version: string; size: number; sha256: string; notes: string; created_by: string; created_at: number; assigned: number }
@@ -41,3 +41,7 @@ export const rotateAdminToken = () => call<{ token: string }>('POST', '/api/admi
 export const restoreAdminToken = () => call<{ ok: boolean }>('DELETE', '/api/admin/token')
 export const revokeSessions = () => call<{ ok: boolean }>('POST', '/api/admin/sessions/revoke', {})
 export const getAudit = (limit = 100) => call<AuditRow[]>('GET', `/api/admin/audit?limit=${limit}`)
+
+export const restartStation = (id: string) => call<{ ok: boolean }>('POST', `/api/admin/stations/${id}/restart`, {})
+export const cancelStationCommand = (id: string) => call<{ ok: boolean }>('DELETE', `/api/admin/stations/${id}/command`)
+export const clearStationEvents = (id: string) => call<{ ok: boolean; removed: number }>('DELETE', `/api/admin/stations/${id}/events`)

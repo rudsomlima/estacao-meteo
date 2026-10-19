@@ -29,6 +29,7 @@ struct PostResult {
   bool ok;
   bool modeChanged;  // a configuração nova trocou o modo de vento: reinicie
   OtaOffer ota;
+  String cmd;        // comando do administrador ("restart"), entregue na resposta
 };
 
 /**

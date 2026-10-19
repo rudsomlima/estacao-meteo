@@ -51,21 +51,24 @@ export const DEFAULT_TG: TgSettings = {
   templates: {},
 }
 
-export async function loadTelegram(env: Env): Promise<TgSettings> {
-  const row = await env.DB.prepare("SELECT value FROM settings WHERE key = 'telegram'").first<{ value: string }>()
+/** O Telegram do servidor (administrador) é a chave "telegram"; cada usuário tem o seu em "telegram:e-mail", para as estações dele. */
+export const userKey = (email: string) => `telegram:${email.toLowerCase()}`
+
+export async function loadTelegram(env: Env, key = 'telegram'): Promise<TgSettings> {
+  const row = await env.DB.prepare('SELECT value FROM settings WHERE key = ?').bind(key).first<{ value: string }>()
   const saved = row ? (JSON.parse(row.value) as Partial<TgSettings>) : {}
   const rules = { ...DEFAULT_TG.rules } as Record<string, unknown>
   for (const [k, v] of Object.entries(saved.rules ?? {})) rules[k] = { ...(DEFAULT_TG.rules as unknown as Record<string, object>)[k], ...(v as object) }
   return { ...DEFAULT_TG, ...saved, rules: rules as unknown as TgRules, templates: saved.templates ?? {} }
 }
 
-export async function saveTelegram(env: Env, patch: Record<string, unknown>) {
-  const cur = await loadTelegram(env)
+export async function saveTelegram(env: Env, patch: Record<string, unknown>, key = 'telegram', allowedStations?: string[]) {
+  const cur = await loadTelegram(env, key)
   const next: TgSettings = { ...cur }
   if (typeof patch.token === 'string' && patch.token.trim()) next.token = patch.token.trim()
   if (typeof patch.chatId === 'string') next.chatId = patch.chatId.trim().slice(0, 40)
   if (typeof patch.enabled === 'boolean') next.enabled = patch.enabled
-  if (Array.isArray(patch.stations)) next.stations = patch.stations.filter((s) => typeof s === 'string').slice(0, 200) as string[]
+  if (Array.isArray(patch.stations)) next.stations = (patch.stations.filter((s) => typeof s === 'string').slice(0, 200) as string[]).filter((id) => !allowedStations || allowedStations.includes(id))
   if (patch.rules && typeof patch.rules === 'object') {
     const rules = { ...cur.rules } as unknown as Record<string, Record<string, unknown>>
     for (const [k, v] of Object.entries(patch.rules as Record<string, Record<string, unknown>>)) {
@@ -85,8 +88,8 @@ export async function saveTelegram(env: Env, patch: Record<string, unknown>) {
     }
     next.templates = t
   }
-  await env.DB.prepare("INSERT INTO settings (key, value) VALUES ('telegram', ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value")
-    .bind(JSON.stringify(next))
+  await env.DB.prepare('INSERT INTO settings (key, value) VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value')
+    .bind(key, JSON.stringify(next))
     .run()
   return next
 }
@@ -158,15 +161,24 @@ async function transition(env: Env, tg: TgSettings, stationId: string, kind: str
   else if (!r.ok) await env.DB.prepare('DELETE FROM alert_state WHERE station_id = ? AND kind = ?').bind(stationId, kind).run()
 }
 
-export interface AlertStation { id: string; name: string; city: string; config: Config }
+export interface AlertStation { id: string; name: string; city: string; config: Config; owner_email?: string | null }
 export interface AlertReading { ts: number; gust: number; dir: number; vbat: number; rain: number }
+
+/** O dono usa o Telegram dele, se estiver ligado e completo; senão vale o do administrador. */
+async function settingsFor(env: Env, owner: string | null | undefined): Promise<TgSettings> {
+  if (owner) {
+    const mine = await loadTelegram(env, userKey(owner))
+    if (mine.enabled && mine.token && mine.chatId) return mine
+  }
+  return loadTelegram(env)
+}
 
 const watched = (tg: TgSettings, id: string) => tg.enabled && !!tg.token && !!tg.chatId && (tg.stations.length === 0 || tg.stations.includes(id))
 const tpl = (tg: TgSettings, key: string) => tg.templates[key] ?? DEFAULT_TEMPLATES[key]
 
 /** Chamada depois de cada envio da estação. */
 export async function evaluateAfterIngest(env: Env, st: AlertStation, last: AlertReading) {
-  const tg = await loadTelegram(env)
+  const tg = await settingsFor(env, st.owner_email)
   if (!watched(tg, st.id)) return
   const base = { station: st.name, city: st.city || '—' }
   const pct = batteryPct(last.vbat, st.config.battery_chem)
@@ -203,11 +215,14 @@ export async function evaluateAfterIngest(env: Env, st: AlertStation, last: Aler
 
 /** Chamada pelo cron: estações que pararam de enviar. */
 export async function evaluateOffline(env: Env) {
-  const tg = await loadTelegram(env)
-  if (!tg.enabled || !tg.token || !tg.chatId) return
-  const { results } = await env.DB.prepare('SELECT id, name, city, config, last_seen FROM stations').all<{ id: string; name: string; city: string; config: string; last_seen: number | null }>()
+  const { results } = await env.DB.prepare('SELECT id, name, city, config, last_seen, owner_email FROM stations').all<{ id: string; name: string; city: string; config: string; last_seen: number | null; owner_email: string | null }>()
   const now = Math.floor(Date.now() / 1000)
+  const cache = new Map<string, TgSettings>()
   for (const s of results) {
+    const key = s.owner_email ?? ''
+    let tg = cache.get(key)
+    if (!tg) { tg = await settingsFor(env, s.owner_email); cache.set(key, tg) }
+    if (!tg.enabled || !tg.token || !tg.chatId) continue
     if (!watched(tg, s.id) || !s.last_seen) continue
     const cfg = JSON.parse(s.config) as Config
     // envia em lote: o tempo esperado entre contatos é intervalo × lote

@@ -3,7 +3,7 @@ import { lazy, Suspense, useEffect, useMemo, useRef, useState } from 'react'
 import type { SaveResult } from '../hooks/useNetwork'
 import { useNow } from '../hooks/useNow'
 import { go } from '../hooks/useRoute'
-import { type StationEdit } from '../lib/api'
+import { store, type StationEdit } from '../lib/api'
 import { batteryPct, CHEMS } from '../lib/battery'
 import { batteryColor, windColor } from '../lib/colors'
 import { ago, compass16, isOnline, kmh } from '../lib/derive'
@@ -20,6 +20,9 @@ import StationPanel from './StationPanel'
 const MapView = lazy(() => import('./MapView'))
 
 
+const LAYERS_KEY = 'meteo.map.layers'
+const SELECTED_KEY = 'meteo.map.selected'
+
 interface Props {
   stations: Station[]
   source: Source
@@ -33,12 +36,24 @@ export default function MapPage({ stations, source, onCreate, onSave, onRemove }
   const prefs = usePrefs()
   const isAdmin = useIsAdmin()
   const f = useFmt()
-  const [layers, setLayers] = useState<MapLayer[]>(prefs.layers)
-  const toggleLayer = (k: MapLayer) => setLayers((cur) => (cur.includes(k) ? cur.filter((x) => x !== k) : [...cur, k]))
+  // os filtros do mapa (camadas ligadas) e a estação aberta ficam guardados: ao voltar de outra tela, tudo como estava
+  const [layers, setLayers] = useState<MapLayer[]>(() => {
+    try {
+      const v = JSON.parse(store.get(LAYERS_KEY) || 'null') as unknown
+      if (Array.isArray(v)) return MAP_LAYERS.map(([k]) => k).filter((k) => v.includes(k))
+    } catch { /* sem filtros salvos */ }
+    return prefs.layers
+  })
+  const toggleLayer = (k: MapLayer) => setLayers((cur) => {
+    const next = cur.includes(k) ? cur.filter((x) => x !== k) : [...cur, k]
+    store.set(LAYERS_KEY, JSON.stringify(next))
+    return next
+  })
   const box = useRef<HTMLElement>(null)
   const fallback = useRef(false)
   const [full, setFull] = useState(false)
-  const [selected, setSelected] = useState<string | null>(null)
+  const [selected, setSelectedRaw] = useState<string | null>(() => store.get(SELECTED_KEY) || null)
+  const setSelected = (id: string | null) => { setSelectedRaw(id); store.set(SELECTED_KEY, id ?? '') }
   const [adding, setAdding] = useState(false)
   const [picking, setPicking] = useState(false)
   const [picked, setPicked] = useState<{ lat: number; lon: number } | null>(null)

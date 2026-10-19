@@ -54,7 +54,8 @@ flowchart TD
 ```
 
 - **Chuva:** em modo janela cada basculada acorda o chip do deep sleep por GPIO, soma na memória RTC e volta a dormir. Em modo contínuo é contada no próprio light sleep. O valor só é zerado depois que vira leitura.
-- **Falha de Wi-Fi:** as leituras ficam no lote (até 12) e vão no próximo envio. Se o lote enche, a mais antiga é descartada e a chuva dela é somada na seguinte, então nada de chuva se perde.
+- **Falha de Wi-Fi:** as leituras ficam no lote (até 12) e vão no próximo envio. Depois de **3 falhas seguidas** (e de novo após 9, 27 e 81) a estação abre o portal **EstacaoMeteo-XXXX** por 3 minutos para o celular escolher outra rede: é o caso de levar a estação para outro lugar ou trocar a senha do roteador. Com o cabo no computador o portal não abre (configure pelo site).
+- **Reiniciar pelo site:** o administrador pede o reinício; a estação recebe no próximo envio, reinicia e o envio seguinte confirma. Se o lote enche, a mais antiga é descartada e a chuva dela é somada na seguinte, então nada de chuva se perde.
 - **Bateria baixa:** abaixo de *Economizar abaixo de* o intervalo é multiplicado. Abaixo de *Hibernar abaixo de*, dorme 1 h.
 - **BME280 sem resposta:** a leitura do ciclo é descartada (o servidor exige todos os campos).
 

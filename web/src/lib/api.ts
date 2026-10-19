@@ -111,11 +111,16 @@ export interface TelegramSettings {
   defaults: Record<string, string>
 }
 
-export const getTelegram = (token: string) => adminRequest<TelegramSettings>('GET', '/api/settings/telegram', token)
-export const saveTelegram = (patch: Record<string, unknown>, token: string) => adminRequest<TelegramSettings>('PUT', '/api/settings/telegram', token, patch)
-export const testTelegram = (kind: string, token: string) => adminRequest<{ ok: boolean; error?: string }>('POST', '/api/telegram/test', token, { kind })
-export const detectTelegramChat = (botToken: string, token: string) =>
-  adminRequest<{ ok: boolean; chatId?: string; title?: string; error?: string }>('POST', '/api/telegram/detect-chat', token, { token: botToken })
+/** "global" é o Telegram do servidor (administrador); "me" é o do usuário logado, para as estações dele. */
+export type TgScope = 'global' | 'me'
+const tgBase = (scope: TgScope) => (scope === 'me' ? '/api/me/telegram' : '/api/settings/telegram')
+const tgOther = (scope: TgScope, tail: string) => (scope === 'me' ? `/api/me/telegram/${tail}` : `/api/telegram/${tail}`)
+
+export const getTelegram = (token: string, scope: TgScope = 'global') => adminRequest<TelegramSettings & { ownedStations?: string[] }>('GET', tgBase(scope), token)
+export const saveTelegram = (patch: Record<string, unknown>, token: string, scope: TgScope = 'global') => adminRequest<TelegramSettings>('PUT', tgBase(scope), token, patch)
+export const testTelegram = (kind: string, token: string, scope: TgScope = 'global') => adminRequest<{ ok: boolean; error?: string }>('POST', tgOther(scope, 'test'), token, { kind })
+export const detectTelegramChat = (botToken: string, token: string, scope: TgScope = 'global') =>
+  adminRequest<{ ok: boolean; chatId?: string; title?: string; error?: string }>('POST', tgOther(scope, 'detect-chat'), token, { token: botToken })
 
 export interface Usage {
   stations: number; readings: number; events: number; firmware: number

@@ -35,6 +35,7 @@ export default function GlobalSettings({ stations, source }: { stations: Station
   const p = usePrefs()
   const live = useLiveState()
   const { user, clientId } = useSession()
+  const mine = stations.filter((s) => s.can_edit)
   const isAdmin = !clientId || user?.role === 'admin' // sem login no servidor vale o token; com login, só administradores
   const favs = p.favorites.map((id) => stations.find((s) => s.id === id)).filter((s): s is Station => !!s)
   const others = stations.filter((s) => !p.favorites.includes(s.id))
@@ -168,8 +169,17 @@ export default function GlobalSettings({ stations, source }: { stations: Station
           <DataPanel stations={stations} source={source} />
         </Panel>
           </>
+        ) : user ? (
+          <>
+            <div id="telegram" className="scroll-mt-20" />
+            <Panel id="g-telegram-me" title="Alertas no Telegram das suas estações" hint="o seu bot, o seu chat">
+              {mine.length === 0
+                ? <p className="text-sm text-ink-3">Você ainda não tem estações. Quando um administrador cadastrar uma em seu nome, os alertas dela são configurados aqui.</p>
+                : <TelegramPanel scope="me" stations={mine} source={source} />}
+            </Panel>
+          </>
         ) : (
-          <p className="rounded-xl border border-line px-4 py-3 text-sm text-ink-3">Alertas no Telegram e dados do banco são só do administrador.</p>
+          <p className="rounded-xl border border-line px-4 py-3 text-sm text-ink-3">Entre com o Google para configurar os alertas no Telegram das suas estações.</p>
         )}
       </div>
     </div>
