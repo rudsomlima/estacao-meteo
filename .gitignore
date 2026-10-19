@@ -17,3 +17,5 @@ Thumbs.db
 *.stl
 *.3mf
 web/public/firmware/
+
+web/public/__lan

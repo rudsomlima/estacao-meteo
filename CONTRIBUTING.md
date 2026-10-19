@@ -12,6 +12,10 @@ Obrigado por ajudar! O projeto está em fase inicial e **o que mais falta é val
 ## Preparar o ambiente
 
 ```bash
+# tudo de uma vez (banco, estações de exemplo simuladas, API e site): na raiz
+npm run dev
+
+# ou separado
 # site
 cd web && npm ci && npm run dev
 

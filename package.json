@@ -1,0 +1,9 @@
+{
+  "name": "estacao-meteo",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "node scripts/dev.mjs",
+    "dev:reset": "node scripts/dev.mjs --reseed"
+  }
+}

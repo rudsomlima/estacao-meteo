@@ -22,7 +22,10 @@ const r = (x, d = 1) => Math.round(x * 10 ** d) / 10 ** d
 
 const now = Math.floor(Date.now() / 1000)
 const step = 600
-const out = ['DELETE FROM readings;', 'DELETE FROM events;', 'DELETE FROM alert_state;', 'DELETE FROM firmware_chunks;', 'DELETE FROM firmware;', 'DELETE FROM stations;']
+// apaga só as estações de exemplo (e os dados delas): estações reais cadastradas no banco local não são tocadas
+const ids = STATIONS.map((s) => q(s.id)).join(',')
+const out = ['readings', 'events', 'alert_state', 'firmware_chunks', 'firmware', 'fw_assign'].map((t) => `DELETE FROM ${t} WHERE station_id IN (${ids});`)
+out.push(`DELETE FROM stations WHERE id IN (${ids});`)
 
 STATIONS.forEach((s, si) => {
   const cfg = {

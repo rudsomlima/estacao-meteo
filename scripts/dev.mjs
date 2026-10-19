@@ -1,0 +1,157 @@
+// Ambiente de desenvolvimento completo com um comando só:  npm run dev   (na raiz do projeto)
+//
+//   1. prepara o banco local (esquema e migrações) e as estações de exemplo (dados novos a cada subida);
+//   2. sobe a API/Worker em 0.0.0.0:8787 (a placa na mesma rede alcança) e o site com recarga automática em :5173;
+//   3. mantém o site de :8787 atualizado (vite build --watch), para quem abre por lá;
+//   4. simula as estações de exemplo: elas enviam a cada 20 s, pegam a configuração nova e reiniciam quando o administrador pede.
+//
+// Opções:  --reseed   apaga e refaz só as estações de exemplo e os dados delas (a sua estação real não é tocada)
+//          --no-sim   não simula as estações de exemplo
+import { spawn, spawnSync } from 'node:child_process'
+import { copyFileSync, existsSync, mkdirSync, writeFileSync } from 'node:fs'
+import { networkInterfaces } from 'node:os'
+import { dirname, join } from 'node:path'
+import { fileURLToPath } from 'node:url'
+
+const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..')
+const WORKER = join(ROOT, 'worker')
+const WEB = join(ROOT, 'web')
+const API = 'http://127.0.0.1:8787'
+const args = new Set(process.argv.slice(2))
+const DEMO = ['serra', 'costao', 'praia', 'capital', 'planalto'] // mantiqueira fica offline de propósito
+const ALL_DEMO = [...DEMO, 'mantiqueira']
+const log = (...a) => console.log('[dev]', ...a)
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms))
+
+// ---------------------------------------------------------------- banco
+function wrangler(extra, cwd = WORKER) {
+  const r = spawnSync('npx', ['wrangler', 'd1', 'execute', 'estacao-meteo', '--local', ...extra], { cwd, shell: true, encoding: 'utf8' })
+  return { ok: r.status === 0, out: `${r.stdout ?? ''}${r.stderr ?? ''}` }
+}
+function query(sql) {
+  const r = wrangler(['--json', '--command', `"${sql.replace(/"/g, '\\"')}"`])
+  try {
+    return JSON.parse(r.out.slice(r.out.indexOf('[')))[0].results ?? []
+  } catch { return [] }
+}
+
+function prepareDb() {
+  if (!existsSync(join(WORKER, '.dev.vars'))) {
+    copyFileSync(join(WORKER, '.dev.vars.example'), join(WORKER, '.dev.vars'))
+    log('criei worker/.dev.vars a partir do exemplo (login sem senha ligado, só em localhost)')
+  }
+  log('banco local: esquema e migrações…')
+  wrangler(['--file=schema.sql'])
+  const cols = new Set(query("SELECT name FROM pragma_table_info('stations')").map((c) => c.name))
+  for (const [col, file] of [['owner_email', '0002_usuarios_e_firmware.sql'], ['cmd', '0003_comandos_e_confirmacoes.sql'], ['cfg_sent', '0004_entrega_da_configuracao.sql']]) {
+    if (cols.size && !cols.has(col)) {
+      log(`aplicando migração ${file}`)
+      wrangler([`--file=migrations/${file}`])
+    }
+  }
+
+  // estações de exemplo: refaz se faltam, se pediram, ou se os dados estão velhos (o gráfico não pode ter um buraco de dias)
+  const newest = query("SELECT MAX(ts) AS t FROM readings WHERE station_id = 'serra'")[0]?.t ?? 0
+  const have = query("SELECT COUNT(*) AS n FROM stations WHERE id IN ('serra','costao','praia','capital','planalto','mantiqueira')")[0]?.n ?? 0
+  const stale = Date.now() / 1000 - newest > 3 * 3600
+  if (args.has('--reseed') || have < ALL_DEMO.length || stale) {
+    log(stale && have ? 'dados de exemplo velhos: refazendo só as estações de exemplo…' : 'criando as estações de exemplo…')
+    const g = spawnSync('node', ['scripts/seed.mjs'], { cwd: WORKER, encoding: 'utf8' })
+    if (g.status !== 0) log('seed falhou:', g.stderr)
+    else if (!wrangler(['--file=seed.sql']).ok) log('não consegui aplicar o seed (as estações de exemplo podem faltar)')
+  }
+}
+
+// ---------------------------------------------------------------- processos
+const kids = []
+function run(name, cmd, cmdArgs, cwd) {
+  const p = spawn(cmd, cmdArgs, { cwd, shell: true, stdio: ['ignore', 'pipe', 'pipe'], env: { ...process.env, FORCE_COLOR: '0' } })
+  const pipe = (s) => String(s).split(/\r?\n/).filter(Boolean).forEach((l) => console.log(`[${name}] ${l}`))
+  p.stdout.on('data', pipe)
+  p.stderr.on('data', pipe)
+  p.on('exit', (c) => { if (!stopping) log(`${name} terminou (código ${c})`) })
+  kids.push(p)
+  return p
+}
+let stopping = false
+function stop() {
+  if (stopping) return
+  stopping = true
+  for (const p of kids) { try { spawnSync('taskkill', ['/pid', String(p.pid), '/T', '/F'], { stdio: 'ignore' }) } catch { /* já saiu */ } }
+  process.exit(0)
+}
+process.on('SIGINT', stop)
+process.on('SIGTERM', stop)
+
+function lanIps() {
+  const rank = (ip) => (/^(192\.168|10\.|172\.(1[6-9]|2\d|3[01]))\./.test(ip) ? 0 : 1)
+  return Object.values(networkInterfaces()).flat().filter((n) => n && n.family === 'IPv4' && !n.internal).map((n) => n.address).sort((a, b) => rank(a) - rank(b))
+}
+
+// ---------------------------------------------------------------- estações simuladas
+const sim = new Map()
+const wave = (t, p) => Math.sin((t / p) * Math.PI * 2)
+async function tick(id, i) {
+  const st = sim.get(id) ?? { cfg: 1, boot: false, n: 0, rain: 0 }
+  sim.set(id, st)
+  const t = Date.now() / 1000
+  const hod = new Date().getHours() + new Date().getMinutes() / 60
+  const sun = Math.max(0, Math.sin(((hod - 6) / 12) * Math.PI))
+  const base = [15, 26, 25, 21, 23][i] ?? 20
+  const wind0 = [14, 9, 11, 7, 10][i] ?? 8
+  const wind = Math.max(0, wind0 * 0.4 + wind0 * 0.5 * sun + 1.5 * (wave(t + i * 99, 700) + 1))
+  const body = {
+    cfg: st.cfg, fw: '0.1.0', vbat: +(3.7 + 0.2 * sun).toFixed(2), rssi: -55 - i * 4,
+    batch: [{
+      age: 0, temp: +(base + 4 * sun + wave(t + i, 3000)).toFixed(1), hum: Math.round(62 - 14 * sun + 6 * wave(t, 5000)),
+      pres: +(1013 - i * 12 + 2 * wave(t, 20000)).toFixed(1), wind: +wind.toFixed(1), gust: +(wind * 1.4).toFixed(1),
+      dir: Math.round(((200 + 40 * wave(t, 9000) + i * 30) % 360 + 360) % 360), rain: Math.random() < 0.01 ? 0.2 : 0,
+      vbat: +(3.7 + 0.2 * sun).toFixed(2), rssi: -55 - i * 4,
+    }],
+  }
+  if (st.boot) { body.events = [{ kind: 'boot', age: 0, reason: 1, count: ++st.n, wake: 'power-on' }]; st.boot = false }
+  try {
+    const r = await fetch(`${API}/api/ingest`, { method: 'POST', headers: { 'content-type': 'application/json', 'x-device-key': `dev-key-${id}` }, body: JSON.stringify(body) })
+    if (!r.ok) return
+    const j = await r.json()
+    if (j.config?.version) st.cfg = j.config.version // "aplica" a configuração: o próximo envio confirma
+    if (j.cmd === 'restart') st.boot = true // reinicia: o envio seguinte traz o evento de boot, que confirma o comando
+  } catch { /* servidor reiniciando */ }
+}
+
+async function waitApi() {
+  for (let i = 0; i < 90; i++) {
+    try { if ((await fetch(`${API}/api/stations`)).ok) return true } catch { /* ainda subindo */ }
+    await sleep(1000)
+  }
+  return false
+}
+
+// ---------------------------------------------------------------- main
+prepareDb()
+const ips = lanIps()
+mkdirSync(join(WEB, 'public'), { recursive: true })
+writeFileSync(join(WEB, 'public', '__lan'), JSON.stringify({ ips })) // o site (em :8787 ou :5173) diz à placa que endereço usar
+
+log('subindo a API (8787), o site (5173) e o build contínuo do site…')
+run('api', 'npx', ['wrangler', 'dev', '--port', '8787', '--ip', '0.0.0.0', '--test-scheduled'], WORKER)
+run('site', 'npm', ['run', 'dev', '--', '--host'], WEB)
+run('build', 'npx', ['vite', 'build', '--watch', '--logLevel', 'warn'], WEB)
+
+if (!(await waitApi())) { log('a API não subiu em 90 s'); stop() }
+const lan = ips[0]
+console.log(`
+  ┌──────────────────────────────────────────────────────────────┐
+  │  Site (recarrega ao editar):  http://localhost:5173          │
+  │  API + site compilado:        http://localhost:8787          │${lan ? `
+  │  Para a placa (mesma rede):   http://${lan}:8787${' '.repeat(Math.max(0, 22 - lan.length))}│` : ''}
+  │  Entrar: "Entrar sem senha" (administrador ou usuário)       │
+  │  Estações de exemplo enviam a cada 20 s (simuladas)          │
+  │  Ctrl+C encerra tudo                                         │
+  └──────────────────────────────────────────────────────────────┘
+`)
+if (!args.has('--no-sim')) {
+  const loop = async () => { await Promise.all(DEMO.map((id, i) => tick(id, i))) }
+  await loop()
+  setInterval(loop, 20_000)
+}
