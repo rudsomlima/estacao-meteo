@@ -20,6 +20,8 @@ export function makeFmt(p: Pick<Prefs, 'wind' | 'temp' | 'rain' | 'pres'>) {
   const w = WIND[p.wind]
   const pr = PRES[p.pres]
   const tempNum = (c: number) => (p.temp === 'f' ? (c * 9) / 5 + 32 : c)
+  // temperatura sempre com uma casa decimal (inclusive 0.0); "-0.0" vira "0.0"
+  const t1 = (c: number) => { const x = tempNum(c).toFixed(1); return x === '-0.0' ? '0.0' : x }
   const rainNum = (mm: number) => (p.rain === 'in' ? mm / 25.4 : mm)
   const windNum = (ms: number) => ms * w.f
   const presNum = (h: number) => h * pr.f
@@ -32,9 +34,9 @@ export function makeFmt(p: Pick<Prefs, 'wind' | 'temp' | 'rain' | 'pres'>) {
     windNum, tempNum, rainNum, presNum,
     wind: (ms: number, d = 0) => `${windNum(ms).toFixed(d)} ${w.label}`,
     windV: (ms: number, d = 0) => windNum(ms).toFixed(d),
-    temp: (c: number, d = 1) => `${tempNum(c).toFixed(d)}${p.temp === 'f' ? '°F' : '°C'}`,
-    tempV: (c: number, d = 1) => tempNum(c).toFixed(d),
-    tempShort: (c: number) => `${tempNum(c).toFixed(0)}°`,
+    temp: (c: number) => `${t1(c)}${p.temp === 'f' ? '°F' : '°C'}`,
+    tempV: (c: number) => t1(c),
+    tempShort: (c: number) => `${t1(c)}°`,
     rain: (mm: number, d = rainDigits) => `${rainNum(mm).toFixed(d)} ${p.rain === 'in' ? 'pol' : 'mm'}`,
     rainRate: (mm: number, d = rainDigits) => `${rainNum(mm).toFixed(d)} ${p.rain === 'in' ? 'pol' : 'mm'}/h`,
     pres: (h: number) => `${presNum(h).toFixed(pr.d)} ${pr.label}`,
