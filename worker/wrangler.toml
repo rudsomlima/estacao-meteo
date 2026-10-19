@@ -12,7 +12,7 @@ run_worker_first = ["/api/*", "/__scheduled"]
 [[d1_databases]]
 binding = "DB"
 database_name = "estacao-meteo"
-database_id = "00000000-0000-0000-0000-000000000000" # troque pelo id que `wrangler d1 create estacao-meteo` imprime
+database_id = "f8e8c407-93b3-4469-ad9b-650391daa222"
 
 # Alertas de "estação offline": roda a cada 5 minutos
 [triggers]
