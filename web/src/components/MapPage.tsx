@@ -1,4 +1,4 @@
-import { Maximize2, Minimize2, Plus, Star } from 'lucide-react'
+import { ChevronDown, Maximize2, Minimize2, Plus, Star } from 'lucide-react'
 import { lazy, Suspense, useEffect, useMemo, useRef, useState } from 'react'
 import type { SaveResult } from '../hooks/useNetwork'
 import { useNow } from '../hooks/useNow'
@@ -87,13 +87,14 @@ export default function MapPage({ stations, source, onCreate, onSave, onRemove }
 
   return (
     <>
-      <section ref={box} id="mapa" className={full && fallback.current ? 'fixed inset-0 z-[60] bg-bg' : 'relative h-[calc(100svh-56px)] min-h-[540px] overflow-hidden bg-bg'} style={full && fallback.current ? undefined : { marginTop: 56 }}>
+      <section ref={box} id="mapa" className={full && fallback.current ? 'fixed inset-0 z-[60] bg-bg' : 'relative h-[calc(100svh-56px-88px)] min-h-[480px] overflow-hidden bg-bg'} style={full && fallback.current ? undefined : { marginTop: 56 }}>
         <Suspense fallback={<div className="grid h-full place-items-center text-sm text-ink-3">Carregando mapa…</div>}>
           <MapView
             stations={stations}
             selectedId={selected}
             layers={layers}
             pickMode={picking}
+            fullscreen={full}
             onSelect={setSelected}
             onPick={(lat, lon) => finishPick({ lat, lon })}
           />
@@ -156,6 +157,16 @@ export default function MapPage({ stations, source, onCreate, onSave, onRemove }
           </div>
         )}
 
+        {!full && (
+          <button
+            onClick={() => document.getElementById('rede')?.scrollIntoView({ behavior: 'smooth', block: 'start' })}
+            className="glass absolute inset-x-0 bottom-3 z-10 mx-auto flex w-fit items-center gap-1.5 rounded-full px-4 py-1.5 text-xs text-ink-2 hover:text-ink sm:bottom-4"
+            style={sel ? { display: 'none' } : undefined}
+          >
+            Todas as estações <ChevronDown className="h-3.5 w-3.5" aria-hidden />
+          </button>
+        )}
+
         {sel && <StationPanel station={sel} source={source} onClose={() => setSelected(null)} onEdit={() => setEditing(sel)} />}
       </section>
 
@@ -170,7 +181,7 @@ export default function MapPage({ stations, source, onCreate, onSave, onRemove }
         onRemove={async (id, token) => { const r = await onRemove(id, token); if (r.ok) { setSelected(null); if (prefs.favorites.includes(id)) toggleFavorite(id) } return r }}
       />
 
-      <section className="mx-auto max-w-7xl px-4 py-20 sm:px-6">
+      <section className="mx-auto max-w-7xl px-4 pb-20 pt-8 sm:px-6">
         <SectionHead id="rede" kicker="Rede" title="Todas as estações">
           Cada estação tem a própria chave, configuração e bateria. Clique numa linha para abrir a estação.
         </SectionHead>

@@ -4,6 +4,7 @@ import { Layers } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
 import { batteryColor, rainColor, tempColor, windColor } from '../lib/colors'
 import { batteryPct } from '../lib/battery'
+import { store } from '../lib/api'
 import { ago, compass16, isOnline, isSeen, kmh, wifiColor } from '../lib/derive'
 import { getPrefs, setPrefs, usePrefs, type MapLayer, type Prefs } from '../lib/prefs'
 import { makeFmt } from '../lib/units'
@@ -20,6 +21,8 @@ interface Props {
   pickMode: boolean
   onSelect: (id: string | null) => void
   onPick: (lat: number, lon: number) => void
+  /** mapa em tela cheia: aí a rolagem comum já amplia (fora dela, só com Ctrl, para a página poder rolar) */
+  fullscreen?: boolean
 }
 
 // Por padrão usa os tiles públicos do OpenStreetMap, escurecidos por filtro. Para produção com muito acesso,
@@ -86,7 +89,17 @@ function pin(s: Station, layers: Layer[]) {
   return { lines, border, on: alive }
 }
 
-export default function MapView({ stations, selectedId, layers, pickMode, onSelect, onPick }: Props) {
+const VIEW_KEY = 'meteo.mapview'
+/** A posição e o zoom do mapa ficam guardados: ao voltar de outra tela, o mapa está como o usuário deixou. */
+function savedView(): { center: [number, number]; zoom: number; bearing: number; pitch: number } | null {
+  try {
+    const v = JSON.parse(store.get(VIEW_KEY)) as { c?: [number, number]; z?: number; b?: number; p?: number }
+    if (v && Array.isArray(v.c) && Number.isFinite(v.c[0]) && Number.isFinite(v.c[1]) && Number.isFinite(v.z)) return { center: v.c, zoom: v.z as number, bearing: v.b ?? 0, pitch: v.p ?? 0 }
+  } catch { /* sem posição salva */ }
+  return null
+}
+
+export default function MapView({ stations, selectedId, layers, pickMode, onSelect, onPick, fullscreen }: Props) {
   const host = useRef<HTMLDivElement>(null)
   const cv = useRef<HTMLCanvasElement>(null)
   const map = useRef<maplibregl.Map | null>(null)
@@ -103,15 +116,29 @@ export default function MapView({ stations, selectedId, layers, pickMode, onSele
   // ---- mapa
   useEffect(() => {
     if (!host.current) return
+    const view = savedView()
     const m = new maplibregl.Map({
-      container: host.current, style: styleFor(getPrefs().basemap), center: [-45.5, -23.2], zoom: 6.2, attributionControl: false, cooperativeGestures: false,
+      container: host.current, style: styleFor(getPrefs().basemap), center: view?.center ?? [-45.5, -23.2], zoom: view?.zoom ?? 6.2,
+      bearing: view?.bearing ?? 0, pitch: view?.pitch ?? 0, attributionControl: false,
+      // a página rola com a roda do mouse; para ampliar o mapa é Ctrl + roda (ou dois dedos no celular)
+      cooperativeGestures: true,
+      locale: {
+        'CooperativeGesturesHandler.WindowsHelpText': 'Use Ctrl + rolagem para ampliar o mapa',
+        'CooperativeGesturesHandler.MacHelpText': 'Use ⌘ + rolagem para ampliar o mapa',
+        'CooperativeGesturesHandler.MobileHelpText': 'Use dois dedos para mover o mapa',
+      },
+    })
+    if (view) { fitted.current = true; located.current = true } // já tem a posição do usuário: não reenquadra nem vai para a localização
+    m.on('moveend', () => {
+      const c = m.getCenter()
+      store.set(VIEW_KEY, JSON.stringify({ c: [c.lng, c.lat], z: m.getZoom(), b: m.getBearing(), p: m.getPitch() }))
     })
     m.addControl(new maplibregl.NavigationControl({ showCompass: false }), 'bottom-right')
     // ao abrir, vai para a localização atual (se o navegador deixar); sem permissão, mostra as estações
     const geo = new maplibregl.GeolocateControl({ positionOptions: { enableHighAccuracy: false, timeout: 8000 }, fitBoundsOptions: { maxZoom: 10 }, showAccuracyCircle: false })
     m.addControl(geo, 'bottom-right')
     geo.on('geolocate', () => { located.current = true })
-    m.once('load', () => geo.trigger())
+    if (!view) m.once('load', () => geo.trigger())
     m.addControl(new maplibregl.AttributionControl({ compact: true }), 'bottom-right')
     m.on('click', (e) => {
       if (live.current.pickMode) live.current.onPick(e.lngLat.lat, e.lngLat.lng)
@@ -121,6 +148,13 @@ export default function MapView({ stations, selectedId, layers, pickMode, onSele
     const mk = markers.current
     return () => { mk.forEach((v) => v.m.remove()); mk.clear(); m.remove(); map.current = null; fitted.current = false; located.current = false }
   }, [])
+
+  // tela cheia: a roda do mouse amplia sem precisar do Ctrl
+  useEffect(() => {
+    const g = map.current?.cooperativeGestures
+    if (!g) return
+    if (fullscreen) g.disable(); else g.enable()
+  }, [fullscreen])
 
   // ---- mapa de fundo
   useEffect(() => {
