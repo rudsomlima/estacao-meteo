@@ -36,7 +36,7 @@ function Overview({ stations, users }: { stations: AdminStation[]; users: number
           <div key={l as string} className="rounded-2xl border border-line bg-card p-4"><p className="num text-xs text-ink-3">{l}</p><p className="font-display text-3xl font-bold">{v}</p></div>
         ))}
       </div>
-      <Section title="Todas as estações" hint="Clique numa linha para abrir a estação.">
+      <Section title="Todas as estações" hint="Clique numa linha para abrir a estação. O andamento das atualizações de firmware fica na aba Firmware.">
         <div className="overflow-x-auto rounded-xl border border-line">
           <table className="num w-full min-w-[760px] text-left text-sm">
             <thead><tr className="text-[11px] uppercase tracking-[0.1em] text-ink-3">{['Estação', 'Dono', 'Visto', 'Firmware', 'Configuração', 'Comando', 'Bateria', 'Wi-Fi'].map((h) => <th key={h} className="border-b border-line px-3 py-2 font-semibold">{h}</th>)}</tr></thead>
@@ -46,7 +46,7 @@ function Overview({ stations, users }: { stations: AdminStation[]; users: number
                   <td className="px-3 py-2"><b className="font-sans font-semibold">{s.name}</b><div className="text-xs text-ink-3">{s.city}</div></td>
                   <td className="px-3 py-2 text-ink-2">{s.owner_email ?? <i className="text-ink-3">sem dono</i>}</td>
                   <td className="px-3 py-2">{s.last_seen ? ago(s.last_seen) : 'nunca'}</td>
-                  <td className="px-3 py-2">{s.fw_version ?? '—'}{s.fw_target && s.fw_target !== s.fw_version ? <span className="text-warn"> → {s.fw_target}</span> : ''}</td>
+                  <td className="px-3 py-2">{s.fw_version ?? '—'}</td>
                   <td className="px-3 py-2">v{s.cfg_version}{s.cfg_version !== s.cfg_applied ? <span className="text-warn"> (a estação tem v{s.cfg_applied}: aguardando)</span> : <span className="text-ok"> aplicada{s.cfg_applied_at ? ` ${ago(s.cfg_applied_at)}` : ''}</span>}</td>
                   <td className={`px-3 py-2 text-xs ${s.command?.done ? 'text-ok' : s.command ? 'text-warn' : 'text-ink-3'}`}>{s.command ? (s.command.done ? 'reinício confirmado' : s.command.sent ? 'reinício entregue, sem confirmação' : 'reinício pedido') : '—'}</td>
                   <td className="px-3 py-2">{s.vbat != null && s.vbat > 1 ? `${s.vbat.toFixed(2)} V` : '—'}</td>
