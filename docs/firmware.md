@@ -57,7 +57,7 @@ flowchart TD
 - **Falha de Wi-Fi:** as leituras ficam no lote (até 12) e vão no próximo envio. Depois de **3 falhas seguidas** (e de novo após 9, 27 e 81) a estação abre o portal **EstacaoMeteo-XXXX** por 3 minutos para o celular escolher outra rede: é o caso de levar a estação para outro lugar ou trocar a senha do roteador. Com o cabo no computador o portal não abre (configure pelo site).
 - **Reiniciar pelo site:** o administrador pede o reinício; a estação recebe no próximo envio, reinicia e o envio seguinte confirma. Se o lote enche, a mais antiga é descartada e a chuva dela é somada na seguinte, então nada de chuva se perde.
 - **Bateria baixa:** abaixo de *Economizar abaixo de* o intervalo é multiplicado. Abaixo de *Hibernar abaixo de*, dorme 1 h.
-- **BME280 sem resposta:** a leitura do ciclo é descartada (o servidor exige todos os campos).
+- **Sensor de ambiente sem resposta:** a leitura do ciclo é descartada (o servidor exige todos os campos). Com *Sensor de ambiente = Nenhum* a placa só manda o sinal de vida (bateria e Wi-Fi).
 
 ## Potência do Wi-Fi (`wifi_tx_save`)
 
@@ -74,7 +74,7 @@ O RSSI é o que a estação ouve do roteador; o caminho de volta tende a ser par
 
 ## Sensores e pinos (`env_sensor`, `pin_*`)
 
-Em *Ajustes da estação → Sensores e pinos* escolhe-se o sensor de ambiente e os GPIOs. Tudo chega à placa pela configuração remota.
+Na página da estação, em *Configurações → Placa, sensores e pinos*, escolhe-se o sensor de ambiente e os GPIOs. Tudo chega à placa pela configuração remota.
 
 | `env_sensor` | Sensor | Observação |
 |---|---|---|
@@ -136,7 +136,7 @@ Sem PlatformIO e sem instalar nada: o site grava o firmware numa placa pelo cabo
    ```
 
    Isso compila o firmware e escreve `estacao-c3.bin` e `manifest.json` em `web/public/firmware/` (fora do git). O site mostra a versão e a hora em que a imagem foi gerada, para você ver se está desatualizada. Em desenvolvimento (`npm run dev`) a pasta já é servida; para publicar, rode `npm run build`.
-2. No site, **Ajustes → Gravar firmware**: escolha a placa e toque em *Gravar*. Também dá para usar um `.bin` seu (imagem completa em 0x0, ou só o aplicativo em 0x10000).
+2. No site, entre como administrador e abra **Administração → Site e placas → Gravar firmware e deixar a placa pronta**: escolha a placa e a estação e toque em *Gravar e deixar a placa pronta* (o botão *Avançado* grava só o firmware). Também dá para usar um `.bin` seu (imagem completa em 0x0, ou só o aplicativo em 0x10000).
 3. Terminada a gravação, a placa reinicia sozinha e o site a reconhece (veja abaixo).
 
 Se a placa estiver dormindo (a porta não aparece), o site avisa para apertar RESET e recomeça a gravação sozinho quando ela surgir. A USB nativa do ESP32-C3 entra em modo de gravação sozinha; com uma ponte CH340 ou CP210x pode ser preciso segurar BOOT, apertar RESET, soltar o RESET e depois o BOOT. *Apagar toda a flash* remove Wi-Fi, chave e calibração salvos.
@@ -154,7 +154,7 @@ O pareamento só funciona com o endereço em `https://`, porque a chave viaja na
 
 ## Reconhecimento pela USB (Web Serial)
 
-Com o site aberto no Chrome, Edge ou Opera, a placa plugada é reconhecida sozinha: o site mostra um aviso, diz qual estação ela é e oferece **configurar Wi-Fi, endereço e chave** sem o portal. Na primeira vez, autorize a placa em *Ajustes → Placa USB* (o navegador exige um clique); depois ela é reconhecida a cada plugada.
+Com o site aberto no Chrome, Edge ou Opera, a placa plugada é reconhecida sozinha: o site mostra um aviso, diz qual estação ela é e oferece **configurar Wi-Fi, endereço e chave** sem o portal. Na primeira vez, autorize a placa em *Administração → Site e placas → Placa USB* (o navegador exige um clique); depois ela é reconhecida a cada plugada.
 
 Como funciona: ao ligar com o cabo num computador, o firmware escuta a USB por 10 s (60 s se ainda não está configurado; cada comando renova a janela) e responde a comandos em JSON, uma linha por comando (`hello`, `scan`, `provision`, `restart`, em [usblink.cpp](../firmware/src/usblink.cpp)). Ao configurar, o site **gera uma chave nova** para a estação, entrega direto à placa e ela reinicia. Se a placa não responder, o site tenta reiniciá-la pelos sinais DTR/RTS.
 

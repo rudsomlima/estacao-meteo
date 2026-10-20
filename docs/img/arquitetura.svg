@@ -1,49 +1,77 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 520" width="1200" height="520" role="img" aria-label="Arquitetura do sistema">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 660" width="1200" height="660" role="img" aria-label="Arquitetura do sistema">
 <title>Arquitetura do sistema</title>
-<rect width="1200" height="520" fill="#ffffff"/>
+<rect width="1200" height="660" fill="#ffffff"/>
 <text x="40" y="40" font-size="24" fill="#0f172a" text-anchor="start" font-weight="700" font-family="'Helvetica Neue', Arial, sans-serif" >Arquitetura</text>
-<text x="40" y="62" font-size="13" fill="#64748b" text-anchor="start" font-weight="400" font-family="'Helvetica Neue', Arial, sans-serif" >A estação envia lotes por HTTPS. O mesmo Worker guarda os dados, serve o site e entrega a configuração.</text>
-<rect x="40" y="130" width="270" height="230" rx="10" fill="#e0f2fe" stroke="#0284c7" stroke-width="1.8" />
-<text x="175.0" y="158" font-size="15" fill="#0f172a" text-anchor="middle" font-weight="700" font-family="'Helvetica Neue', Arial, sans-serif" >Estação</text>
-<text x="175.0" y="182" font-size="12" fill="#64748b" text-anchor="middle" font-weight="400" font-family="'Helvetica Neue', Arial, sans-serif" >ESP32-C3</text>
-<text x="175.0" y="200" font-size="12" fill="#64748b" text-anchor="middle" font-weight="400" font-family="'Helvetica Neue', Arial, sans-serif" >BME280 · QMC5883L</text>
-<text x="175.0" y="218" font-size="12" fill="#64748b" text-anchor="middle" font-weight="400" font-family="'Helvetica Neue', Arial, sans-serif" >Hall do vento · Hall da chuva</text>
-<text x="175.0" y="236" font-size="12" fill="#64748b" text-anchor="middle" font-weight="400" font-family="'Helvetica Neue', Arial, sans-serif" >bateria + painel solar</text>
-<text x="175.0" y="254" font-size="12" fill="#64748b" text-anchor="middle" font-weight="400" font-family="'Helvetica Neue', Arial, sans-serif" >deep sleep / light sleep</text>
-<rect x="470" y="130" width="270" height="230" rx="10" fill="#ecfdf5" stroke="#16a34a" stroke-width="1.8" />
-<text x="605.0" y="158" font-size="15" fill="#0f172a" text-anchor="middle" font-weight="700" font-family="'Helvetica Neue', Arial, sans-serif" >Cloudflare Worker</text>
-<text x="605.0" y="182" font-size="12" fill="#64748b" text-anchor="middle" font-weight="400" font-family="'Helvetica Neue', Arial, sans-serif" >POST /api/ingest (lote)</text>
-<text x="605.0" y="200" font-size="12" fill="#64748b" text-anchor="middle" font-weight="400" font-family="'Helvetica Neue', Arial, sans-serif" >GET /api/stations</text>
-<text x="605.0" y="218" font-size="12" fill="#64748b" text-anchor="middle" font-weight="400" font-family="'Helvetica Neue', Arial, sans-serif" >PUT /api/stations/:id</text>
-<text x="605.0" y="236" font-size="12" fill="#64748b" text-anchor="middle" font-weight="400" font-family="'Helvetica Neue', Arial, sans-serif" >serve o site (web/dist)</text>
-<text x="605.0" y="254" font-size="12" fill="#64748b" text-anchor="middle" font-weight="400" font-family="'Helvetica Neue', Arial, sans-serif" ></text>
-<rect x="470" y="400" width="270" height="90" rx="10" fill="#fefce8" stroke="#ca8a04" stroke-width="1.8" />
-<text x="605.0" y="428" font-size="15" fill="#0f172a" text-anchor="middle" font-weight="700" font-family="'Helvetica Neue', Arial, sans-serif" >D1 (SQLite)</text>
-<text x="605.0" y="452" font-size="12" fill="#64748b" text-anchor="middle" font-weight="400" font-family="'Helvetica Neue', Arial, sans-serif" >stations · readings</text>
-<rect x="900" y="130" width="270" height="230" rx="10" fill="#f5f3ff" stroke="#7c3aed" stroke-width="1.8" />
-<text x="1035.0" y="158" font-size="15" fill="#0f172a" text-anchor="middle" font-weight="700" font-family="'Helvetica Neue', Arial, sans-serif" >Navegador</text>
-<text x="1035.0" y="182" font-size="12" fill="#64748b" text-anchor="middle" font-weight="400" font-family="'Helvetica Neue', Arial, sans-serif" >React + Vite + Tailwind</text>
-<text x="1035.0" y="200" font-size="12" fill="#64748b" text-anchor="middle" font-weight="400" font-family="'Helvetica Neue', Arial, sans-serif" >MapLibre: mapa da rede</text>
-<text x="1035.0" y="218" font-size="12" fill="#64748b" text-anchor="middle" font-weight="400" font-family="'Helvetica Neue', Arial, sans-serif" >figura animada da estação</text>
-<text x="1035.0" y="236" font-size="12" fill="#64748b" text-anchor="middle" font-weight="400" font-family="'Helvetica Neue', Arial, sans-serif" >gráficos · energia · config</text>
-<path d="M310,200 L470,200" fill="none" stroke="#ea580c" stroke-width="3" stroke-linejoin="round" stroke-linecap="round"/>
-<polygon points="470,200 460.0950818741206,204.78462087522354 460.0950818741206,195.21537912477646" fill="#ea580c"/>
-<text x="390" y="188" font-size="11" fill="#ea580c" text-anchor="middle" font-weight="400" font-family="ui-monospace, 'SFMono-Regular', Menlo, Consolas, monospace" >leituras (lote)</text>
-<path d="M470,285 L310,285" fill="none" stroke="#1d4ed8" stroke-width="3" stroke-linejoin="round" stroke-linecap="round"/>
-<polygon points="310,285 319.9049181258794,280.21537912477646 319.9049181258794,289.78462087522354" fill="#1d4ed8"/>
-<text x="390" y="305" font-size="11" fill="#1d4ed8" text-anchor="middle" font-weight="400" font-family="ui-monospace, 'SFMono-Regular', Menlo, Consolas, monospace" >configuração nova</text>
-<path d="M740,200 L900,200" fill="none" stroke="#15803d" stroke-width="3" stroke-linejoin="round" stroke-linecap="round"/>
-<polygon points="900,200 890.0950818741205,204.78462087522354 890.0950818741205,195.21537912477646" fill="#15803d"/>
-<text x="820" y="188" font-size="11" fill="#15803d" text-anchor="middle" font-weight="400" font-family="ui-monospace, 'SFMono-Regular', Menlo, Consolas, monospace" >dados e estações</text>
-<path d="M900,285 L740,285" fill="none" stroke="#7c3aed" stroke-width="3" stroke-linejoin="round" stroke-linecap="round"/>
-<polygon points="740,285 749.9049181258795,280.21537912477646 749.9049181258795,289.78462087522354" fill="#7c3aed"/>
-<text x="820" y="305" font-size="11" fill="#7c3aed" text-anchor="middle" font-weight="400" font-family="ui-monospace, 'SFMono-Regular', Menlo, Consolas, monospace" >salvar configuração</text>
-<path d="M605,360 L605,400" fill="none" stroke="#ca8a04" stroke-width="3" stroke-linejoin="round" stroke-linecap="round"/>
-<polygon points="605,400 600.2153791247765,390.0950818741206 609.7846208752235,390.0950818741206" fill="#ca8a04"/>
-<path d="M635,400 L635,360" fill="none" stroke="#ca8a04" stroke-width="3" stroke-linejoin="round" stroke-linecap="round"/>
+<text x="40" y="62" font-size="13" fill="#64748b" text-anchor="start" font-weight="400" font-family="'Helvetica Neue', Arial, sans-serif" >A estação envia lotes por HTTPS. O mesmo Worker guarda os dados, serve o site, avisa os navegadores e dispara os alertas.</text>
+<rect x="40" y="110" width="270" height="250" rx="10" fill="#e0f2fe" stroke="#0284c7" stroke-width="1.8" />
+<text x="175.0" y="138" font-size="15" fill="#0f172a" text-anchor="middle" font-weight="700" font-family="'Helvetica Neue', Arial, sans-serif" >Estação</text>
+<text x="175.0" y="162" font-size="12" fill="#64748b" text-anchor="middle" font-weight="400" font-family="'Helvetica Neue', Arial, sans-serif" >ESP32-C3</text>
+<text x="175.0" y="180" font-size="12" fill="#64748b" text-anchor="middle" font-weight="400" font-family="'Helvetica Neue', Arial, sans-serif" >BME280 e/ou MS5611 · QMC5883L</text>
+<text x="175.0" y="198" font-size="12" fill="#64748b" text-anchor="middle" font-weight="400" font-family="'Helvetica Neue', Arial, sans-serif" >Hall do vento · Hall da chuva</text>
+<text x="175.0" y="216" font-size="12" fill="#64748b" text-anchor="middle" font-weight="400" font-family="'Helvetica Neue', Arial, sans-serif" >bateria + painel solar</text>
+<text x="175.0" y="234" font-size="12" fill="#64748b" text-anchor="middle" font-weight="400" font-family="'Helvetica Neue', Arial, sans-serif" >deep sleep / light sleep</text>
+<text x="175.0" y="252" font-size="12" fill="#64748b" text-anchor="middle" font-weight="400" font-family="'Helvetica Neue', Arial, sans-serif" >pinos e sensor configuráveis</text>
+<rect x="470" y="110" width="270" height="250" rx="10" fill="#ecfdf5" stroke="#16a34a" stroke-width="1.8" />
+<text x="605.0" y="138" font-size="15" fill="#0f172a" text-anchor="middle" font-weight="700" font-family="'Helvetica Neue', Arial, sans-serif" >Cloudflare Worker</text>
+<text x="605.0" y="162" font-size="12" fill="#64748b" text-anchor="middle" font-weight="400" font-family="'Helvetica Neue', Arial, sans-serif" >POST /api/ingest (lote)</text>
+<text x="605.0" y="180" font-size="12" fill="#64748b" text-anchor="middle" font-weight="400" font-family="'Helvetica Neue', Arial, sans-serif" >GET /api/stations · /readings</text>
+<text x="605.0" y="198" font-size="12" fill="#64748b" text-anchor="middle" font-weight="400" font-family="'Helvetica Neue', Arial, sans-serif" >PUT /api/stations/:id</text>
+<text x="605.0" y="216" font-size="12" fill="#64748b" text-anchor="middle" font-weight="400" font-family="'Helvetica Neue', Arial, sans-serif" >/api/admin/* (administrador)</text>
+<text x="605.0" y="234" font-size="12" fill="#64748b" text-anchor="middle" font-weight="400" font-family="'Helvetica Neue', Arial, sans-serif" >/api/live (WebSocket, Hub)</text>
+<text x="605.0" y="252" font-size="12" fill="#64748b" text-anchor="middle" font-weight="400" font-family="'Helvetica Neue', Arial, sans-serif" >cron de 5 min: alertas</text>
+<text x="605.0" y="270" font-size="12" fill="#64748b" text-anchor="middle" font-weight="400" font-family="'Helvetica Neue', Arial, sans-serif" >serve o site (web/dist)</text>
+<rect x="900" y="110" width="270" height="250" rx="10" fill="#f5f3ff" stroke="#7c3aed" stroke-width="1.8" />
+<text x="1035.0" y="138" font-size="15" fill="#0f172a" text-anchor="middle" font-weight="700" font-family="'Helvetica Neue', Arial, sans-serif" >Navegador</text>
+<text x="1035.0" y="162" font-size="12" fill="#64748b" text-anchor="middle" font-weight="400" font-family="'Helvetica Neue', Arial, sans-serif" >React + Vite + Tailwind</text>
+<text x="1035.0" y="180" font-size="12" fill="#64748b" text-anchor="middle" font-weight="400" font-family="'Helvetica Neue', Arial, sans-serif" >MapLibre: mapa da rede</text>
+<text x="1035.0" y="198" font-size="12" fill="#64748b" text-anchor="middle" font-weight="400" font-family="'Helvetica Neue', Arial, sans-serif" >figura animada da estação</text>
+<text x="1035.0" y="216" font-size="12" fill="#64748b" text-anchor="middle" font-weight="400" font-family="'Helvetica Neue', Arial, sans-serif" >gráficos · energia · config</text>
+<text x="1035.0" y="234" font-size="12" fill="#64748b" text-anchor="middle" font-weight="400" font-family="'Helvetica Neue', Arial, sans-serif" >painel do administrador</text>
+<text x="1035.0" y="252" font-size="12" fill="#64748b" text-anchor="middle" font-weight="400" font-family="'Helvetica Neue', Arial, sans-serif" >login com Google</text>
+<rect x="470" y="410" width="270" height="100" rx="10" fill="#fefce8" stroke="#ca8a04" stroke-width="1.8" />
+<text x="605.0" y="438" font-size="15" fill="#0f172a" text-anchor="middle" font-weight="700" font-family="'Helvetica Neue', Arial, sans-serif" >D1 (SQLite)</text>
+<text x="605.0" y="462" font-size="12" fill="#64748b" text-anchor="middle" font-weight="400" font-family="'Helvetica Neue', Arial, sans-serif" >stations · readings · events</text>
+<text x="605.0" y="480" font-size="12" fill="#64748b" text-anchor="middle" font-weight="400" font-family="'Helvetica Neue', Arial, sans-serif" >users · releases · settings</text>
+<rect x="790" y="410" width="170" height="100" rx="10" fill="#fff7ed" stroke="#ea580c" stroke-width="1.8" />
+<text x="875.0" y="438" font-size="15" fill="#0f172a" text-anchor="middle" font-weight="700" font-family="'Helvetica Neue', Arial, sans-serif" >Telegram</text>
+<text x="875.0" y="462" font-size="12" fill="#64748b" text-anchor="middle" font-weight="400" font-family="'Helvetica Neue', Arial, sans-serif" >alertas: sem dados,</text>
+<text x="875.0" y="480" font-size="12" fill="#64748b" text-anchor="middle" font-weight="400" font-family="'Helvetica Neue', Arial, sans-serif" >bateria, rajada, chuva</text>
+<rect x="1000" y="410" width="170" height="100" rx="10" fill="#f8fafc" stroke="#64748b" stroke-width="1.8" />
+<text x="1085.0" y="438" font-size="15" fill="#0f172a" text-anchor="middle" font-weight="700" font-family="'Helvetica Neue', Arial, sans-serif" >Google</text>
+<text x="1085.0" y="462" font-size="12" fill="#64748b" text-anchor="middle" font-weight="400" font-family="'Helvetica Neue', Arial, sans-serif" >login: o Worker confere</text>
+<text x="1085.0" y="480" font-size="12" fill="#64748b" text-anchor="middle" font-weight="400" font-family="'Helvetica Neue', Arial, sans-serif" >o ID token (RS256)</text>
+<path d="M310,180 L470,180" fill="none" stroke="#ea580c" stroke-width="3" stroke-linejoin="round" stroke-linecap="round"/>
+<polygon points="470,180 460.0950818741206,184.78462087522354 460.0950818741206,175.21537912477646" fill="#ea580c"/>
+<text x="390" y="168" font-size="11" fill="#ea580c" text-anchor="middle" font-weight="400" font-family="ui-monospace, 'SFMono-Regular', Menlo, Consolas, monospace" >leituras (lote)</text>
+<path d="M470,235 L310,235" fill="none" stroke="#1d4ed8" stroke-width="3" stroke-linejoin="round" stroke-linecap="round"/>
+<polygon points="310,235 319.9049181258794,230.21537912477646 319.9049181258794,239.78462087522354" fill="#1d4ed8"/>
+<text x="390" y="255" font-size="11" fill="#1d4ed8" text-anchor="middle" font-weight="400" font-family="ui-monospace, 'SFMono-Regular', Menlo, Consolas, monospace" >config · firmware</text>
+<path d="M740,180 L900,180" fill="none" stroke="#15803d" stroke-width="3" stroke-linejoin="round" stroke-linecap="round"/>
+<polygon points="900,180 890.0950818741205,184.78462087522354 890.0950818741205,175.21537912477646" fill="#15803d"/>
+<text x="820" y="168" font-size="11" fill="#15803d" text-anchor="middle" font-weight="400" font-family="ui-monospace, 'SFMono-Regular', Menlo, Consolas, monospace" >dados e estações</text>
+<path d="M900,235 L740,235" fill="none" stroke="#7c3aed" stroke-width="3" stroke-linejoin="round" stroke-linecap="round"/>
+<polygon points="740,235 749.9049181258795,230.21537912477646 749.9049181258795,239.78462087522354" fill="#7c3aed"/>
+<text x="820" y="255" font-size="11" fill="#7c3aed" text-anchor="middle" font-weight="400" font-family="ui-monospace, 'SFMono-Regular', Menlo, Consolas, monospace" >salvar · admin</text>
+<path d="M740,290 L900,290" fill="none" stroke="#ca8a04" stroke-width="3" stroke-linejoin="round" stroke-linecap="round"/>
+<polygon points="900,290 890.0950818741205,294.78462087522354 890.0950818741205,285.21537912477646" fill="#ca8a04"/>
+<text x="820" y="278" font-size="11" fill="#ca8a04" text-anchor="middle" font-weight="400" font-family="ui-monospace, 'SFMono-Regular', Menlo, Consolas, monospace" >avisa: chegou leitura</text>
+<path d="M605,360 L605,410" fill="none" stroke="#ca8a04" stroke-width="3" stroke-linejoin="round" stroke-linecap="round"/>
+<polygon points="605,410 600.2153791247765,400.0950818741206 609.7846208752235,400.0950818741206" fill="#ca8a04"/>
+<path d="M635,410 L635,360" fill="none" stroke="#ca8a04" stroke-width="3" stroke-linejoin="round" stroke-linecap="round"/>
 <polygon points="635,360 639.7846208752235,369.9049181258794 630.2153791247765,369.9049181258794" fill="#ca8a04"/>
-<text x="110" y="400" font-size="12" fill="#64748b" text-anchor="start" font-weight="400" font-family="'Helvetica Neue', Arial, sans-serif" >Cada leitura leva a idade em segundos,</text>
-<text x="110" y="418" font-size="12" fill="#64748b" text-anchor="start" font-weight="400" font-family="'Helvetica Neue', Arial, sans-serif" >porque a estação não tem relógio de verdade.</text>
-<text x="110" y="446" font-size="12" fill="#64748b" text-anchor="start" font-weight="400" font-family="'Helvetica Neue', Arial, sans-serif" >A chave do dispositivo nunca é guardada:</text>
-<text x="110" y="464" font-size="12" fill="#64748b" text-anchor="start" font-weight="400" font-family="'Helvetica Neue', Arial, sans-serif" >o servidor só guarda o SHA-256 dela.</text>
+<path d="M740,335 L790,440" fill="none" stroke="#ea580c" stroke-width="3" stroke-linejoin="round" stroke-linecap="round"/>
+<polygon points="790,440 781.4216978008675,433.11430966566473 790.0613883724277,429.0001712982551" fill="#ea580c"/>
+<path d="M1085,360 L1085,410" fill="none" stroke="#94a3b8" stroke-width="3" stroke-linejoin="round" stroke-linecap="round"/>
+<polygon points="1085,410 1080.2153791247765,400.0950818741206 1089.7846208752235,400.0950818741206" fill="#94a3b8"/>
+<path d="M290,360 L290,585 L990,585 L990,360" fill="none" stroke="#1f2933" stroke-width="3" stroke-linejoin="round" stroke-linecap="round" stroke-dasharray="9 6"/>
+<polygon points="990,360 994.7846208752235,369.9049181258794 985.2153791247765,369.9049181258794" fill="#1f2933"/>
+<polygon points="290,360 294.78462087522354,369.9049181258794 285.21537912477646,369.9049181258794" fill="#1f2933"/>
+<text x="580" y="570" font-size="12" fill="#1f2933" text-anchor="middle" font-weight="700" font-family="'Helvetica Neue', Arial, sans-serif" >cabo USB (Web Serial, Chrome/Edge/Opera, só administrador)</text>
+<text x="580" y="612" font-size="12" fill="#64748b" text-anchor="middle" font-weight="400" font-family="'Helvetica Neue', Arial, sans-serif" >grava o firmware, entrega Wi-Fi, endereço do site e chave, e aplica a configuração na hora</text>
+<text x="40" y="410" font-size="12" fill="#64748b" text-anchor="start" font-weight="400" font-family="'Helvetica Neue', Arial, sans-serif" >Cada leitura leva a idade em segundos,</text>
+<text x="40" y="428" font-size="12" fill="#64748b" text-anchor="start" font-weight="400" font-family="'Helvetica Neue', Arial, sans-serif" >porque a estação não tem relógio de verdade.</text>
+<text x="40" y="456" font-size="12" fill="#64748b" text-anchor="start" font-weight="400" font-family="'Helvetica Neue', Arial, sans-serif" >A chave do dispositivo nunca é guardada:</text>
+<text x="40" y="474" font-size="12" fill="#64748b" text-anchor="start" font-weight="400" font-family="'Helvetica Neue', Arial, sans-serif" >o servidor só guarda o SHA-256 dela.</text>
+<text x="40" y="502" font-size="12" fill="#64748b" text-anchor="start" font-weight="400" font-family="'Helvetica Neue', Arial, sans-serif" >O firmware novo vai do site para a placa</text>
+<text x="40" y="520" font-size="12" fill="#64748b" text-anchor="start" font-weight="400" font-family="'Helvetica Neue', Arial, sans-serif" >pela rede (OTA) ou pelo cabo.</text>
 </svg>

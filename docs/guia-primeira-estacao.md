@@ -2,7 +2,7 @@
 
 Passo a passo para quem tem um **ESP32-C3 novo** e quer vê-lo enviando dados no site. Não precisa instalar nada no computador além do navegador. Se você já montou a parte física (sensores, bateria), este guia leva da placa "em branco" até a primeira leitura no mapa.
 
-> As telas abaixo são do site rodando em modo de desenvolvimento, com as estações de exemplo. As telas do aviso "Placa USB detectada" foram tiradas com uma placa simulada, mas o texto e os botões são os reais.
+> As telas abaixo são do site rodando em modo de desenvolvimento, com as estações de exemplo e a conta de administrador de desenvolvimento (**Entrar sem senha**). As telas do aviso "Placa USB detectada" (passo 3) foram tiradas com uma placa simulada e de uma versão anterior do mapa, mas o texto e os botões do aviso são os atuais.
 
 **Tempo estimado:** 10 a 15 minutos, mais o tempo de gravar o firmware.
 
@@ -17,19 +17,21 @@ Separe estas coisas. A maioria dos problemas vem de faltar uma delas.
 | **Navegador Chrome, Edge ou Opera** no computador | Só eles falam com a placa pela USB (Web Serial). Firefox e Safari não servem. |
 | **Cabo USB de dados** | Muitos cabos só carregam e não transmitem dados. Se o computador não "enxerga" a placa, troque o cabo. |
 | **Rede Wi-Fi de 2,4 GHz**, o nome e a senha | O ESP32-C3 **não conecta em 5 GHz**. Se o seu roteador junta as duas redes no mesmo nome, crie uma rede 2,4 GHz separada para teste. |
-| **Token de administrador** | É a "senha" que o site pede para criar e configurar estações. Veja a seção abaixo. |
+| **Conta de administrador** | Só o administrador cadastra estações, grava placas e publica firmware. Em produção é o login com o Google de um e-mail listado em `ADMIN_EMAILS`. No seu computador, em desenvolvimento, é o botão **Entrar sem senha**. Veja a seção abaixo. |
 | **O site no ar** e **alcançável pela placa** | A placa precisa conseguir abrir o endereço do site pela rede Wi-Fi dela. Veja a seção "Que endereço a placa vai usar?". |
 
-### Qual é o token de administrador?
+### Como entrar como administrador
 
-É o valor do segredo `ADMIN_TOKEN` do servidor (Worker). **O site nunca o mostra**, porque ele só é usado para assinar os pedidos.
-
-| Onde o site está rodando | Qual é o token |
+| Onde o site está rodando | Como entrar |
 |---|---|
-| **No seu computador** (`npm run dev` na pasta `worker`) | O que está em `worker/.dev.vars`, na linha `ADMIN_TOKEN=`. O modelo traz `admin-troque`. |
-| **Publicado na Cloudflare** | O que você definiu ao publicar, com `npx wrangler secret put ADMIN_TOKEN`. Ele **não pode ser lido de volta**. Se esqueceu, defina outro com o mesmo comando. |
+| **No seu computador** (`npm run dev` na raiz) | Botão **Entrar** (canto superior direito) → **Entrar como administrador**. Só existe em `localhost`, com `DEV_LOGIN` ligado no `worker/.dev.vars`. |
+| **Publicado na Cloudflare** | Botão **Entrar** → conta Google cujo e-mail está em `ADMIN_EMAILS` (`worker/wrangler.toml`). Outros administradores podem ser promovidos depois, em **Administração → Usuários**. |
 
-O token digitado fica guardado só neste navegador, e é pedido uma vez.
+Quem entrou vê o ícone de escudo e o menu **Painel do administrador**. Usuário comum só altera as estações das quais é dono.
+
+![Painel do administrador: visão geral](img/guia/14-painel-do-administrador.png)
+
+O **token de administrador** (`ADMIN_TOKEN`, segredo do Worker) é o jeito antigo, usado por scripts e pela API. O site só o pede quando **não há login com Google** configurado. Ele nunca é enviado: serve para assinar os pedidos. Em desenvolvimento está em `worker/.dev.vars`; publicado, defina com `npx wrangler secret put ADMIN_TOKEN` (não dá para lê-lo de volta).
 
 ### Que endereço a placa vai usar?
 
@@ -56,17 +58,24 @@ Ao abrir, o mapa vai para a **sua localização** (o navegador pede permissão; 
 
 ![Opções de camadas do mapa](img/guia/13-camadas-do-mapa.png)
 
-Os botões do topo (**Vento, Temperatura, Chuva 24 h, Bateria, Última vez visto**) podem ser ligados **todos ao mesmo tempo**: cada estação mostra uma linha por camada ligada.
+Os botões do topo (**Vento, Temperatura, Pressão, Chuva 24 h, Bateria, Sinal Wi-Fi, Última vez visto**) podem ser ligados **todos ao mesmo tempo**: cada estação mostra uma linha por camada ligada. Estação sem sensor de pressão mostra "—".
+
+As camadas que abrem ligadas, as unidades (km/h, °C, hPa…) e o mapa de fundo padrão se escolhem em **Ajustes**:
+
+![Ajustes do site](img/guia/15-ajustes-do-site.png)
 
 ![Todas as camadas ligadas](img/guia/20-camadas-todas.png)
 
 Para **editar ou remover** uma estação, clique no pino dela e depois em **Editar ou remover estação**. Remover apaga a estação, a chave e todas as leituras.
 
-Os três lugares que você vai usar:
+Os quatro lugares que você vai usar:
 
-- **Adicionar estação** (botão no mapa): cria a estação e gera um código de pareamento.
-- **Ajustes** (no topo): gravar firmware, autorizar a placa USB, alertas.
-- **Configurações** (dentro da página de cada estação): bateria, energia, intervalo de envio, calibração.
+| Onde | Quem vê | Para quê |
+|---|---|---|
+| **Adicionar estação** (botão no mapa) | administrador | Cria a estação e gera um código de pareamento. |
+| **Ajustes** (no topo do mapa) | todos | Unidades, mapa, estações favoritas e alertas no Telegram. |
+| **Administração** (menu da conta → *Painel do administrador*) | administrador | Visão geral, configuração em massa, firmware, **Site e placas** (placa USB, gravar firmware, atualização dos dados, exportar e backup), usuários e segurança. |
+| **Configurações** (página de cada estação) | dono e administrador | Placa, sensores e pinos, bateria, energia, intervalo de envio, calibração. |
 
 ---
 
@@ -84,13 +93,30 @@ Há três jeitos de configurar a placa. Use o **Caminho A** se for a primeira ve
 
 ## 3. Caminho A: pela USB (recomendado, só administrador)
 
-Entre com a conta Google de administrador (botão **Entrar**, canto superior direito) e abra **Ajustes → Gravar firmware e deixar a placa pronta**.
+Entre como administrador (veja acima) e abra **Administração → Site e placas**. Dois painéis interessam:
 
-1. Plugue a placa e clique em **Escolher a placa** (o navegador pede a porta serial uma vez).
+![Administração: Placa USB](img/guia/04-ajustes-placa-usb.png)
+
+**Placa USB** → **Autorizar uma placa** (uma vez por navegador): depois disso o site reconhece a placa sempre que você plugar o cabo.
+
+![Administração: Gravar firmware e deixar a placa pronta](img/guia/05-ajustes-gravar-firmware.png)
+
+1. Em **Gravar firmware e deixar a placa pronta**, plugue a placa e clique em **Escolher a placa** (o navegador pede a porta serial uma vez).
 2. Escolha a **estação** (ou *Nova estação…*, com nome, local e, se quiser, o e-mail do dono) e informe a **rede Wi-Fi de 2,4 GHz** e a senha. O site pode lembrar a rede para as próximas placas.
 3. Clique em **Gravar e deixar a placa pronta**. O site grava o firmware, configura Wi-Fi, endereço do site e chave pela USB e avisa quando a primeira leitura chegar. Não há código para digitar: quem confirma é o seu login de administrador.
 
 Se a placa estiver dormindo, o site pede para apertar RESET e continua sozinho. Usuários comuns não veem este painel nem o aviso de placa USB.
+
+O que você vê durante o processo (aviso no canto da tela, em qualquer página do site):
+
+| | |
+|---|---|
+| **Placa nova, sem firmware.** O aviso oferece gravar.<br>![Placa sem firmware](img/guia/06-placa-sem-firmware.png) | **Placa detectada.** Escolha a estação e a rede Wi-Fi.<br>![Placa detectada](img/guia/07-placa-detectada.png) |
+| **Configurando.** O site entrega Wi-Fi, endereço e chave.<br>![Configurar a placa](img/guia/08-configurar-placa.png) | **Aguardando a primeira leitura.**<br>![Aguardando a primeira leitura](img/guia/09-aguardando-primeira-leitura.png) |
+
+E, quando a primeira leitura chega:
+
+![Estação no ar](img/guia/10-estacao-no-ar.png)
 
 ## 4. Caminho B: código de pareamento
 
@@ -127,14 +153,23 @@ Use se a USB não funcionou.
 
 ## 6. Depois que está no ar
 
-Na página da estação, o botão **Configurações** abre a parte técnica:
+A página da estação mostra a figura com os valores ao vivo:
+
+![Página da estação](img/guia/11-pagina-da-estacao.png)
+
+O botão **Configurações** (no topo) abre a parte técnica: consumo e autonomia, sensores, bateria, diagnóstico e a configuração remota. Na seção **Configuração**, os atalhos *Placa, sensores e pinos*, *Bateria*, *Envio, vento e economia* e *Nome e local* levam direto a cada grupo.
 
 ![Configurações da estação](img/guia/12-configuracoes-da-estacao.png)
 
-O que vale ajustar logo no começo, na seção **Configuração**:
+![Placa, sensores e pinos](img/guia/16-sensores-e-pinos.png)
+
+A **placa** mostrada é a que o firmware suporta (ESP32-C3). O **sensor de ambiente** pode ser BME280, MS5611 (GY-63), os dois, ou nenhum, e os **pinos** (SDA, SCL, vento, chuva, bateria) podem ser trocados. A fiação precisa ficar igual ao que o site mostra. Veja a pinagem em [hardware.md](hardware.md#pinagem-do-esp32-c3).
+
+O que vale ajustar logo no começo:
 
 | Ajuste | Para quê |
 |---|---|
+| **Sensor de ambiente** | Escolha o módulo que você ligou (BME280 é o padrão). Com o errado, a placa não mede e só manda o sinal de vida. |
 | **Enviar a cada** = 1 | Só durante os testes: a estação envia a cada leitura, e as mudanças feitas no site chegam mais rápido. Depois volte ao padrão (3) para economizar bateria. |
 | **Tipo e capacidade da bateria** | Define a curva de % da bateria e a autonomia estimada. |
 | **Chuva por basculada** | Medido no seu pluviômetro. Veja [calibracao.md](calibracao.md). |
@@ -151,7 +186,7 @@ Resumo do que mais acontece. A lista completa está em [solucao-de-problemas.md]
 
 ### "Token de administrador incorreto."
 
-É o erro mais comum e tem 3 causas:
+Só aparece quando o site **não tem login com Google** e usa o token (veja acima). Tem 3 causas:
 
 1. **Token digitado diferente do segredo do servidor.** Em desenvolvimento, confira `worker/.dev.vars`. Publicado, redefina com `npx wrangler secret put ADMIN_TOKEN`.
 2. **O servidor não foi reiniciado** depois de mudar o `.dev.vars`. Ele só lê o arquivo ao iniciar.
@@ -163,7 +198,8 @@ Se um token errado ficou guardado no navegador, abra **Avançado → trocar o to
 
 - O navegador é Chrome, Edge ou Opera? Em Firefox/Safari não funciona.
 - O site está em `https://` ou `localhost`? A Web Serial não funciona em `http://` com IP. Para o teste local, abra o site por `http://localhost:5173`.
-- A placa foi autorizada em **Ajustes → Placa USB**?
+- A placa foi autorizada em **Administração → Site e placas → Placa USB**?
+- Você entrou como **administrador**? Usuário comum não vê o aviso.
 - O cabo é de dados? Tente outro.
 - Outro programa está usando a porta (monitor serial do PlatformIO, Arduino IDE)? Feche.
 

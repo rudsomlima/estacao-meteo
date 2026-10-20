@@ -7,8 +7,12 @@
 | Parte | Tecnologia | Papel |
 |---|---|---|
 | **Estação** | ESP32-C3, PlatformIO (Arduino) | Mede, guarda um lote, envia por HTTPS, baixa a configuração, dorme. |
-| **API + site** | Cloudflare Worker + D1 (SQLite) | Recebe leituras, guarda, entrega dados, serve o site, guarda a configuração. |
-| **Site** | React, Vite, Tailwind v4, motion, Lenis, MapLibre | Mapa da rede, página da estação, gráficos, energia e configuração. |
+| **API + site** | Cloudflare Worker + D1 (SQLite) | Recebe leituras, guarda, entrega dados, serve o site, guarda a configuração, firmware, usuários e registro de atividades. |
+| **Tempo real** | Durable Object `Hub` (WebSocket em `/api/live`) | Avisa os navegadores abertos quando uma estação envia, sem eles ficarem consultando. |
+| **Alertas** | Cron de 5 min + Telegram | Estação sem dados, bateria, rajada e chuva. Avisa uma vez por mudança de estado. |
+| **Site** | React, Vite, Tailwind v4, motion, Lenis, MapLibre | Mapa da rede, página da estação, gráficos, energia, configuração, ajustes e painel do administrador. |
+| **Login** | Google Identity Services | Entra com o Google; o Worker confere o ID token e emite um cookie de sessão. Papéis: visitante, usuário e administrador. |
+| **Cabo USB** | Web Serial (Chrome, Edge, Opera) | O administrador grava o firmware, entrega Wi-Fi, endereço e chave e aplica a configuração direto na placa. |
 
 Tudo o que o site mostra vem das leituras: não há valores inventados em produção. O **modo demonstração** (sem API) existe só para desenvolvimento e é sinalizado na barra superior.
 
@@ -58,10 +62,12 @@ sequenceDiagram
 
 - **Servidor carimba o tempo.** A estação não tem relógio real. Cada leitura vai com a idade em segundos (`age`), e o servidor calcula `agora - age`. Isso permite enviar em lote sem NTP, que gastaria Wi-Fi extra.
 - **Lote para economizar.** O Wi-Fi é o maior gasto de energia. Medir a cada 10 min e enviar a cada 30 reduz o consumo médio de ≈ 0,52 para ≈ 0,20 mA (estimativa).
-- **Configuração baixada, não empurrada.** A estação dorme, então ela pergunta a cada envio se há versão nova. Não precisa de conexão aberta.
+- **Configuração baixada, não empurrada.** A estação dorme, então ela pergunta a cada envio se há versão nova. Não precisa de conexão aberta. Quando a placa está no cabo, o site a entrega direto pela USB.
+- **Papéis em vez de uma senha só.** Quem não entrou só vê; o dono altera as estações dele; o administrador cadastra estações e placas. O `ADMIN_TOKEN` ficou para scripts e é assinado, nunca enviado.
+- **Sensor e pinos são configuração.** Trocar o sensor de ambiente (BME280, MS5611, os dois, nenhum) ou um GPIO não exige regravar o firmware; as regras do ESP32-C3 são conferidas no site, no servidor e na placa.
 - **Chave por estação, guardada como hash.** Vazou uma? Gera outra sem mexer nas demais. O banco nunca tem chaves em claro.
 - **Um Worker só.** O mesmo Worker serve o site (`web/dist`) e a API, sem CORS e com um único deploy.
-- **Banco simples.** Duas tabelas (`stations`, `readings`). O vento fica em m/s e o site converte para km/h.
+- **Banco simples.** O essencial são `stations` e `readings`; o resto (`events`, `users`, `releases`, `settings`, `claims`, `audit`...) guarda diagnóstico, contas, firmware e configurações. O vento fica em m/s e a pressão em hPa, e o site converte para as unidades escolhidas.
 - **Campo de vento do mapa.** As partículas usam ponderação inversa da distância entre as estações online. É uma **estimativa visual**, e não um modelo meteorológico.
 
 ## Mapa do código
@@ -69,16 +75,16 @@ sequenceDiagram
 ```
 estacao-meteo/
 ├── firmware/            ESP32-C3 (PlatformIO)
-│   └── src/             main, wind, sensors, net, settings, config
+│   └── src/             main, wind, sensors, net, auth, ota, usblink, bench, events, settings, config
 ├── worker/              Cloudflare Worker + D1
-│   ├── src/index.ts     API
-│   ├── schema.sql       tabelas
+│   ├── src/             index (API), admin, auth, alerts, hub (WebSocket), config, crypto
+│   ├── schema.sql       tabelas (e migrations/ para bancos antigos)
 │   └── scripts/         seed.mjs (dados de exemplo) e smoke.mjs (testes)
 ├── web/                 Site (React)
 │   └── src/
-│       ├── components/  MapView, MapPage, StationFigure, Energy, ConfigPanel...
+│       ├── components/  MapView, MapPage, StationFigure, StationSettings, ConfigPanel, AdminPage, FlashSetup...
 │       ├── hooks/       useNetwork, useRoute, useLenis
-│       └── lib/         api, derive (cálculos), energy (modelo de consumo), battery
+│       └── lib/         api, derive (cálculos), energy (modelo de consumo), battery, usb, flash, pins, prefs
 ├── adaptacao_sensores_v2/   CAD do anemômetro e da biruta
-└── docs/                documentação e diagramas
+└── docs/                documentação, figuras e as ferramentas que as geram
 ```

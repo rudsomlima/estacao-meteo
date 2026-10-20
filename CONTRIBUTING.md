@@ -34,6 +34,7 @@ cd firmware && pio run
 - `cd worker && npx tsc --noEmit && npm run smoke` passam com a API rodando.
 - `cd firmware && pio run` compila.
 - Mudou a ligação, a energia ou a arquitetura? Atualize `docs/tools/make_diagrams.py`, rode `python docs/tools/make_diagrams.py` e inclua os SVGs gerados.
+- Mudou uma tela que aparece na documentação? Refaça as capturas com `node docs/tools/capture_screens.mjs` (veja [docs/README.md](docs/README.md#figuras)) e confira o texto do guia.
 - Mudou um valor de configuração? Atualize juntos: `worker/src/index.ts`, `web/src/types.ts`, `web/src/components/ConfigPanel.tsx`, `firmware/src/settings.cpp` e `docs/firmware.md`.
 - Evite números de consumo sem fonte. Se medir, diga como.
 

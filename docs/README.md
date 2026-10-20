@@ -12,4 +12,13 @@
 | [api.md](api.md) | Endpoints, formatos e limites |
 | [solucao-de-problemas.md](solucao-de-problemas.md) | Sintomas comuns e o que verificar |
 
-Os diagramas em `img/*.svg` são gerados por `python docs/tools/make_diagrams.py`. Edite o script, e não os SVGs.
+## Figuras
+
+| Figura | Onde está | Como se gera |
+|---|---|---|
+| Diagramas: arquitetura, ligação, ligação I²C, pinagem, perfis de consumo | `img/*.svg` | `python docs/tools/make_diagrams.py`. Edite o script, e não os SVGs. |
+| Telas do site | `img/captura-*.png` e `img/guia/*.png` | `node docs/tools/capture_screens.mjs` com o ambiente de desenvolvimento no ar (`npm run dev`). Precisa do Chrome e de `npm i playwright-core` numa pasta qualquer (veja o cabeçalho do script). |
+
+Ao mudar uma tela do site que aparece em um guia, refaça as capturas e confira o texto do guia. `python docs/tools/check_links.py` confere os links entre os documentos.
+
+As telas `guia/06` a `guia/10` (aviso da placa USB) usam uma placa simulada e não são geradas pelo script.

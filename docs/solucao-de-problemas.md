@@ -4,7 +4,7 @@
 
 | Sintoma | O que verificar |
 |---|---|
-| Nunca enviou leitura | Chave do dispositivo errada ou digitada com espaço. Gere outra em *Configuração → Gerar chave nova* e refaça o portal (aperte BOOT nos primeiros 6 s depois de ligar). |
+| Nunca enviou leitura | Chave do dispositivo errada ou digitada com espaço. Gere outra em *Configurações → Configuração → Gerar chave nova* e refaça o portal (aperte BOOT nos primeiros 6 s depois de ligar). |
 | O portal `EstacaoMeteo-XXXX` não aparece | A estação já tem Wi-Fi salvo. Ligue a placa e, nos primeiros 6 s, aperte **BOOT** por meio segundo para forçar o portal. Segurar o BOOT *ao ligar* não funciona: o ESP32-C3 entra em modo de gravação. Com a placa no computador, use o comando USB `portal`. |
 | Conecta ao Wi-Fi mas não envia | Endereço do site errado (precisa de `https://` e sem barra no final) ou o Worker fora do ar. Veja o log serial: `POST 401` é chave errada, `POST 422` é campo fora da faixa, `POST -1` é falha de conexão ou de TLS. |
 | Aparece como "atrasada" | Já passou de 2,5 intervalos sem leitura. Com envio em lote, o intervalo efetivo é `intervalo × enviar a cada`. Ajuste ou aguarde o próximo envio. |
@@ -20,9 +20,9 @@
 |---|---|
 | Temperatura 5 °C acima do real | Sensor perto da caixa ou no sol. Mova para o abrigo. |
 | Umidade sempre 0% ou sem BME280 | O módulo é BMP280 (sem umidade) ou o endereço não é 0x76/0x77. |
-| Umidade aparece como "—" | O sensor escolhido é o MS5611, que não mede umidade. Escolha "BME280" ou "BME280 + MS5611" em *Sensores e pinos*. |
-| MS5611 não responde ("sensor de ambiente não respondeu") | Confira em *Sensores e pinos* se a opção é MS5611 (ou BME280 + MS5611); PS do GY-63 em 3V3 e CSB em GND (0x77); SDA e SCL nos pinos configurados; VCC em 3,3 V. Com os dois módulos, confira que estão em 0x76 e 0x77. |
-| Mudei os pinos e a estação parou de medir | A fiação precisa estar igual ao que o site mostra. Volte aos pinos padrão (botão em *Sensores e pinos*) ou corrija os fios. O servidor e a placa recusam pino repetido, de boot, da USB ou da flash. |
+| Umidade aparece como "—" | O sensor escolhido é o MS5611, que não mede umidade. Escolha "BME280" ou "BME280 + MS5611" em *Configurações → Placa, sensores e pinos*. |
+| MS5611 não responde ("sensor de ambiente não respondeu") | Confira em *Configurações → Placa, sensores e pinos* se a opção é MS5611 (ou BME280 + MS5611); PS do GY-63 em 3V3 e CSB em GND (0x77); SDA e SCL nos pinos configurados; VCC em 3,3 V. Com os dois módulos, confira que estão em 0x76 e 0x77. |
+| Mudei os pinos e a estação parou de medir | A fiação precisa estar igual ao que o site mostra. Volte aos pinos padrão (botão em *Configurações → Placa, sensores e pinos*) ou corrija os fios. O servidor e a placa recusam pino repetido, de boot, da USB ou da flash. |
 | Direção sempre igual | O QMC5883L não respondeu: o firmware repete a última direção. Confira SDA/SCL e se o módulo é QMC (0x0D) e não HMC. |
 | Direção espelhada | `DIR_SIGN` precisa ser `-1`. |
 | Direção errada em 90° | Falta o ajuste do norte. Veja [calibracao.md](calibracao.md). |
@@ -70,7 +70,7 @@
 |---|---|
 | Etiqueta "demonstração" | A API não respondeu. Em desenvolvimento, rode o Worker (`npm run dev` na pasta `worker`). |
 | Mapa sem fundo | O provedor de tiles bloqueou ou exige chave. Veja [implantacao.md](implantacao.md#mapa). |
-| `Token de administrador incorreto` | O segredo `ADMIN_TOKEN` do Worker é outro, ou o relógio do computador está com mais de 2 minutos de diferença (o pedido é assinado com a hora). Redefina com `wrangler secret put ADMIN_TOKEN`. |
+| `Token de administrador incorreto` | Só aparece quando o site não tem login com Google e usa o token. O segredo `ADMIN_TOKEN` do Worker é outro, ou o relógio do computador está com mais de 2 minutos de diferença (o pedido é assinado com a hora). Redefina com `wrangler secret put ADMIN_TOKEN`. |
 | `wrangler dev` trava ou fica sem resposta (Windows) | Há processos antigos presos. Feche todos os `workerd`/`node` do wrangler, apague `worker/.wrangler` e suba de novo. Pastas do OneDrive podem prender arquivos do banco local. |
 
 Não achou? Abra uma issue com o log serial (se for do firmware) e o que você já tentou.

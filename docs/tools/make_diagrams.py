@@ -218,9 +218,9 @@ def wiring():
 
 # ===================================================================== arquitetura
 def architecture():
-    s = Svg(1200, 520, "Arquitetura do sistema")
+    s = Svg(1200, 660, "Arquitetura do sistema")
     s.text(40, 40, "Arquitetura", 24, weight="700")
-    s.text(40, 62, "A estação envia lotes por HTTPS. O mesmo Worker guarda os dados, serve o site e entrega a configuração.", 13, C["mute"])
+    s.text(40, 62, "A estação envia lotes por HTTPS. O mesmo Worker guarda os dados, serve o site, avisa os navegadores e dispara os alertas.", 13, C["mute"])
 
     def box(x, y, w, h, title, lines, fill="#f8fafc", stroke=C["edge"]):
         s.rect(x, y, w, h, fill, stroke, 10, 1.8)
@@ -228,31 +228,48 @@ def architecture():
         for i, ln in enumerate(lines):
             s.text(x + w / 2, y + 52 + i * 18, ln, 12, C["mute"], "middle")
 
-    box(40, 130, 270, 230, "Estação", ["ESP32-C3", "BME280 · QMC5883L", "Hall do vento · Hall da chuva", "bateria + painel solar", "deep sleep / light sleep"], "#e0f2fe", "#0284c7")
-    box(470, 130, 270, 230, "Cloudflare Worker", ["POST /api/ingest (lote)", "GET /api/stations", "PUT /api/stations/:id", "serve o site (web/dist)", ""], "#ecfdf5", "#16a34a")
-    box(470, 400, 270, 90, "D1 (SQLite)", ["stations · readings"], "#fefce8", "#ca8a04")
-    box(900, 130, 270, 230, "Navegador", ["React + Vite + Tailwind", "MapLibre: mapa da rede", "figura animada da estação", "gráficos · energia · config"], "#f5f3ff", "#7c3aed")
+    box(40, 110, 270, 250, "Estação", ["ESP32-C3", "BME280 e/ou MS5611 · QMC5883L", "Hall do vento · Hall da chuva", "bateria + painel solar", "deep sleep / light sleep", "pinos e sensor configuráveis"], "#e0f2fe", "#0284c7")
+    box(470, 110, 270, 250, "Cloudflare Worker", ["POST /api/ingest (lote)", "GET /api/stations · /readings", "PUT /api/stations/:id", "/api/admin/* (administrador)", "/api/live (WebSocket, Hub)", "cron de 5 min: alertas", "serve o site (web/dist)"], "#ecfdf5", "#16a34a")
+    box(900, 110, 270, 250, "Navegador", ["React + Vite + Tailwind", "MapLibre: mapa da rede", "figura animada da estação", "gráficos · energia · config", "painel do administrador", "login com Google"], "#f5f3ff", "#7c3aed")
+    box(470, 410, 270, 100, "D1 (SQLite)", ["stations · readings · events", "users · releases · settings"], "#fefce8", "#ca8a04")
+    box(790, 410, 170, 100, "Telegram", ["alertas: sem dados,", "bateria, rajada, chuva"], "#fff7ed", "#ea580c")
+    box(1000, 410, 170, 100, "Google", ["login: o Worker confere", "o ID token (RS256)"], "#f8fafc", "#64748b")
 
-    # setas
-    def arrow(x1, y1, x2, y2, col, label=None, lx=None, ly=None):
-        s.line([(x1, y1), (x2, y2)], col, 3)
-        import math
-        a = math.atan2(y2 - y1, x2 - x1)
+    import math
+
+    def head(x2, y2, a, col):
         p = [(x2, y2), (x2 - 11 * math.cos(a - 0.45), y2 - 11 * math.sin(a - 0.45)), (x2 - 11 * math.cos(a + 0.45), y2 - 11 * math.sin(a + 0.45))]
         s.add(f'<polygon points="{" ".join(f"{x},{y}" for x, y in p)}" fill="{col}"/>')
+
+    def arrow(x1, y1, x2, y2, col, label=None, lx=None, ly=None):
+        s.line([(x1, y1), (x2, y2)], col, 3)
+        head(x2, y2, math.atan2(y2 - y1, x2 - x1), col)
         if label:
             s.text(lx if lx is not None else (x1 + x2) / 2, ly if ly is not None else (y1 + y2) / 2 - 8, label, 11, col, "middle", mono=True)
 
-    arrow(310, 200, 470, 200, C["wind"], "leituras (lote)", 390, 188)
-    arrow(470, 285, 310, 285, C["sda"], "configuração nova", 390, 305)
-    arrow(740, 200, 900, 200, C["scl"], "dados e estações", 820, 188)
-    arrow(900, 285, 740, 285, C["rain"], "salvar configuração", 820, 305)
-    arrow(605, 360, 605, 400, C["vbat"])
-    arrow(635, 400, 635, 360, C["vbat"])
-    s.text(110, 400, "Cada leitura leva a idade em segundos,", 12, C["mute"])
-    s.text(110, 418, "porque a estação não tem relógio de verdade.", 12, C["mute"])
-    s.text(110, 446, "A chave do dispositivo nunca é guardada:", 12, C["mute"])
-    s.text(110, 464, "o servidor só guarda o SHA-256 dela.", 12, C["mute"])
+    arrow(310, 180, 470, 180, C["wind"], "leituras (lote)", 390, 168)
+    arrow(470, 235, 310, 235, C["sda"], "config · firmware", 390, 255)
+    arrow(740, 180, 900, 180, C["scl"], "dados e estações", 820, 168)
+    arrow(900, 235, 740, 235, C["rain"], "salvar · admin", 820, 255)
+    arrow(740, 290, 900, 290, C["vbat"], "avisa: chegou leitura", 820, 278)
+    arrow(605, 360, 605, 410, C["vbat"])
+    arrow(635, 410, 635, 360, C["vbat"])
+    arrow(740, 335, 790, 440, C["wind"])
+    arrow(1085, 360, 1085, 410, C["edge"])
+
+    # cabo USB: só o administrador, direto do navegador para a placa (Web Serial)
+    s.line([(290, 360), (290, 585), (990, 585), (990, 360)], C["gnd"], 3, dash="9 6")
+    head(990, 360, -math.pi / 2, C["gnd"])
+    head(290, 360, -math.pi / 2, C["gnd"])
+    s.text(580, 570, "cabo USB (Web Serial, Chrome/Edge/Opera, só administrador)", 12, C["gnd"], "middle", weight="700")
+    s.text(580, 612, "grava o firmware, entrega Wi-Fi, endereço do site e chave, e aplica a configuração na hora", 12, C["mute"], "middle")
+
+    s.text(40, 410, "Cada leitura leva a idade em segundos,", 12, C["mute"])
+    s.text(40, 428, "porque a estação não tem relógio de verdade.", 12, C["mute"])
+    s.text(40, 456, "A chave do dispositivo nunca é guardada:", 12, C["mute"])
+    s.text(40, 474, "o servidor só guarda o SHA-256 dela.", 12, C["mute"])
+    s.text(40, 502, "O firmware novo vai do site para a placa", 12, C["mute"])
+    s.text(40, 520, "pela rede (OTA) ou pelo cabo.", 12, C["mute"])
     s.save("arquitetura.svg")
 
 

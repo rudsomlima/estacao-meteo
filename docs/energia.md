@@ -32,7 +32,7 @@ Fica em light sleep o ciclo inteiro, conta cada pulso e, no fim do intervalo, en
 
 - Consumo médio: **≈ 0,49 mA** com envio a cada 3 leituras (mais que o modo janela, mas com o dado certo).
 - **Exige Hall de baixa corrente** (DRV5032 ou reed). Com o A3144 (4,4 mA parado) a bateria acaba em dias.
-- Ligue em *Configuração → Contar o vento o tempo todo*. A estação reinicia sozinha ao receber a mudança.
+- Ligue na página da estação, em *Configurações → Envio, vento e economia → Contar o vento o tempo todo*. A estação reinicia sozinha ao receber a mudança.
 
 ## Autonomia estimada (bateria de 3000 mAh, sem sol)
 
