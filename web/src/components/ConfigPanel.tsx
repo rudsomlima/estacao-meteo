@@ -55,7 +55,7 @@ function Sliders({ fields, cfg, set }: { fields: Field[]; cfg: StationConfig; se
     <>
       {fields.map((f) => {
         const id = `cfg-${f.key}`
-        const v = cfg[f.key] as number
+        const v = (cfg[f.key] as number) ?? f.min // estação antiga sem este campo: usa o mínimo até salvar
         return (
           <div key={f.key} className="grid gap-1.5">
             <div className="flex items-baseline justify-between gap-3">

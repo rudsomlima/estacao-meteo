@@ -32,7 +32,7 @@ STATIONS.forEach((s, si) => {
   const cfg = {
     interval_min: 10, wind_window_s: 8, gust_window_s: 3, samples: 8, wifi_timeout_s: 10, mm_per_tip: 0.2, k_wind: 0.42, dir_offset: 0,
     slow_below_v: SLOW[s.chem], slow_factor: 3, critical_v: CRIT[s.chem], charge_above_v: 0, charge_interval_min: 5,
-    send_every: 3, continuous_wind: 0, urgent_gust_kmh: 0, bench_min: 2, battery_chem: s.chem, battery_mah: s.mah, version: 1,
+    send_every: 3, continuous_wind: 0, urgent_gust_kmh: 0, bench_min: 2, idle_every: 1, env_sensor: 1, battery_chem: s.chem, battery_mah: s.mah, version: 1,
   }
   out.push(
     `INSERT INTO stations (id,name,city,lat,lon,alt,key_hash,config,created_at,cfg_applied,last_seen,fw_version) VALUES (${q(s.id)},${q(s.name)},${q(s.city)},${s.lat},${s.lon},${s.alt},${q(sha('dev-key-' + s.id))},${q(JSON.stringify(cfg))},${now},1,${now - (s.offlineHours ?? 0) * 3600},'0.1.0');`,
