@@ -13,6 +13,8 @@ bool runPortal();
  * uma falha de rede o mantém para a próxima tentativa.
  */
 bool claimKey();
+/** As autoridades raiz aceitas no HTTPS (src/roots.h, uma cópia só na flash). */
+const char *rootCAs();
 /** Desliga o rádio. */
 void netOff();
 int netRssi();
@@ -39,6 +41,8 @@ struct PostResult {
  * (HMAC) com um nonce que o servidor troca a cada envio, e a resposta só é aceita se vier assinada.
  */
 PostResult postBatch(const Sample *s, uint8_t n);
+/** O corpo que um envio levaria agora (comando USB "body", para diagnóstico); não envia nada. */
+String previewBody(const Sample *s, uint8_t n, bool columns);
 
 /** Cabeçalhos de autenticação para outros pedidos (por exemplo, baixar o firmware). `body` vazio para GET. */
 void authHeaders(HTTPClient &http, const String &body);

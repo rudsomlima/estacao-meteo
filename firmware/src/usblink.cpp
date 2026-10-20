@@ -6,6 +6,8 @@
 #include "log.h"
 #include "sensors.h"
 #include "net.h"
+#include <HTTPClient.h>
+#include <WiFiClientSecure.h>
 #include "settings.h"
 
 volatile bool usbSendNow = false;
@@ -151,6 +153,43 @@ bool usbHandleLine(const String &line) {
     JsonDocument d;
     d["ok"] = true;
     d["simvbat"] = simVbat;
+    reply(d);
+  } else if (cmd == "body") {
+    // o corpo que o próximo envio levaria (sem enviar): para conferir o formato
+    const Sample *list;
+    const uint8_t n = batchView(&list);
+    JsonDocument d;
+    d["ok"] = true;
+    d["n"] = n;
+    d["body"] = previewBody(list, n, in["columns"] | true);
+    reply(d);
+  } else if (cmd == "nettest") {
+    // conecta ao Wi-Fi e faz um GET (sem mandar dados da estação), validando o certificado se for https:// — diagnóstico
+    const String url = in["url"] | String(serverUrl + "/api/auth/config");
+    JsonDocument d;
+    const uint32_t t0 = millis();
+    const bool wifi = wifiConnect(cfg.wifiTimeoutS * 1000UL);
+    d["wifi"] = wifi;
+    d["wifi_ms"] = millis() - t0;
+    if (wifi) {
+      d["rssi"] = WiFi.RSSI();
+      HTTPClient http;
+      WiFiClientSecure tls;
+      WiFiClient plain;
+      const bool secure = url.startsWith("https://");
+      if (secure) tls.setCACert(rootCAs());
+      const uint32_t t1 = millis();
+      const bool begun = secure ? http.begin(tls, url) : http.begin(plain, url);
+      const int code = begun ? http.GET() : -100;
+      d["http"] = code;
+      d["http_ms"] = millis() - t1;
+      d["validated"] = secure && code > 0;  // com https, só chega resposta se o certificado foi aceito
+      if (secure && code < 0) { char why[80] = ""; tls.lastError(why, sizeof(why)); d["tls_error"] = why; }
+      http.end();
+    }
+    netOff();
+    d["ok"] = true;
+    d["url"] = url;
     reply(d);
   } else if (cmd == "portal") {
     JsonDocument d;

@@ -49,7 +49,7 @@ export default function Hero({ readings, station }: { readings: Reading[]; stati
             {f.tempV(now.temp)}<span className="align-top text-[0.34em] font-medium text-ink-2">{f.tempUnit}</span>
           </h1>
           <p className="max-w-md pb-2 text-base text-ink-2 sm:text-lg">
-            Vento de <b className="text-ink">{compass16(now.dir)}</b> a <b className="num text-ink">{f.wind(now.wind)}</b> ({bf.name.toLowerCase()}).{' '}
+            Vento{Number.isFinite(now.dir) ? <> de <b className="text-ink">{compass16(now.dir)}</b></> : ''} a <b className="num text-ink">{f.wind(now.wind)}</b> ({bf.name.toLowerCase()}).{' '}
             {outlook}
           </p>
         </div>

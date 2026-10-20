@@ -23,6 +23,7 @@ export const GROUPS = {
   envio: [
     F('send_every', 'Enviar a cada', 'Junta várias leituras e envia de uma vez. O Wi-Fi é o maior gasto de energia, então quanto maior, mais economia.', 1, 12, 1, 'leituras'),
     F('urgent_gust_kmh', 'Enviar na hora se a rajada passar de', 'Avisa sem esperar o lote. Zero desliga.', 0, 200, 5, 'km/h'),
+    F('idle_every', 'Sem leitura de sensor, dar sinal de vida a cada', 'Para estação sem sensor (ou com o sensor falhando): em vez de ligar o Wi-Fi a cada leitura só para dizer que está viva, espera N leituras. Economiza bateria; o site considera atrasada depois de 2,5 vezes esse tempo.', 1, 12, 1, 'leituras'),
     F('wifi_timeout_s', 'Tempo para conectar ao Wi-Fi', 'Quanto a estação insiste antes de desistir e guardar as leituras para o próximo envio. Pouco demais falha em redes lentas; muito gasta bateria quando a rede some.', 4, 30, 1, 's'),
   ],
   bateria: [

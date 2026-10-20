@@ -25,7 +25,10 @@ function line(e: StationEvent) {
       return { icon: bad ? AlertTriangle : Power, bad, text: RESET[r] ?? `motivo ${r}`, sub: `reinício nº ${e.count ?? '?'}` }
     }
     case 'ota_ok': return { icon: Download, bad: false, text: `atualizada para a versão ${String(e.version)}`, sub: 'firmware pelo ar' }
-    case 'ota_fail': return { icon: AlertTriangle, bad: true, text: `falha ao atualizar na etapa "${String(e.stage)}"`, sub: e.http ? `HTTP ${String(e.http)}` : 'firmware pelo ar' }
+    case 'ota_fail': return e.stage === 'bateria'
+      ? { icon: AlertTriangle, bad: false, text: 'atualização adiada: bateria baixa', sub: 'a estação tenta de novo quando a bateria subir' }
+      : { icon: AlertTriangle, bad: true, text: `falha ao atualizar na etapa "${String(e.stage)}"`, sub: e.http ? `HTTP ${String(e.http)}` : 'firmware pelo ar' }
+    case 'tls': return { icon: AlertTriangle, bad: true, text: 'HTTPS sem validar o certificado', sub: 'a estação não reconheceu a autoridade do certificado do servidor e seguiu com os envios assinados (a chave não viaja). Atualize o firmware se isso continuar.' }
     case 'bench': return { icon: Wrench, bad: false, text: `modo bancada por ${String(e.minutes)} min`, sub: '' }
     default: return { icon: CircleCheck, bad: false, text: String(e.kind), sub: '' }
   }

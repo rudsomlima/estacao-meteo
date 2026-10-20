@@ -1,8 +1,8 @@
 #pragma once
 #include <Arduino.h>
 
-/** Eventos que a estação conta ao site junto com as leituras: reinícios, falhas de atualização, modo bancada. */
-enum EventKind : uint8_t { EV_BOOT = 1, EV_OTA_FAIL = 2, EV_OTA_OK = 3, EV_BENCH = 4 };
+/** Eventos que a estação conta ao site junto com as leituras: reinícios, falhas de atualização, modo bancada, HTTPS não validado. */
+enum EventKind : uint8_t { EV_BOOT = 1, EV_OTA_FAIL = 2, EV_OTA_OK = 3, EV_BENCH = 4, EV_TLS = 5 };
 
 struct Event {
   uint32_t t;      // relógio do sistema, para calcular a idade no envio

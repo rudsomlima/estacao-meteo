@@ -2,7 +2,8 @@ import { serverNow } from './clock'
 import type { Reading } from '../types'
 
 const DIRS = ['N', 'NNE', 'NE', 'ENE', 'L', 'ESE', 'SE', 'SSE', 'S', 'SSO', 'SO', 'OSO', 'O', 'ONO', 'NO', 'NNO']
-export const compass16 = (deg: number) => DIRS[Math.round((((deg % 360) + 360) % 360) / 22.5) % 16]
+/** Rumo em 16 pontos; "—" quando não há direção (estação sem biruta). */
+export const compass16 = (deg: number) => (Number.isFinite(deg) ? DIRS[Math.round((((deg % 360) + 360) % 360) / 22.5) % 16] : '—')
 
 export const kmh = (ms: number) => ms * 3.6
 
@@ -63,7 +64,7 @@ export function dayStats(readings: Reading[]): DayStats {
 export function windRose(readings: Reading[]) {
   const bins = Array.from({ length: 16 }, () => ({ n: 0, sum: 0 }))
   for (const r of readings) {
-    if (r.wind < 0.3) continue
+    if (r.wind < 0.3 || !Number.isFinite(r.dir)) continue
     const i = Math.round((((r.dir % 360) + 360) % 360) / 22.5) % 16
     bins[i].n++
     bins[i].sum += r.wind
@@ -88,9 +89,10 @@ export function ago(ts: number, now = serverNow()) {
 
 /** Visto há pouco: a placa falou com o servidor, mesmo sem leitura de sensor (por exemplo, sem BME280). */
 /** Tempo esperado entre dois contatos da estação: intervalo × leituras por envio (ela junta N leituras antes de mandar). */
-export const contactS = (c: { interval_min: number; send_every?: number }) => c.interval_min * 60 * Math.max(1, c.send_every ?? 1)
+export const contactS = (c: { interval_min: number; send_every?: number; idle_every?: number; env_sensor?: number }) =>
+  c.interval_min * 60 * Math.max(1, c.env_sensor === 0 ? (c.idle_every ?? 1) : (c.send_every ?? 1))
 /** Passou disto sem contato: atrasada. 2,5 contatos + 1 min de folga, a mesma regra do alerta de offline do servidor. */
-export const lateAfterS = (c: { interval_min: number; send_every?: number }) => contactS(c) * 2.5 + 60
+export const lateAfterS = (c: { interval_min: number; send_every?: number; idle_every?: number; env_sensor?: number }) => contactS(c) * 2.5 + 60
 
 /** A estação falou com o servidor dentro do esperado (o envio pode ser só o sinal de vida, sem leitura de sensor). */
 export function isSeen(s: { last_seen: number | null; config: { interval_min: number; send_every?: number } }, now = serverNow()) {

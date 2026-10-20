@@ -28,7 +28,7 @@ const LAY = {
 // pontos de ligação em coordenadas locais da estação (y negativo = para cima)
 const CO = [
   { id: 'anemo', a: [-85, -446], t: 'Anemômetro', s: 'Velocidade do vento', v: (L: Live) => L.f.wind(L.ws / 3.6), x: (L: Live) => `rajada ${L.f.wind(L.gust / 3.6)}` },
-  { id: 'vane', a: [85, -440], t: 'Veleta', s: 'Direção do vento (°)', v: (L: Live) => `${compass16(L.wd)} ${Math.round(L.wd)}°`, x: () => 'de onde o vento vem' },
+  { id: 'vane', a: [85, -440], t: 'Veleta', s: 'Direção do vento (°)', v: (L: Live) => (Number.isFinite(L.wd) ? `${compass16(L.wd)} ${Math.round(L.wd)}°` : '—'), x: (L: Live) => (Number.isFinite(L.wd) ? 'de onde o vento vem' : 'sem leitura da biruta') },
   { id: 'shield', a: [-84, -300], t: 'Sensor de temperatura e umidade do ar', s: 'Temperatura, umidade e pressão', v: (L: Live) => `${L.f.temp(L.temp)}${Number.isFinite(L.hum) ? ` · ${Math.round(L.hum)}%` : ''}`, x: (L: Live) => [Number.isFinite(L.pres) ? L.f.pres(L.pres) : '', Number.isFinite(L.hum) ? `orvalho ${L.f.temp(dewPoint(L.temp, L.hum))}` : 'sem umidade neste sensor'].filter(Boolean).join(' · ') },
   { id: 'rain', a: [84, -292], t: 'Pluviômetro', s: 'Precipitação', v: (L: Live) => L.f.rainRate(L.rain), x: (L: Live) => `hoje ${L.f.rain(L.dayRain)}` },
   { id: 'solar', a: [-88, -158], t: 'Painel solar', s: 'Alimentação do sistema',
@@ -235,7 +235,7 @@ export default function StationFigure({ station, readings }: { station: Station;
       A(R.sun, 'cx', bx); A(R.sun, 'cy', by); A(R.sun, 'fill', day ? '#ffd66b' : '#e8eefc')
       A(R.sunG, 'cx', bx); A(R.sunG, 'cy', by); A(R.sunG, 'fill', day ? '#ffd66b' : '#9fb4ff')
 
-      const spd = Lv.ws / 3.6, east = Math.sin(rad(Lv.wd + 180)) >= 0 ? 1 : -1, rainy = Lv.rain > 0.1
+      const spd = Lv.ws / 3.6, east = Math.sin(rad((Number.isFinite(Lv.wd) ? Lv.wd : 0) + 180)) >= 0 ? 1 : -1, rainy = Lv.rain > 0.1
       Array.from(R.clouds.children).forEach((g, i) => {
         const c = clouds[i]
         c.x += east * (spd * 0.004 + 0.002) * dt * (0.5 + c.s * 0.5)
@@ -262,7 +262,7 @@ export default function StationFigure({ station, readings }: { station: Station;
         ;(g as unknown as HTMLElement).style.opacity = (0.62 + (0.38 * (dp + 1)) / 2).toFixed(2)
         R.cups.appendChild(g)
       })
-      let target = Math.sin(rad(Lv.wd))
+      let target = Math.sin(rad(Number.isFinite(Lv.wd) ? Lv.wd : 0))
       if (Math.abs(target) < 0.14) target = 0.14 * (Math.sign(target) || 1)
       vaneSx += (target - vaneSx) * Math.min(1, dt * 3)
       A(R.vane, 'transform', `scale(${vaneSx.toFixed(3)},1)`)

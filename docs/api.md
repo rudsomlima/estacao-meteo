@@ -69,7 +69,24 @@ X-Sig:     HMAC-SHA256(sha256hex(chave), "<id>|<nonce>|<corpo>")
 | `vbat` | V | 0 a 5 (0 = sem bateria, placa na USB) |
 | `rssi` | dBm | -120 a 0 |
 
-O servidor carimba cada leitura com `agora - age`. Uma leitura solta (sem `batch`) também é aceita. O lote tem de 1 a 24 leituras. Todos os campos são obrigatórios; um valor fora da faixa rejeita o lote inteiro com `422`.
+O servidor carimba cada leitura com `agora - age`. Uma leitura solta (sem `batch`) também é aceita. O lote tem de 1 a 24 leituras. `hum` e `dir` podem faltar (umidade no MS5611, direção sem biruta): vêm ausentes ou `null` e ficam vazias no banco. Os demais campos são obrigatórios; um valor fora da faixa rejeita o lote inteiro com `422`.
+
+### Formato em colunas (firmware 0.5+)
+
+Para gastar menos rádio, o firmware 0.5 em diante manda o lote **em colunas**: uma lista por medida, uma posição por leitura; a bateria e o sinal vão uma vez. Com 3 leituras fica com cerca de 69% do formato de objetos, e a diferença cresce com o lote.
+
+```json
+{
+  "v": 2, "cfg": 3, "fw": "0.5.0", "vbat": 3.91, "rssi": -58,
+  "t":    [1200, 600, 0],
+  "temp": [22.5, 22.1, 21.8], "hum": [null, null, null], "pres": [835.1, 835.0, 834.9],
+  "wind": [3.2, 2.9, 3.5], "gust": [5.5, 5.1, 6.1], "dir": [null, null, null],
+  "rain": [0, 0.2, 0], "vb": [3.90, 3.91, 3.91],
+  "events": [ { "kind": "boot", "age": 30, "reason": 1, "count": 12, "wake": "power-on" } ]
+}
+```
+
+`t` são as idades (como `age`). `vb` é a bateria de cada leitura; `vbat`/`rssi` no topo são os do momento do envio. A resposta traz `"fmt": 2`: a estação vê isso e passa a usar as colunas. Um servidor que não entender responde `422`, e a estação volta ao formato de objetos. Os dois formatos convivem.
 
 - `cfg` é a versão da configuração que a estação tem. O servidor guarda isso: o site mostra **pendente → aplicada**.
 - `fw` é a versão do firmware instalado.

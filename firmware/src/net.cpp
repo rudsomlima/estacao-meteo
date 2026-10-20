@@ -3,6 +3,7 @@
 #include <WiFi.h>
 #include <WiFiClientSecure.h>
 #include <WiFiManager.h>
+#include <Preferences.h>
 #include <sys/time.h>
 #include "auth.h"
 #include "config.h"
@@ -11,8 +12,7 @@
 #include "sensors.h"
 #include "settings.h"
 
-// Cole aqui o certificado raiz do seu servidor (PEM) para validar o HTTPS. Vazio = não valida.
-static const char *ROOT_CA_PEM = nullptr;
+#include "roots.h"  // autoridades raiz para validar o HTTPS (gerado por tools/make_roots.py)
 
 // Conexão rápida e nonce do modo assinado: guardados na memória RTC entre os ciclos.
 RTC_DATA_ATTR static uint8_t rtcBssid[6];
@@ -91,6 +91,12 @@ bool runPortal() {
   WiFiManagerParameter pId("sid", "Avancado: ID da estacao (so sem codigo)", stationId.c_str(), 32);
   WiFiManagerParameter pKey("key", "Avancado: chave do dispositivo (so sem codigo)", deviceKey.c_str(), 64);
   WiFiManagerParameter pBench("bench", "Modo bancada ao ligar, em minutos (0 desliga)", benchBuf, 4);
+  // no topo do formulário: qual estação é esta e qual firmware ela roda
+  char infoBuf[200];
+  snprintf(infoBuf, sizeof(infoBuf), "<p style='margin:0 0 12px'><b>Esta&ccedil;&atilde;o %s</b> &middot; firmware %s<br><small>Escolha a rede e informe o c&oacute;digo de pareamento (gerado no site) ou, no avan&ccedil;ado, o ID e a chave.</small></p>",
+           stationId.isEmpty() ? "nova" : stationId.c_str(), FW_VERSION);
+  WiFiManagerParameter pInfo(infoBuf);
+  wm.addParameter(&pInfo);
   wm.addParameter(&pCode);
   wm.addParameter(&pServer);
   wm.addParameter(&pId);
@@ -98,6 +104,9 @@ bool runPortal() {
   wm.addParameter(&pBench);
   wm.setConfigPortalTimeout(PORTAL_TIMEOUT_S);
   wm.setClass("invert");
+  wm.setTitle("Esta&ccedil;&atilde;o Meteo");
+  std::vector<const char *> menu = {"wifi", "info", "exit"};  // só o que interessa a quem está configurando
+  wm.setMenu(menu);
   uint8_t mac[6];
   WiFi.macAddress(mac);
   char ap[32];
@@ -118,12 +127,46 @@ bool runPortal() {
   return ok;
 }
 
+// ---------------- HTTPS: valida o certificado, e a conexão é reaproveitada dentro da mesma acordada ----------------
+// Os clientes ficam vivos entre os pedidos de um envio (lote, confirmação da configuração): o aperto de mão TLS, que é o
+// trecho mais longo com o rádio ligado, acontece uma vez só. netOff() os fecha.
+const char *rootCAs() { return ROOT_CAS; }
+
+static WiFiClientSecure tlsClient;
+static WiFiClient plainClient;
+static bool tlsReady = false;
+static bool tlsStrict = true;      // valida o certificado; cai para sem validação só se a validação falhar (veja tlsFallback)
+static bool tlsWarned = false;     // o evento "tls" vai uma vez por boot
+
+static void tlsSetup(bool strict) {
+  if (tlsReady && strict == tlsStrict) return;
+  tlsClient.stop();
+  if (strict) tlsClient.setCACert(ROOT_CAS); else tlsClient.setInsecure();
+  tlsStrict = strict;
+  tlsReady = true;
+}
+
+/**
+ * A validação falhou (a Cloudflare trocou de autoridade, ou a rede intercepta o HTTPS). Os envios seguem sem validar porque
+ * vão assinados (a chave não viaja e a resposta é conferida pela assinatura), e o site fica sabendo pelo evento "tls".
+ */
+static bool tlsFallback(int code) {
+  if (!tlsStrict || code >= 0) return false;
+  char why[64] = "";
+  tlsClient.lastError(why, sizeof(why));
+  LOG("HTTPS: certificado nao validado (%s): seguindo sem validar, com os pedidos assinados\n", why);
+  if (!tlsWarned) { pushEvent(EV_TLS, code, 0, "sem_validacao"); tlsWarned = true; }
+  tlsSetup(false);
+  return true;
+}
+
 bool claimKey() {
   if (claimCode.isEmpty()) return true;
   if (!serverUrl.startsWith("https://")) { LOG("pareamento exige https:// (a chave viaja na resposta)\n"); return false; }
-  HTTPClient http;
+  // a chave volta na resposta: aqui o certificado TEM de ser válido (sem plano B)
   WiFiClientSecure tls;
-  if (ROOT_CA_PEM) tls.setCACert(ROOT_CA_PEM); else tls.setInsecure();
+  tls.setCACert(ROOT_CAS);
+  HTTPClient http;
   http.setTimeout(cfg.wifiTimeoutS * 1000);
   if (!http.begin(tls, serverUrl + "/api/claim")) return false;
   http.addHeader("Content-Type", "application/json");
@@ -149,13 +192,19 @@ bool claimKey() {
 }
 
 void netOff() {
+  tlsClient.stop();
+  plainClient.stop();
   WiFi.disconnect(true);
   WiFi.mode(WIFI_OFF);
 }
 
 int netRssi() { return WiFi.RSSI(); }
 
-bool signedMode() { return serverUrl.startsWith("http://"); }
+/**
+ * Pedidos assinados (HMAC com nonce): a chave nunca viaja. É o modo sempre que a estação sabe o próprio ID (pela USB ou
+ * pelo pareamento); sem ID só em http:// não dá, e em https:// sem ID a chave vai no cabeçalho, como nas placas antigas.
+ */
+bool signedMode() { return !stationId.isEmpty() || serverUrl.startsWith("http://"); }
 
 void authHeaders(HTTPClient &http, const String &body) {
   if (!signedMode()) {
@@ -174,27 +223,81 @@ static const char *eventName(uint8_t k) {
     case EV_OTA_FAIL: return "ota_fail";
     case EV_OTA_OK: return "ota_ok";
     case EV_BENCH: return "bench";
+    case EV_TLS: return "tls";
   }
   return "info";
 }
 
-static String buildBody(const Sample *s, uint8_t n) {
+/**
+ * O servidor aceita o formato em colunas? Ele avisa na resposta ("fmt": 2) e a placa guarda isso. Até saber, e se o servidor
+ * recusar (voltou a uma versão antiga), usa o formato antigo: assim um firmware novo nunca para de enviar por causa do servidor.
+ */
+static int8_t colsState = -1;  // -1 ainda não leu da flash
+static bool columnsOk() {
+  if (colsState < 0) {
+    Preferences p;
+    p.begin("meteo", true);
+    colsState = p.getBool("fmt2", false) ? 1 : 0;
+    p.end();
+  }
+  return colsState == 1;
+}
+static void setColumns(bool ok) {
+  if (columnsOk() == ok) return;
+  colsState = ok ? 1 : 0;
+  Preferences p;
+  p.begin("meteo", false);
+  p.putBool("fmt2", ok);
+  p.end();
+  LOG("servidor %s o envio em colunas\n", ok ? "aceita" : "nao aceita");
+}
+
+/**
+ * Corpo do envio. Em colunas (formato 2): cada medida é uma lista, uma posição por leitura; bateria e sinal vão uma vez (o sinal
+ * é o mesmo para o lote inteiro); medida que não existe vai como null (umidade sem o sensor, direção sem a biruta). Com 3
+ * leituras fica com cerca de 40% do formato antigo, que é uma lista de objetos com os nomes repetidos.
+ */
+static String buildBody(const Sample *s, uint8_t n, bool columns) {
   const uint32_t now = (uint32_t)time(nullptr);
-  const int rssi = WiFi.RSSI();
   JsonDocument doc;
+  if (columns) doc["v"] = 2;
   doc["cfg"] = cfg.version;
   doc["fw"] = FW_VERSION;
-  // bateria e sinal vão sempre, mesmo sem leitura de sensor (por exemplo, sem BME280): o site mostra a placa viva
+  // bateria e sinal vão sempre, mesmo sem leitura de sensor: o site mostra a placa viva
   doc["vbat"] = roundf(batteryVolts() * 100.0f) / 100.0f;
-  doc["rssi"] = rssi;
-  JsonArray arr = doc["batch"].to<JsonArray>();
-  auto r2 = [](float v) { return roundf(v * 100.0f) / 100.0f; };
-  for (uint8_t i = 0; i < n; i++) {
-    JsonObject o = arr.add<JsonObject>();
-    o["age"] = now > s[i].t ? now - s[i].t : 0;
-    o["temp"] = r2(s[i].temp); if (!isnan(s[i].hum)) o["hum"] = r2(s[i].hum); o["pres"] = r2(s[i].pres);
-    o["wind"] = r2(s[i].wind); o["gust"] = r2(s[i].gust); o["dir"] = roundf(s[i].dir);
-    o["rain"] = r2(s[i].rain); o["vbat"] = r2(s[i].vbat); o["rssi"] = rssi;
+  doc["rssi"] = WiFi.RSSI();
+  auto col = [&](const char *k, int digits, float Sample::*f) {
+    JsonArray a = doc[k].to<JsonArray>();
+    const float m = digits == 0 ? 1 : digits == 1 ? 10 : 100;
+    for (uint8_t i = 0; i < n; i++) {
+      const float v = s[i].*f;
+      if (isnan(v)) a.add(nullptr);
+      else a.add(roundf(v * m) / m);
+    }
+  };
+  if (columns) {
+    JsonArray age = doc["t"].to<JsonArray>();
+    for (uint8_t i = 0; i < n; i++) age.add(now > s[i].t ? now - s[i].t : 0);
+    col("temp", 1, &Sample::temp);
+    col("hum", 0, &Sample::hum);
+    col("pres", 1, &Sample::pres);
+    col("wind", 1, &Sample::wind);
+    col("gust", 1, &Sample::gust);
+    col("dir", 0, &Sample::dir);
+    col("rain", 2, &Sample::rain);
+    col("vb", 2, &Sample::vbat);
+  } else {
+    // formato antigo, para servidores que ainda não aceitam colunas (eles exigem a direção: sem biruta vai 0)
+    JsonArray arr = doc["batch"].to<JsonArray>();
+    const int rssi = WiFi.RSSI();
+    auto r2 = [](float v) { return roundf(v * 100.0f) / 100.0f; };
+    for (uint8_t i = 0; i < n; i++) {
+      JsonObject o = arr.add<JsonObject>();
+      o["age"] = now > s[i].t ? now - s[i].t : 0;
+      o["temp"] = r2(s[i].temp); if (!isnan(s[i].hum)) o["hum"] = r2(s[i].hum); o["pres"] = r2(s[i].pres);
+      o["wind"] = r2(s[i].wind); o["gust"] = r2(s[i].gust); o["dir"] = isnan(s[i].dir) ? 0 : roundf(s[i].dir);
+      o["rain"] = r2(s[i].rain); o["vbat"] = r2(s[i].vbat); o["rssi"] = rssi;
+    }
   }
   if (eventCount()) {
     JsonArray ev = doc["events"].to<JsonArray>();
@@ -208,6 +311,7 @@ static String buildBody(const Sample *s, uint8_t n) {
         case EV_OTA_FAIL: o["stage"] = list[i].s; o["http"] = list[i].a; break;
         case EV_OTA_OK: o["version"] = list[i].s; break;
         case EV_BENCH: o["minutes"] = list[i].a; o["ip"] = list[i].s; break;
+        case EV_TLS: o["stage"] = list[i].s; o["code"] = list[i].a; break;
       }
     }
   }
@@ -216,27 +320,24 @@ static String buildBody(const Sample *s, uint8_t n) {
   return body;
 }
 
+String previewBody(const Sample *s, uint8_t n, bool columns) { return buildBody(s, n, columns); }
+
 PostResult postBatch(const Sample *s, uint8_t n) {
   PostResult res{false, false, {false, "", 0, ""}, "", false};
   if (signedMode() && stationId.isEmpty()) { LOG("modo assinado precisa do ID da estacao\n"); return res; }
-  const String body = buildBody(s, n);
+  bool columns = columnsOk();
+  String body = buildBody(s, n, columns);
   const String secret = sha256Hex(deviceKey);
   const String url = serverUrl + "/api/ingest";
   const bool secure = url.startsWith("https://");
   const char *want[] = {"X-Sig"};
+  if (secure) tlsSetup(tlsStrict);
 
-  for (int attempt = 0; attempt < 2; attempt++) {
+  for (int attempt = 0; attempt < 3; attempt++) {
     HTTPClient http;
-    WiFiClient plain;
-    WiFiClientSecure tls;
+    http.setReuse(true);  // a mesma conexão serve ao lote e à confirmação que vem logo depois
     http.setTimeout(cfg.wifiTimeoutS * 1000);
-    bool begun;
-    if (secure) {
-      if (ROOT_CA_PEM) tls.setCACert(ROOT_CA_PEM); else tls.setInsecure();
-      begun = http.begin(tls, url);
-    } else {
-      begun = http.begin(plain, url);
-    }
+    const bool begun = secure ? http.begin(tlsClient, url) : http.begin(plainClient, url);
     if (!begun) return res;
     http.collectHeaders(want, 1);
     http.addHeader("Content-Type", "application/json");
@@ -246,15 +347,22 @@ PostResult postBatch(const Sample *s, uint8_t n) {
     const String text = code > 0 ? http.getString() : String("");
     const String sig = http.header("X-Sig");
     http.end();
-    LOG("POST %d (%u leituras)\n", code, n);
+    LOG("POST %d (%u leituras, %u bytes)\n", code, n, body.length());
 
-    if (code == 401 && signedMode() && attempt == 0) {
+    if (secure && tlsFallback(code)) continue;  // certificado não validado: tenta de novo sem validar (o pedido é assinado)
+    if (code == 401 && signedMode()) {
       // nonce velho (primeiro envio, ou a resposta anterior se perdeu): o servidor diz o atual
       JsonDocument d;
-      if (!deserializeJson(d, text) && d["nonce"].is<const char *>()) {
+      if (!deserializeJson(d, text) && d["nonce"].is<const char *>() && strcmp(rtcNonce, d["nonce"].as<const char *>()) != 0) {
         strlcpy(rtcNonce, d["nonce"].as<const char *>(), sizeof(rtcNonce));
         continue;
       }
+    }
+    if (code == 422 && columns) {  // o servidor não entendeu as colunas: volta ao formato antigo e tenta de novo
+      setColumns(false);
+      columns = false;
+      body = buildBody(s, n, false);
+      continue;
     }
     if (code != 200) return res;
 
@@ -266,6 +374,7 @@ PostResult postBatch(const Sample *s, uint8_t n) {
     JsonDocument reply;
     if (deserializeJson(reply, text)) return res;
     res.ok = true;
+    if ((reply["fmt"] | 0) >= 2) setColumns(true);  // o servidor aceita colunas: o próximo envio já vai assim
     if (signedMode() && reply["nonce"].is<const char *>()) strlcpy(rtcNonce, reply["nonce"].as<const char *>(), sizeof(rtcNonce));
     if (reply["config"].is<JsonObject>()) { res.modeChanged = applyRemoteConfig(reply["config"].as<JsonObjectConst>()); res.cfgApplied = true; }
     if (reply["cmd"].is<const char *>()) res.cmd = reply["cmd"].as<String>();

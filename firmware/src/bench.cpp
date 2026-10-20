@@ -10,6 +10,7 @@
 #include "net.h"
 #include "sensors.h"
 #include "settings.h"
+#include "usblink.h"
 #include "wind.h"
 
 static const char PAGE[] PROGMEM = R"HTML(<!doctype html><html lang="pt-BR"><meta charset="utf-8">
@@ -41,7 +42,7 @@ let rec=false;const $=i=>document.getElementById(i);
 async function L(){try{const j=await (await fetch('/api/live')).json();
 $('w').textContent=j.wind.toFixed(1)+' m/s';$('g').textContent=j.gust.toFixed(1)+' m/s';
 $('d').textContent=j.dir_ok?Math.round(j.dir)+'°':'-';$('r').textContent=j.rain;
-$('T').textContent=j.temp.toFixed(1)+'°C';$('H').textContent=Math.round(j.hum)+'%';
+$('T').textContent=j.temp.toFixed(1)+'°C';$('H').textContent=j.hum<0?'-':Math.round(j.hum)+'%';
 $('P').textContent=j.pres.toFixed(0)+' hPa';$('V').textContent=j.vbat.toFixed(2)+' V';
 $('t').textContent=j.name+' · faltam '+Math.ceil(j.left_s/60)+' min';rec=j.rec;
 $('c1').textContent=rec?'Calibrar a biruta: terminar':'Calibrar a biruta: comecar';}catch(e){$('t').textContent='sem conexao'}}
@@ -157,6 +158,7 @@ void benchRun(uint8_t minutes) {
   uint32_t lastSec = millis(), lastSlow = 0, lastWind = 0;
   while (!endNow && millis() < endAt) {
     server.handleClient();
+    if (usbPlugged()) { usbOpen(); usbPoll(); }  // com o cabo no computador, o site continua reconhecendo a placa
 
     int16_t x, y;
     if (magOk && qmcRead(x, y)) {
@@ -186,7 +188,7 @@ void benchRun(uint8_t minutes) {
     if (now - lastSlow >= 2000) {
       lastSlow = now;
       const Env e = readEnv(1);
-      if (e.ok) { liveTemp = e.t; liveHum = isnan(e.h) ? 0 : e.h; livePres = e.p; }
+      if (e.ok) { liveTemp = e.t; liveHum = isnan(e.h) ? -1 : e.h; livePres = e.p; }
       liveV = batteryVolts();
     }
     delay(5);

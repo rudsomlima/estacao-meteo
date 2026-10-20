@@ -22,7 +22,7 @@ import { notifyLive } from './hub'
 import { backfillHourly, daySummaries, hourAsReading, rebuildTouched, type HourRow } from './hourly'
 import { fromBase64, hmacHex, newKey, randomHex, same, sha256Hex, toBase64 } from './crypto'
 import {
-  type Config, DEFAULT_CONFIG, type Env, EVENT_KINDS, json, MAX_AGE_S, MAX_BATCH, READING_RANGES,
+  type Config, DEFAULT_CONFIG, type Env, EVENT_KINDS, json, MAX_AGE_S, MAX_BATCH, OPTIONAL_READINGS, READING_RANGES,
 } from './shared'
 
 export { Hub } from './hub'
@@ -123,6 +123,17 @@ async function otaFor(env: Env, id: string): Promise<{ version: string; size: nu
 const unauthorized = () => json({ error: 'não autorizado' }, 401)
 
 // ---------------- estação: envio ----------------
+/** Formato em colunas (firmware 0.5+): uma lista por medida, uma posição por leitura; o sinal (rssi) vale para o lote todo. */
+function fromColumns(body: Record<string, unknown>): Record<string, unknown>[] {
+  const ages = (body.t as unknown[]).slice(0, MAX_BATCH + 1)
+  const col = (k: string) => (Array.isArray(body[k]) ? (body[k] as unknown[]) : [])
+  const cols = { temp: col('temp'), hum: col('hum'), pres: col('pres'), wind: col('wind'), gust: col('gust'), dir: col('dir'), rain: col('rain'), vbat: col('vb') }
+  return ages.map((age, i) => ({
+    age, rssi: body.rssi,
+    ...Object.fromEntries(Object.entries(cols).map(([k, list]) => [k, list[i]])),
+  }))
+}
+
 async function ingest(req: Request, env: Env, ctx: ExecutionContext) {
   const raw = await readRaw(req)
   const auth = await authDevice(req, env, raw)
@@ -132,10 +143,10 @@ async function ingest(req: Request, env: Env, ctx: ExecutionContext) {
   const body = parseJson(raw)
   if (!body) return json({ error: 'JSON inválido' }, 400)
 
-  // aceita um lote ({ batch: [...] }) ou uma leitura solta
-  const items: unknown[] = Array.isArray(body.batch) ? body.batch : [body]
-  // lote vazio é permitido: a placa está conectada mas sem leitura de sensor (BME280 ausente). Conta como "visto" e troca a configuração
-  const heartbeat = Array.isArray(body.batch) && body.batch.length === 0
+  // Três formatos: em colunas (firmware 0.5+: {"v":2,"t":[idades],"temp":[...],...}), lote de objetos ({ batch: [...] }) ou uma
+  // leitura solta. Lote vazio é permitido: a placa está conectada mas sem leitura de sensor; conta como "visto" e troca a configuração
+  const items: unknown[] = Array.isArray(body.t) ? fromColumns(body) : Array.isArray(body.batch) ? body.batch : [body]
+  const heartbeat = (Array.isArray(body.t) || Array.isArray(body.batch)) && items.length === 0
   if ((items.length < 1 && !heartbeat) || items.length > MAX_BATCH) return json({ error: `o lote precisa ter de 1 a ${MAX_BATCH} leituras` }, 422)
 
   const nowTs = Math.floor(Date.now() / 1000)
@@ -148,7 +159,7 @@ async function ingest(req: Request, env: Env, ctx: ExecutionContext) {
     const v: Record<string, number> = {}
     for (const [k, [lo, hi]] of Object.entries(READING_RANGES)) {
       const n = item[k]
-      if (k === 'hum' && n === undefined) { v.hum = null as unknown as number; continue } // MS5611 e outros sem umidade
+      if (OPTIONAL_READINGS.includes(k) && n == null) { v[k] = null as unknown as number; continue } // umidade sem o sensor, direção sem a biruta
       if (typeof n !== 'number' || !Number.isFinite(n) || n < lo || n > hi) {
         console.warn(`ingest recusado (${st.id}): campo ${k} = ${JSON.stringify(n)} fora de ${lo}..${hi}`) // aparece no log do wrangler
         return json({ error: `campo ${k} ausente ou fora da faixa` }, 422)
@@ -229,6 +240,7 @@ async function ingest(req: Request, env: Env, ctx: ExecutionContext) {
 
   return signedJson(auth, {
     ts: nowTs,
+    fmt: 2, // aceita o envio em colunas (o firmware 0.5+ passa a usá-lo depois de ver isto)
     stored: items.length,
     config: sendCfg ? cfg : null,
     // só oferece atualização quando a versão publicada é DIFERENTE da instalada (não "mais nova")

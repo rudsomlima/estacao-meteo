@@ -19,6 +19,7 @@ export const DEFAULT_CONFIG: StationConfig = {
   continuous_wind: 0,
   urgent_gust_kmh: 0,
   wifi_tx_save: 0,
+  idle_every: 1,
   env_sensor: 1,
   pin_sda: 6,
   pin_scl: 7,

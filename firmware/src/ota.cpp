@@ -19,7 +19,12 @@ static void fail(const char *stage, int http) {
 
 void otaMaybeUpdate(const OtaOffer &offer, float vbat) {
   if (!offer.offered || offer.version.isEmpty() || offer.version == FW_VERSION) return;
-  if (vbat > 1.0f && vbat < cfg.criticalV + 0.1f) { LOG("OTA adiada: bateria baixa\n"); return; }
+  // bateria baixa (sem bateria ligada, abaixo de 2 V, não conta): adia, e o site fica sabendo uma vez por versão
+  if (vbat >= 2.0f && vbat < cfg.criticalV + 0.1f) {
+    LOG("OTA adiada: bateria baixa\n");
+    if (offer.version != rtcOtaFailVersion) { strlcpy(rtcOtaFailVersion, offer.version.c_str(), sizeof(rtcOtaFailVersion)); rtcOtaFails = 0; pushEvent(EV_OTA_FAIL, 0, 0, "bateria"); }
+    return;
+  }
   if (offer.size < 100000 || offer.size > 1600000 || offer.sha256.length() != 64) return;
 
   // nova versão publicada: zera o contador de falhas
@@ -32,6 +37,7 @@ void otaMaybeUpdate(const OtaOffer &offer, float vbat) {
   WiFiClient plain;
   WiFiClientSecure tls;
   bool begun;
+  // a integridade vem do SHA-256 que chegou na resposta assinada do envio: o download em si não precisa validar o certificado
   if (url.startsWith("https://")) { tls.setInsecure(); begun = http.begin(tls, url); }
   else begun = http.begin(plain, url);
   if (!begun) { fail("begin", 0); return; }

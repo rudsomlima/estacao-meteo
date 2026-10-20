@@ -488,5 +488,28 @@ check('sair apaga o cookie', /Max-Age=0/.test(r2.headers.get('set-cookie') ?? ''
 jwks.close()
 
 fake.close()
+// ================= formato em colunas (firmware 0.5+), direção vazia e o evento "tls"
+{
+  const cols = { v: 2, cfg: 0, fw: '0.5.0', vbat: 3.91, rssi: -58, t: [120, 60, 0], temp: [21.4, 21.6, 21.9], hum: [null, null, null], pres: [1001.2, 1001.3, 1001.1],
+    wind: [1.2, 2.5, 0], gust: [2.1, 3.9, 0.4], dir: [null, null, null], rain: [0, 0.2, 0], vb: [3.9, 3.91, 3.91],
+    events: [{ kind: 'tls', age: 30, stage: 'sem_validacao', code: -1 }] }
+  const t0 = Math.floor(Date.now() / 1000) - 200
+  r = await call('POST', '/api/ingest', { body: cols, headers: dev })
+  check('aceita o envio em colunas e avisa que aceita (fmt: 2)', r.status === 200 && r.json.stored === 3 && r.json.fmt === 2, r.text)
+  const got = await call('GET', `/api/stations/serra/readings?since=${t0}`)
+  const three = got.json.filter((x) => x.temp === 21.4 || x.temp === 21.6 || x.temp === 21.9)
+  check('as 3 leituras em colunas foram gravadas com os horários pelas idades', three.length === 3 && three[0].ts < three[2].ts, got.text.slice(0, 200))
+  check('direção e umidade vazias ficam null (sem biruta, sem umidade)', three.every((x) => x.dir === null && x.hum === null && x.rssi === -58), JSON.stringify(three[0]))
+  const ev = await call('GET', '/api/stations/serra/events?limit=5')
+  check('o evento "tls" (HTTPS não validado) é guardado', ev.json.some((e) => e.kind === 'tls' && e.stage === 'sem_validacao'), ev.text.slice(0, 160))
+  r = await call('POST', '/api/ingest', { body: { batch: [{ ...reading, dir: null }] }, headers: dev })
+  check('o formato antigo continua aceito, também com a direção vazia', r.status === 200, r.text)
+  r = await call('POST', '/api/ingest', { body: { ...cols, temp: [21, 'x', 22] }, headers: dev })
+  check('coluna com valor inválido é recusada', r.status === 422)
+  r = await admin('PUT', '/api/stations/serra', { body: { config: { idle_every: 4 } } })
+  check('o ajuste "sinal de vida a cada N" (idle_every) é aceito e chega à estação', r.status === 200 && r.json.config.idle_every === 4, r.text)
+}
+
+
 console.log(failed ? `\n${failed} teste(s) falharam` : '\nTudo certo')
 process.exit(failed ? 1 : 0)

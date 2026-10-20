@@ -35,6 +35,7 @@ export interface StationConfig {
   continuous_wind: number // 1 = conta o vento o ciclo todo em light sleep
   urgent_gust_kmh: number // 0 = desligado; acima disso envia na hora
   bench_min: number // minutos do modo bancada ao ligar (0 = desligado)
+  idle_every?: number // sem leitura de sensor: sinal de vida a cada N leituras
   env_sensor?: number // 0 nenhum, 1 BME280, 2 MS5611 (GY-63), 3 BME280 + MS5611
   pin_sda?: number // pinos do ESP32-C3 (GPIO)
   pin_scl?: number
@@ -96,7 +97,7 @@ export interface DailyRow {
 
 export interface StationEvent {
   ts: number
-  kind: 'boot' | 'ota_fail' | 'ota_ok' | 'bench' | 'info'
+  kind: 'boot' | 'ota_fail' | 'ota_ok' | 'bench' | 'tls' | 'info'
   [k: string]: unknown
 }
 

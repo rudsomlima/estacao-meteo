@@ -4,7 +4,7 @@
   Dois modos de vento, escolhidos no site (Configurações > "Contar o vento o tempo todo"):
 
     janela      (padrão)  Deep sleep entre ciclos (~10 µA). A cada intervalo acorda, mede o vento por alguns
-                          segundos em light sleep, lê o BME280 e guarda a leitura. A chuva acorda o chip por GPIO.
+                          segundos em light sleep, lê o sensor de ambiente e guarda a leitura. A chuva acorda o chip por GPIO.
     contínuo              Nunca entra em deep sleep: fica em light sleep contando cada pulso do anemômetro, e a cada
                           intervalo fecha a média, a rajada e a direção do período inteiro (como os equipamentos
                           profissionais). Exige Hall de baixa corrente.
@@ -142,6 +142,9 @@ static uint32_t nextInterval() {
   return base;
 }
 
+/** As leituras que estão no lote esperando envio (comando USB "body"). */
+uint8_t batchView(const Sample **out) { *out = rtcBuf; return rtcCount; }
+
 /** Estado do ciclo para o comando USB "diag". */
 void diagFill(JsonObject o) {
   o["level"] = rtcLevel;
@@ -174,7 +177,8 @@ static bool measureAndStore(float vbat, uint16_t windSeconds) {
       w.dir, w.dirOk ? "" : " (sem biruta)", (unsigned)w.pulses, w.seconds);
   if (!e.ok) { rtcSkipped = min<uint8_t>(rtcSkipped + 1, 250); LOG(cfg.envSensor ? "sensor de ambiente nao respondeu: leitura descartada\n" : "sem sensor de ambiente configurado: so o sinal de vida\n"); return false; }
 
-  Sample s{(uint32_t)time(nullptr), e.t, e.h, e.p, w.avg, w.gust, w.dir, takeRainTips() * cfg.mmPerTip, vbat};
+  // sem leitura da biruta a direção vai vazia (o site mostra "—"), e não a última conhecida como se fosse nova
+  Sample s{(uint32_t)time(nullptr), e.t, e.h, e.p, w.avg, w.gust, w.dirOk ? w.dir : NAN, takeRainTips() * cfg.mmPerTip, vbat};
   pushSample(s);
   return cfg.urgentGustKmh > 0 && w.gust * 3.6f >= cfg.urgentGustKmh;
 }
@@ -186,19 +190,17 @@ static bool portalDue(uint8_t fails) { return fails == 3 || fails == 9 || fails 
 static void sendIfDue(bool urgent) {
   const bool missing = wifiSsid.isEmpty() || serverUrl.isEmpty() || (deviceKey.isEmpty() && claimCode.isEmpty()) || (signedMode() && stationId.isEmpty());
   const bool forcePortal = coldBoot && (bootPortal || digitalRead(PIN_BOOT) == LOW);
-  // sem o BME280 não há leituras para juntar: a estação manda o sinal de vida (bateria e Wi-Fi) a cada intervalo, sem esperar o lote
-  const bool due = usbSendNow || urgent || coldBoot || rtcCount >= cfg.sendEvery || rtcCount >= MAX_BATCH || rtcSkipped > 0;
+  // sem leitura de sensor não há o que juntar: o sinal de vida (bateria e Wi-Fi) sai a cada `idle_every` ciclos
+  const bool due = usbSendNow || urgent || coldBoot || rtcCount >= cfg.sendEvery || rtcCount >= MAX_BATCH || rtcSkipped >= max<uint8_t>(1, cfg.idleEvery);
   const bool wasCold = coldBoot;
-  const bool nowByUsb = usbSendNow;
   usbSendNow = false;
-  (void)nowByUsb;
   coldBoot = false;  // só o primeiro ciclo envia por ser boot a frio
   if (!due || (missing && !wasCold)) return;
 
   // Com o cabo num computador, o site configura a placa pela USB: o portal Wi-Fi (180 s sem atender a USB) só atrapalharia.
-  // Sem o cabo ele abre normalmente; com o cabo, segurar BOOT ao ligar também o abre.
+  // Sem o cabo ele abre normalmente; com o cabo, apertar BOOT nos primeiros 6 s depois de ligar também o abre.
   if (missing && !forcePortal && usbPlugged()) {
-    LOG("sem configuracao: configure pelo site (USB). O portal abre sem o cabo, ou segurando BOOT ao ligar\n");
+    LOG("sem configuracao: configure pelo site (USB). O portal abre sem o cabo, ou apertando BOOT nos primeiros 6 s depois de ligar\n");
     return;
   }
   setCpuFrequencyMhz(160);

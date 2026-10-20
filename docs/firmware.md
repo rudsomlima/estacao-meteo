@@ -171,6 +171,8 @@ Além de `hello`, `scan`, `provision`, `config` e `restart`, a placa entende (um
 | `{"cmd":"diag"}` | Devolve **tudo o que a placa tem guardado** (todos os campos da configuração, inclusive pinos e sensor) e o estado do ciclo: nível de bateria, se está carregando, leituras no lote, falhas seguidas de Wi-Fi, intervalo atual e quanto falta para o próximo ciclo. |
 | `{"cmd":"simvbat","v":3.4}` | Simula a tensão da bateria (`v` negativo desliga). Serve para testar economia, hibernação e carga sem uma bateria ligada. Some ao reiniciar. |
 | `{"cmd":"portal"}` | Abre o portal Wi-Fi (3 min) como se o BOOT tivesse sido apertado. |
+| `{"cmd":"nettest","url":"https://..."}` | Conecta ao Wi-Fi e faz um GET validando o HTTPS, sem mandar dados: diz se a rede e o certificado estão OK. |
+| `{"cmd":"body","columns":true}` | Mostra o corpo que o próximo envio levaria (para conferir o formato), sem enviar. |
 
 ### Configuração aplicada pelo cabo
 
@@ -197,7 +199,7 @@ Se a direção girar ao contrário, troque `DIR_SIGN` para `-1` em [config.h](..
 | [`main.cpp`](../firmware/src/main.cpp) | Ciclos (janela e contínuo), lote de leituras, decisão de enviar. |
 | [`wind.cpp`](../firmware/src/wind.cpp) | Contagem de pulsos em light sleep, rajada, direção vetorial, chuva. |
 | [`sensors.cpp`](../firmware/src/sensors.cpp) | BME280, QMC5883L, bateria, calibração serial. |
-| [`net.cpp`](../firmware/src/net.cpp) | Wi-Fi rápido, portal cativo, envio do lote (HTTPS ou HTTP assinado). |
+| [`net.cpp`](../firmware/src/net.cpp) | Wi-Fi rápido, portal cativo, envio do lote em colunas, HTTPS validado com as raízes de `roots.h`. |
 | [`auth.cpp`](../firmware/src/auth.cpp) | HMAC-SHA256 (mbedtls) dos pedidos e conferência da resposta do servidor. |
 | [`ota.cpp`](../firmware/src/ota.cpp) | Atualização pelo ar com conferência de tamanho e SHA-256. |
 | [`usblink.cpp`](../firmware/src/usblink.cpp) | Conversa com o site pela USB (JSON), detecção do computador plugado. |
@@ -205,6 +207,15 @@ Se a direção girar ao contrário, troque `DIR_SIGN` para `-1` em [config.h](..
 | [`events.cpp`](../firmware/src/events.cpp) | Registro de reinícios e atualizações na RTC, enviado com o lote. |
 | [`settings.cpp`](../firmware/src/settings.cpp) | Configuração e rede guardadas na flash. |
 | [`config.h`](../firmware/src/config.h) | Pinos, limites e padrões. |
+| [`roots.h`](../firmware/src/roots.h) | Autoridades raiz para validar o HTTPS (gerado por `tools/make_roots.py`). |
+
+## Envio dos dados
+
+- **Em colunas (0.5+).** Uma lista por medida em vez de um objeto por leitura: menos bytes, menos tempo de rádio. O servidor confirma com `"fmt": 2` e a estação passa a usar; se recusar, ela volta ao formato antigo. Detalhes em [api.md](api.md#formato-em-colunas-firmware-05).
+- **Uma conexão por acordada.** O envio, a confirmação da configuração e a atualização reaproveitam a mesma conexão TLS: o aperto de mão, que é o trecho mais caro, acontece uma vez.
+- **HTTPS validado.** O certificado do servidor é conferido com as raízes embutidas em [`roots.h`](../firmware/src/roots.h) (as que a Cloudflare usa; gere de novo com `python tools/make_roots.py cacert.pem`). Se a validação falhar, os envios seguem **assinados** (a chave nunca viaja e a resposta é conferida pela assinatura) e a estação registra o evento `tls`, que aparece no diagnóstico do site.
+- **Direção e umidade ausentes.** Sem biruta a direção vai vazia (o site mostra "—"), em vez de repetir a última; o MS5611 manda a umidade vazia.
+- **Sinal de vida espaçado (`idle_every`).** Uma estação sem sensor manda bateria e sinal a cada `idle_every` leituras, em vez de a cada leitura, para economizar bateria.
 
 ## Diagnóstico
 

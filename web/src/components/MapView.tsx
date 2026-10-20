@@ -238,7 +238,7 @@ export default function MapView({ stations, selectedId, layers, pickMode, onSele
     m.on('movestart', clear)
     m.on('zoomstart', clear)
 
-    const sources = () => live.current.stations.filter((s) => s.latest && hasFreshReading(s))
+    const sources = () => live.current.stations.filter((s) => s.latest && hasFreshReading(s) && Number.isFinite(s.latest.dir))
     // vetor (leste, norte) em m/s por ponderação inversa da distância ao quadrado
     const buildGrid = () => {
       const src = sources().map((s) => {

@@ -19,7 +19,7 @@ constexpr float DIR_SIGN = 1.0f;        // use -1 se a direção girar ao contr�
 
 // ---------------- rede ----------------
 constexpr uint32_t PORTAL_TIMEOUT_S = 180;
-// A validação do certificado HTTPS é ligada colando o certificado raiz em ROOT_CA_PEM (net.cpp).
+// O HTTPS é validado com as raízes de src/roots.h (tools/make_roots.py). Se a validação falhar, os envios seguem assinados (a chave não viaja).
 
 // Endereço do seu site embutido no firmware (assim o portal pede só a rede e o código de pareamento).
 // Defina ao compilar: build_flags = -DDEFAULT_SERVER_URL=\"https://seu-site.workers.dev\"
@@ -30,7 +30,7 @@ constexpr uint32_t PORTAL_TIMEOUT_S = 180;
 // ---------------- versão ----------------
 // Mude a cada firmware que publicar pelo site: a estação só atualiza quando a versão publicada é DIFERENTE desta.
 #ifndef FW_VERSION
-#define FW_VERSION "0.4.6"
+#define FW_VERSION "0.5.0"
 #endif
 
 // ---------------- limites ----------------
@@ -59,6 +59,7 @@ struct Settings {
   uint8_t  envSensor     = 1;       // 0 nenhum, 1 BME280, 2 MS5611 (GY-63), 3 BME280 (temperatura e umidade) + MS5611 (pressão)
   uint8_t  pinSda = DEF_PIN_SDA, pinScl = DEF_PIN_SCL, pinWind = DEF_PIN_WIND, pinRain = DEF_PIN_RAIN, pinVbat = DEF_PIN_VBAT;
   uint8_t  wifiTxSave    = 0;       // 1 = reduz sozinha a potência de transmissão do Wi-Fi quando o sinal é bom
+  uint8_t  idleEvery     = 1;       // sem leitura de sensor: manda o sinal de vida a cada N ciclos (1 = todo ciclo)
   uint32_t version       = 0;       // 0 = nunca recebeu configuração; o servidor manda a atual
 };
 
