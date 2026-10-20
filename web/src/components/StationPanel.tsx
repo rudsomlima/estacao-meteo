@@ -76,7 +76,7 @@ export default function StationPanel({ station: s, source, onClose, onEdit }: { 
             <dt className="text-ink-3">Rajada</dt><dd>{f.wind(l.gust)}</dd>
             <dt className="text-ink-3">Umidade</dt><dd>{Number.isFinite(l.hum) ? `${Math.round(l.hum)}%` : '—'}</dd>
             <dt className="text-ink-3">Chuva 24 h</dt><dd>{f.rain(s.day?.rain ?? 0)}</dd>
-            <dt className="text-ink-3">Pressão</dt><dd>{f.pres(l.pres)}</dd>
+            <dt className="text-ink-3">Pressão</dt><dd>{Number.isFinite(l.pres) ? f.pres(l.pres) : '—'}</dd>
             <dt className="text-ink-3">Bateria</dt>
             <dd className="flex items-center gap-2">
               <span className="h-2 w-14 overflow-hidden rounded-full bg-line"><i className="block h-full" style={{ width: `${pct}%`, background: batteryColor(pct) }} /></span>

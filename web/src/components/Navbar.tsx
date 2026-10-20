@@ -17,10 +17,7 @@ const MAP_LINKS = [
 const CONFIG_LINKS = [
   ['unidades', 'Unidades'],
   ['favoritas', 'Favoritas'],
-  ['placa', 'Placa USB'],
-  ['gravar', 'Gravar'],
   ['telegram', 'Telegram'],
-  ['dados', 'Dados'],
 ]
 const ANALYSES_LINKS = [
   ['comparar', 'Comparar'],

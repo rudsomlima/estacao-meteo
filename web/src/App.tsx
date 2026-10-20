@@ -135,7 +135,7 @@ function Routes({ net }: { net: Net }) {
     return (
       <>
         <Navbar mode="admin" title="Administração" source={net.source} status={null} back={{ to: '', label: 'Rede' }} />
-        <main><AdminPage /></main>
+        <main><AdminPage stations={net.stations} source={net.source} /></main>
       </>
     )
   }

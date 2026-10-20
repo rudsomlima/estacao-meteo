@@ -72,10 +72,11 @@ function pin(s: Station, layers: Layer[]) {
     lines.push({ text: l ? 'sem sinal' : 'sem dados', color: l ? '#94a3b8' : '#fff' })
     if (layers.includes('seen')) lines.push({ text: s.last_seen ? ago(s.last_seen) : l ? ago(l.ts) : 'nunca', color: '#f87171' })
   } else {
-    const sensors = layers.some((k) => k === 'wind' || k === 'temp' || k === 'rain')
+    const sensors = layers.some((k) => k === 'wind' || k === 'temp' || k === 'pres' || k === 'rain')
     if (l && on) {
       if (layers.includes('wind')) add(`${f.wind(l.wind)} ${compass16(l.dir)}`, windColor(kmh(l.wind)))
       if (layers.includes('temp')) add(f.tempShort(l.temp), tempColor(l.temp))
+      if (layers.includes('pres') && Number.isFinite(l.pres)) add(f.pres(l.pres), '#a78bfa')
       if (layers.includes('rain')) { const mm = s.day?.rain ?? 0; add(f.rain(mm), rainColor(mm)) }
     } else if (sensors) lines.push({ text: 'sem sensor', color: '#94a3b8' }) // conectou, mas não mediu nada
     if (layers.includes('battery') && vbat != null) {

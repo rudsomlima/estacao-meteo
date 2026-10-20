@@ -1,8 +1,8 @@
 import { useSyncExternalStore } from 'react'
 import { store } from './api'
 
-export type MapLayer = 'wind' | 'temp' | 'rain' | 'battery' | 'wifi' | 'seen'
-export const MAP_LAYERS: [MapLayer, string][] = [['wind', 'Vento'], ['temp', 'Temperatura'], ['rain', 'Chuva 24 h'], ['battery', 'Bateria'], ['wifi', 'Sinal Wi-Fi'], ['seen', 'Última vez visto']]
+export type MapLayer = 'wind' | 'temp' | 'pres' | 'rain' | 'battery' | 'wifi' | 'seen'
+export const MAP_LAYERS: [MapLayer, string][] = [['wind', 'Vento'], ['temp', 'Temperatura'], ['pres', 'Pressão'], ['rain', 'Chuva 24 h'], ['battery', 'Bateria'], ['wifi', 'Sinal Wi-Fi'], ['seen', 'Última vez visto']]
 
 /** Preferências de quem está vendo o site. Ficam só no navegador e valem na hora, em todas as telas. */
 export interface Prefs {

@@ -7,6 +7,8 @@ import { store } from '../lib/api'
 import { useSession } from '../lib/session'
 import AdminConfig from './admin/AdminConfig'
 import AdminFirmware from './admin/AdminFirmware'
+import AdminSite from './admin/AdminSite'
+import type { Source, Station } from '../types'
 import { AdminSecurity, AdminUsers } from './admin/AdminUsersSecurity'
 import { Section, useLoad } from './admin/ui'
 import { signInDev } from '../lib/auth'
@@ -16,6 +18,7 @@ const TABS = [
   ['geral', 'Visão geral'],
   ['config', 'Configuração'],
   ['firmware', 'Firmware'],
+  ['site', 'Site e placas'],
   ['usuarios', 'Usuários'],
   ['seguranca', 'Segurança'],
 ] as const
@@ -59,7 +62,7 @@ function Overview({ stations, users }: { stations: AdminStation[]; users: number
 }
 
 /** Painel do administrador: todas as estações, configuração em massa, firmware com acompanhamento, usuários e segurança. */
-export default function AdminPage() {
+export default function AdminPage({ stations, source }: { stations: Station[]; source: Source }) {
   const { user, clientId, loaded, devLogin } = useSession()
   const [tab, setTab] = useState<Tab>(() => (TABS.some(([k]) => k === store.get(TAB_KEY)) ? (store.get(TAB_KEY) as Tab) : 'geral'))
   const { data, error, reload } = useLoad(getOverview, user?.role === 'admin')
@@ -97,6 +100,7 @@ export default function AdminPage() {
         {!data ? <p className="text-sm text-ink-3">Carregando…</p> : tab === 'geral' ? <Overview stations={data.stations} users={data.users} />
           : tab === 'config' ? <AdminConfig stations={data.stations} />
           : tab === 'firmware' ? <AdminFirmware stations={data.stations} />
+          : tab === 'site' ? <AdminSite stations={stations} source={source} />
           : tab === 'usuarios' ? <AdminUsers stations={data.stations} onChanged={reload} />
           : <AdminSecurity />}
       </div>

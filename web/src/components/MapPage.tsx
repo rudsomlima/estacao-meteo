@@ -206,7 +206,7 @@ export default function MapPage({ stations, source, onCreate, onSave, onRemove }
           <table className="w-full min-w-[820px] border-collapse text-sm">
             <thead>
               <tr className="text-left text-[11px] uppercase tracking-[0.1em] text-ink-3">
-                {['', 'Estação', 'Temperatura', 'Vento', 'Chuva 24 h', 'Bateria', 'Visto'].map((h) => <th key={h} className="border-b border-line px-4 py-3 font-semibold">{h}</th>)}
+                {['', 'Estação', 'Temperatura', 'Pressão', 'Vento', 'Chuva 24 h', 'Bateria', 'Visto'].map((h) => <th key={h} className="border-b border-line px-4 py-3 font-semibold">{h}</th>)}
               </tr>
             </thead>
             <tbody>
@@ -225,6 +225,7 @@ export default function MapPage({ stations, source, onCreate, onSave, onRemove }
                     </td>
                     <td className="px-4 py-3"><b className="font-sans font-semibold">{s.name}</b><div className="text-xs text-ink-3">{s.city}</div></td>
                     <td className="px-4 py-3">{l ? f.temp(l.temp) : '—'}</td>
+                    <td className="px-4 py-3">{l && Number.isFinite(l.pres) ? f.pres(l.pres) : '—'}</td>
                     <td className="px-4 py-3">{l ? <span style={{ color: windColor(kmh(l.wind)) }}>{f.wind(l.wind)} {compass16(l.dir)}</span> : '—'}</td>
                     <td className="px-4 py-3">{s.day ? f.rain(s.day.rain) : '—'}</td>
                     <td className="px-4 py-3">
