@@ -144,25 +144,11 @@ check('cria estação e devolve a chave uma vez', r.status === 201 && typeof r.j
 r = await admin('PUT', `/api/stations/${id}`, { body: { name: 'Teste 2', config: { interval_min: 15, urgent_gust_kmh: 60, wifi_tx_save: 1 } } })
 check('atualiza e sobe a versão da configuração', r.status === 200 && r.json.config.version === 2 && r.json.config.urgent_gust_kmh === 60 && r.json.config.wifi_tx_save === 1, r.text)
 
-// ================= OTA
-const fw = randomBytes(150_000)
-r = await admin('POST', `/api/stations/serra/firmware?version=9.9.9`, { raw: fw })
-check('publica firmware', r.status === 201 && r.json.sha256 === sha(fw), r.text)
-r = await call('GET', '/api/stations/serra/firmware')
-check('informa publicado x instalado', r.json.published?.version === '9.9.9' && r.json.installed === '0.1.0', r.text)
-r = await call('POST', '/api/ingest', { body: { cfg: 999, fw: '0.1.0', batch: [{ ...reading }] }, headers: dev })
-check('oferece a atualização quando a versão é diferente', r.json.ota?.version === '9.9.9' && r.json.ota.sha256 === sha(fw), r.text)
-r = await call('POST', '/api/ingest', { body: { cfg: 999, fw: '9.9.9', batch: [{ ...reading }] }, headers: dev })
-check('não oferece quando a versão é a mesma', r.json.ota === null, r.text)
-r = await call('GET', '/api/ota/firmware.bin', { headers: dev })
-check('a estação baixa o binário inteiro', r.status === 200 && r.buf.equals(fw) && r.headers.get('x-sha256') === sha(fw))
+// ================= OTA: a publicacao antiga (por estacao) foi removida; o firmware vai por releases/fw_assign (testado adiante)
+r = await admin('POST', `/api/stations/serra/firmware?version=9.9.9`, { raw: randomBytes(150_000) })
+check('a rota antiga de publicar firmware por estacao foi removida (404)', r.status === 404, r.text)
 r = await call('GET', '/api/ota/firmware.bin')
-check('o download exige credencial', r.status === 401)
-r = await admin('POST', `/api/stations/serra/firmware?version=1`, { raw: Buffer.alloc(10) })
-check('rejeita firmware pequeno demais', r.status === 422)
-r = await admin('DELETE', '/api/stations/serra/firmware')
-r = await call('GET', '/api/stations/serra/firmware')
-check('despublicar apaga o firmware', r.json.published === null)
+check('o download de firmware exige credencial', r.status === 401)
 
 // ================= resumo por hora e leituras incrementais
 r = await call('GET', '/api/stations')
@@ -318,8 +304,8 @@ for (const [nome, m, path, body] of [['troca a chave', 'POST', '/api/stations/an
   check(`o dono não ${nome} (só administrador)`, (await call(m, path, body === undefined ? as(ana) : asBody(ana, body))).status === 403)
   check(`outro usuário não ${nome}`, (await call(m, path, body === undefined ? as(beto) : asBody(beto, body))).status === 403)
 }
-r2 = await call('POST', '/api/stations/ana-sitio/firmware?version=1.0.0', { raw: Buffer.alloc(150_000, 1), headers: { cookie: ana } })
-check('o dono não publica firmware', r2.status === 403)
+r2 = await call('POST', '/api/admin/releases?version=1.0.0', { raw: Buffer.alloc(150_000, 1), headers: { cookie: ana } })
+check('o usuario comum nao publica firmware (releases e so admin)', r2.status === 403)
 r2 = await call('PUT', '/api/stations/serra', asBody(ana, { name: 'x' }))
 check('usuário não mexe em estação sem dono (só administrador)', r2.status === 403)
 // ---- sensores e pinos

@@ -4,7 +4,7 @@ import { DEFAULT_PREFS, MAP_LAYERS, makeMain, setPrefs, toggleFavorite, usePrefs
 import type { Source, Station } from '../types'
 import Panel from './Panel'
 import TelegramPanel from './TelegramPanel'
-import { useSession } from '../lib/session'
+import { useIsAdmin, useSession } from '../lib/session'
 
 function Choice<K extends keyof Prefs>({ label, name, options, value }: { label: string; name: K; options: [Prefs[K], string][]; value: Prefs[K] }) {
   return (
@@ -27,9 +27,9 @@ function Choice<K extends keyof Prefs>({ label, name, options, value }: { label:
 /** Preferências do site (valem para todas as estações e ficam só neste navegador), alertas e dados. */
 export default function GlobalSettings({ stations, source }: { stations: Station[]; source: Source }) {
   const p = usePrefs()
-  const { user, clientId } = useSession()
+  const { user } = useSession()
   const mine = stations.filter((s) => s.can_edit)
-  const isAdmin = !clientId || user?.role === 'admin' // sem login no servidor vale o token; com login, só administradores
+  const isAdmin = useIsAdmin()
   const favs = p.favorites.map((id) => stations.find((s) => s.id === id)).filter((s): s is Station => !!s)
   const others = stations.filter((s) => !p.favorites.includes(s.id))
 

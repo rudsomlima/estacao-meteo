@@ -99,10 +99,6 @@ export const createStation = (body: StationEdit & { id: string; owner_email?: st
 export const createClaim = (id: string, token: string) => adminRequest<{ id: string; code: string; expires_at: number }>('POST', `/api/stations/${id}/claim`, token, {})
 export const rotateKey = (id: string, token: string) => adminRequest<{ id: string; key: string }>('POST', `/api/stations/${id}/key`, token)
 
-export const publishFirmware = (id: string, version: string, bin: Uint8Array, token: string) =>
-  adminRequest<{ version: string; size: number; sha256: string }>('POST', `/api/stations/${id}/firmware?version=${encodeURIComponent(version)}`, token, bin, 60000)
-
-export const unpublishFirmware = (id: string, token: string) => adminRequest<{ ok: boolean }>('DELETE', `/api/stations/${id}/firmware`, token)
 
 export interface TelegramSettings {
   tokenSet: boolean

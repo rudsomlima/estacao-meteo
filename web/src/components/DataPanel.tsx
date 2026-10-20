@@ -64,7 +64,7 @@ export default function DataPanel({ stations, source }: { stations: Station[]; s
   const loadUsage = async () => {
     setBusy(true)
     try { setUsage(await getUsage(token)); setMsg(null) } catch (e) {
-      setMsg({ ok: false, text: e instanceof ApiError ? (e.status === 401 ? 'Token de administrador incorreto (preencha em Telegram).' : e.message) : 'Não foi possível consultar.' })
+      setMsg({ ok: false, text: e instanceof ApiError ? (e.status === 401 ? 'Sem permissão: entre como administrador (canto superior direito).' : e.message) : 'Não foi possível consultar.' })
     }
     setBusy(false)
   }

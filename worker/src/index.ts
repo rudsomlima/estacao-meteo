@@ -9,8 +9,9 @@
  *   GET  /api/live                WebSocket: avisa quando uma estação envia ou muda (o navegador então busca o dado novo)
  *   GET  /api/stations, /api/stations/:id, /:id/readings, /:id/daily, /:id/events, /:id/firmware
  * Administrador (sessão do login com Google; o ADMIN_TOKEN só como acesso de emergência):
- *   POST /api/stations, PUT|DELETE /api/stations/:id, POST /:id/key, POST /:id/claim, POST|DELETE /:id/firmware
- *   GET|PUT /api/settings/telegram, POST /api/telegram/test, POST /api/telegram/detect-chat, GET /api/usage
+ *   POST /api/stations, PUT|DELETE /api/stations/:id, POST /:id/key, POST /:id/claim
+ *   firmware: POST /api/admin/releases (publica uma versão) e /releases/:id/assign (atribui a estações) — veja admin.ts
+ *   GET|PUT /api/settings/telegram, POST /api/telegram/*, GET /api/usage, GET /api/admin/*
  */
 import {
   userKey, detectChat, DEFAULT_TEMPLATES, evaluateAfterIngest, evaluateOffline, loadTelegram, publicTelegram, render, saveTelegram, sendTelegram,
@@ -27,7 +28,6 @@ import {
 
 export { Hub } from './hub'
 
-const MAX_FIRMWARE = 1_600_000
 
 interface StationRow {
   id: string; name: string; city: string; lat: number; lon: number; alt: number; config: string; created_at: number
@@ -337,8 +337,9 @@ async function events(url: URL, env: Env, id: string) {
 async function firmwareInfo(env: Env, id: string) {
   const s = await env.DB.prepare('SELECT fw_version FROM stations WHERE id = ?').bind(id).first<{ fw_version: string | null }>()
   if (!s) return json({ error: 'estação não encontrada' }, 404)
-  const f = await env.DB.prepare('SELECT version, size, sha256, uploaded_at FROM firmware WHERE station_id = ?').bind(id).first()
   const a = await env.DB.prepare('SELECT r.version, r.size, r.sha256, a.assigned_at AS uploaded_at FROM fw_assign a JOIN releases r ON r.id = a.release_id WHERE a.station_id = ?').bind(id).first()
+  // plano B: estações com firmware ainda pelo caminho antigo (nada novo é gravado lá)
+  const f = a ? null : await env.DB.prepare('SELECT version, size, sha256, uploaded_at FROM firmware WHERE station_id = ?').bind(id).first()
   return json({ published: a ?? f ?? null, installed: s.fw_version, assigned: !!a })
 }
 
@@ -445,30 +446,6 @@ async function deleteStation(env: Env, id: string) {
   return json({ ok: true })
 }
 
-async function publishFirmware(url: URL, env: Env, id: string, raw: Uint8Array) {
-  const version = (url.searchParams.get('version') ?? '').trim()
-  if (!/^[\w.+-]{1,40}$/.test(version)) return json({ error: 'informe a versão (letras, números, ponto, hífen)' }, 422)
-  if (raw.length < 100_000 || raw.length > MAX_FIRMWARE) return json({ error: `o firmware deve ter entre 100 KB e ${Math.round(MAX_FIRMWARE / 1000)} KB` }, 422)
-  if (!(await env.DB.prepare('SELECT 1 FROM stations WHERE id = ?').bind(id).first())) return json({ error: 'estação não encontrada' }, 404)
-
-  const CH = 192 * 1024
-  const n = Math.ceil(raw.length / CH)
-  const stmts: D1PreparedStatement[] = [
-    // apaga o meta ANTES dos pedaços: é o meta que faz a estação tentar baixar
-    env.DB.prepare('DELETE FROM firmware WHERE station_id = ?').bind(id),
-    env.DB.prepare('DELETE FROM firmware_chunks WHERE station_id = ?').bind(id),
-  ]
-  for (let i = 0; i < n; i++) stmts.push(env.DB.prepare('INSERT INTO firmware_chunks (station_id, idx, data) VALUES (?,?,?)').bind(id, i, toBase64(raw.subarray(i * CH, (i + 1) * CH))))
-  const sha = await sha256Hex(raw)
-  stmts.push(env.DB.prepare('INSERT INTO firmware (station_id, version, size, sha256, chunks, uploaded_at) VALUES (?,?,?,?,?,?)').bind(id, version, raw.length, sha, n, Math.floor(Date.now() / 1000)))
-  await env.DB.batch(stmts)
-  return json({ version, size: raw.length, sha256: sha }, 201)
-}
-
-async function unpublishFirmware(env: Env, id: string) {
-  await env.DB.batch([env.DB.prepare('DELETE FROM firmware WHERE station_id = ?').bind(id), env.DB.prepare('DELETE FROM firmware_chunks WHERE station_id = ?').bind(id)])
-  return json({ ok: true })
-}
 
 async function usage(env: Env) {
   const one = async (sql: string) => (await env.DB.prepare(sql).first<Record<string, number>>()) ?? {}
@@ -620,7 +597,7 @@ async function route(req: Request, env: Env, ctx: ExecutionContext): Promise<Res
     return json(r, r.ok ? 200 : 502)
   }
 
-  const a = p.match(/^\/api\/stations\/([a-z0-9-]+)(?:\/(key|claim|firmware))?$/)
+  const a = p.match(/^\/api\/stations\/([a-z0-9-]+)(?:\/(key|claim))?$/)
   if (a) {
     const [, id, sub] = a
     // só o dono (ou o administrador) mexe na estação
@@ -633,8 +610,6 @@ async function route(req: Request, env: Env, ctx: ExecutionContext): Promise<Res
     if (!sub && m === 'DELETE') return audited(env, actor, 'estacao.removida', id, await deleteStation(env, id))
     if (sub === 'key' && m === 'POST') return audited(env, actor, 'estacao.chave', id, await rotateKey(env, id))
     if (sub === 'claim' && m === 'POST') return createClaim(env, id)
-    if (sub === 'firmware' && m === 'POST') return audited(env, actor, 'estacao.firmware', id, await publishFirmware(url, env, id, raw))
-    if (sub === 'firmware' && m === 'DELETE') return unpublishFirmware(env, id)
   }
   return json({ error: 'rota não encontrada' }, 404)
 }
