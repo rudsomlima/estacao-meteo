@@ -23,7 +23,7 @@ Estação meteorológica **de baixo consumo com ESP32-C3**, feita para rodar a b
 - **Diagnóstico:** reinícios fora do sono de rotina, atualizações de firmware e modo bancada aparecem no site.
 - **Alertas no Telegram:** estação sem dados, bateria baixa, rajada forte e chuva, com mensagens editáveis. Avisa uma vez quando o estado muda, não a cada leitura. Cada usuário pode ligar o **seu** bot para as estações dele.
 - **Análises:** compare até 3 estações e veja o resumo mensal com calendário por temperatura.
-- **Ajustes do site:** unidades (km/h, m/s, nós, mph; °C/°F; mm/pol; hPa/inHg/mmHg), camadas e mapa de fundo padrão, estações favoritas e Telegram. Exportar CSV, backup e atualização dos dados ficam no painel do administrador.
+- **Preferências do site:** unidades (km/h, m/s, nós, mph; °C/°F; mm/pol; hPa/inHg/mmHg), camadas e mapa de fundo padrão, estações favoritas e Telegram. Exportar CSV, backup e atualização dos dados ficam no painel do administrador.
 - **Login com Google e papéis:** visitante só vê; usuário altera as estações das quais é dono; administrador cadastra estações e placas.
 - **Painel do administrador:** visão geral da rede, configuração em massa, firmware com acompanhamento por estação, placas USB, usuários, sessões e registro de atividades.
 - **Gravação do firmware pelo navegador:** o site grava a placa pelo cabo USB (Web Serial), sem PlatformIO nem driver.

@@ -24,11 +24,7 @@ const ANALYSES_LINKS = [
   ['resumo', 'Resumo'],
 ]
 const ADMIN_LINKS: string[][] = []
-const SETTINGS_LINKS = [
-  ['energia', 'Energia'],
-  ['diagnostico', 'Diagnóstico'],
-  ['config', 'Configuração'],
-]
+const SETTINGS_LINKS: string[][] = [] // a página de configurações tem as próprias abas
 
 interface Props {
   mode: 'map' | 'station' | 'settings' | 'config' | 'analyses' | 'admin'
@@ -38,11 +34,11 @@ interface Props {
   lastTs?: number
   /** rota de destino do botão voltar (sem o `#/`) e o texto dele */
   back?: { to: string; label: string }
-  /** link para a página de Configurações da estação, mostrado na página da estação */
+  /** link para as Configurações da estação, mostrado na página da estação (também no celular) */
   settingsTo?: string
 }
 
-export default function Navbar({ mode, title, source, status, lastTs, back, settingsTo }: Props) {
+export default function Navbar({ mode, title, status, lastTs, back, settingsTo }: Props) {
   useNow() // redesenha a cada segundo: as idades ("há 2min10s") andam sozinhas
   const links = { station: STATION_LINKS, settings: SETTINGS_LINKS, config: CONFIG_LINKS, analyses: ANALYSES_LINKS, map: MAP_LINKS, admin: ADMIN_LINKS }[mode]
   return (
@@ -74,7 +70,7 @@ export default function Navbar({ mode, title, source, status, lastTs, back, sett
               </li>
               <li>
                 <button onClick={() => go('config')} className="flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-sm text-ink-2 transition-colors hover:bg-card-hover hover:text-ink">
-                  <SlidersHorizontal className="h-3.5 w-3.5" aria-hidden /> Ajustes
+                  <SlidersHorizontal className="h-3.5 w-3.5" aria-hidden /> Preferências
                 </button>
               </li>
             </>
@@ -90,14 +86,19 @@ export default function Navbar({ mode, title, source, status, lastTs, back, sett
         {mode === 'map' && (
           <div className="flex shrink-0 gap-1 md:hidden">
             <button onClick={() => go('analises')} aria-label="Análises" className="rounded-lg p-2 text-ink-2 hover:bg-card-hover"><BarChart3 className="h-4 w-4" /></button>
-            <button onClick={() => go('config')} aria-label="Ajustes" className="rounded-lg p-2 text-ink-2 hover:bg-card-hover"><SlidersHorizontal className="h-4 w-4" /></button>
+            <button onClick={() => go('config')} aria-label="Preferências" className="rounded-lg p-2 text-ink-2 hover:bg-card-hover"><SlidersHorizontal className="h-4 w-4" /></button>
           </div>
         )}
+        {settingsTo && (
+          <button onClick={() => go(settingsTo)} aria-label="Configurações da estação" className="shrink-0 rounded-lg p-2 text-ink-2 hover:bg-card-hover md:hidden"><Settings className="h-4 w-4" /></button>
+        )}
         {status && (
-          <span className="num flex shrink-0 items-center gap-2 rounded-full border border-line bg-card px-3 py-1 text-xs text-ink-2">
-            <i className={`inline-block h-2 w-2 rounded-full ${status.color}`} />
+          // no celular o título precisa do espaço: fica só a bolinha e a idade (o texto completo vai no title)
+          <span title={`${status.text}${lastTs ? ` · ${ago(lastTs)}` : ''}`} className="num flex shrink-0 items-center gap-2 rounded-full border border-line bg-card px-2.5 py-1 text-xs text-ink-2 sm:px-3">
+            <i className={`inline-block h-2 w-2 rounded-full ${status.color}`} aria-hidden />
             <Radio className="hidden h-3.5 w-3.5 sm:block" aria-hidden />
-            {status.text}{lastTs ? ` · ${ago(lastTs)}` : ''}{source === 'demo' && mode === 'station' ? '' : ''}
+            <span className="hidden sm:inline">{status.text}{lastTs ? ' · ' : ''}</span>
+            {lastTs ? ago(lastTs) : <span className="sm:hidden">{status.text}</span>}
           </span>
         )}
         <AuthMenu />

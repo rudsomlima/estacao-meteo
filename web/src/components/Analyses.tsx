@@ -233,7 +233,7 @@ export default function Analyses({ stations, source }: { stations: Station[]; so
       <h1 className="mt-1 font-display text-4xl font-extrabold tracking-tight sm:text-5xl">Análises</h1>
       <p className="mt-2 max-w-2xl text-ink-2">Compare estações lado a lado e veja o resumo de cada mês.</p>
 
-      <div className="mt-10 grid gap-12">
+      <div className="mt-10 grid gap-12 [&>*]:min-w-0">
         <section>
           <SectionHead id="comparar" kicker="Comparar" title="Estações lado a lado">Escolha até três estações e uma medida.</SectionHead>
           <div className="mt-6">{stations.length ? <Compare stations={stations} source={source} /> : <p className="text-sm text-ink-3">Nenhuma estação cadastrada.</p>}</div>

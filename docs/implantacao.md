@@ -43,7 +43,7 @@ cd estacao-meteo
    npx wrangler secret put ADMIN_TOKEN
    ```
 
-   O site **assina** cada pedido de administrador com esse valor e nunca o envia; você o digita no navegador (fica só nele). O Telegram é configurado depois, em *Ajustes → Alertas no Telegram* (cada usuário configura o seu bot; o administrador também o do servidor). O cron de 5 minutos (`wrangler.toml`) é criado no deploy.
+   O site **assina** cada pedido de administrador com esse valor e nunca o envia; você o digita no navegador (fica só nele). O Telegram é configurado depois, em *Preferências → Alertas no Telegram* (cada usuário configura o seu bot; o administrador também o do servidor). O cron de 5 minutos (`wrangler.toml`) é criado no deploy.
 
 5. **Publicar** (compila o site e envia o Worker)
 

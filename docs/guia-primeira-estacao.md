@@ -60,9 +60,9 @@ Ao abrir, o mapa vai para a **sua localização** (o navegador pede permissão; 
 
 Os botões do topo (**Vento, Temperatura, Pressão, Chuva 24 h, Bateria, Sinal Wi-Fi, Última vez visto**) podem ser ligados **todos ao mesmo tempo**: cada estação mostra uma linha por camada ligada. Estação sem sensor de pressão mostra "—".
 
-As camadas que abrem ligadas, as unidades (km/h, °C, hPa…) e o mapa de fundo padrão se escolhem em **Ajustes**:
+As camadas que abrem ligadas, as unidades (km/h, °C, hPa…) e o mapa de fundo padrão se escolhem em **Preferências**:
 
-![Ajustes do site](img/guia/15-ajustes-do-site.png)
+![Preferências do site](img/guia/15-ajustes-do-site.png)
 
 ![Todas as camadas ligadas](img/guia/20-camadas-todas.png)
 
@@ -73,7 +73,7 @@ Os quatro lugares que você vai usar:
 | Onde | Quem vê | Para quê |
 |---|---|---|
 | **Adicionar estação** (botão no mapa) | administrador | Cria a estação e gera um código de pareamento. |
-| **Ajustes** (no topo do mapa) | todos | Unidades, mapa, estações favoritas e alertas no Telegram. |
+| **Preferências** (no topo do mapa) | todos | Unidades, mapa, estações favoritas e alertas no Telegram. |
 | **Administração** (menu da conta → *Painel do administrador*) | administrador | Visão geral, configuração em massa, firmware, **Site e placas** (placa USB, gravar firmware, atualização dos dados, exportar e backup), usuários e segurança. |
 | **Configurações** (página de cada estação) | dono e administrador | Placa, sensores e pinos, bateria, energia, intervalo de envio, calibração. |
 
@@ -155,7 +155,17 @@ A página da estação mostra a figura com os valores ao vivo:
 
 ![Página da estação](img/guia/11-pagina-da-estacao.png)
 
-O botão **Configurações** (no topo) abre a parte técnica: consumo e autonomia, sensores, bateria, diagnóstico e a configuração remota. Na seção **Configuração**, os atalhos *Placa, sensores e pinos*, *Bateria*, *Envio, vento e economia* e *Nome e local* levam direto a cada grupo.
+O botão **Configurações** (no topo; no celular, o ícone de engrenagem) abre as **Configurações da estação**, em abas:
+
+| Aba | O que tem |
+|---|---|
+| **Visão geral** | Se a última configuração já chegou à estação (com o progresso), sensores, tensão, sinal e gráficos de bateria e Wi-Fi. |
+| **Placa e sensores** | Sensor de ambiente, pinos e calibração (chuva por basculada, fator do anemômetro, norte da biruta). |
+| **Medição, envio e energia** | Intervalo, janelas, lote de envio, Wi-Fi, bateria e economia, com a estimativa de autonomia mudando enquanto você edita. |
+| **Diagnóstico e firmware** | Reinícios e eventos, firmware instalado e o que está publicado. |
+| **Instalação** | Nome e local, modo bancada, portal Wi-Fi, chave e código de pareamento. |
+
+O que você muda em qualquer aba fica pendente numa barra no rodapé, com **Salvar configuração** e **Descartar**.
 
 ![Configurações da estação](img/guia/12-configuracoes-da-estacao.png)
 

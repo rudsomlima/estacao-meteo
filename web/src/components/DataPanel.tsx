@@ -54,7 +54,7 @@ export default function DataPanel({ stations, source }: { stations: Station[]; s
     try {
       const data = JSON.parse(await f.text()) as { prefs?: unknown }
       setPrefs(sanitize(data.prefs ?? data))
-      setMsg({ ok: true, text: 'Ajustes restaurados.' })
+      setMsg({ ok: true, text: 'Preferências restauradas.' })
     } catch {
       setMsg({ ok: false, text: 'Arquivo inválido.' })
     }
@@ -91,7 +91,7 @@ export default function DataPanel({ stations, source }: { stations: Station[]; s
       </div>
 
       <div>
-        <h3 className="text-sm font-semibold">Ajustes deste navegador</h3>
+        <h3 className="text-sm font-semibold">Preferências deste navegador</h3>
         <p className="mt-1 text-xs text-ink-3">Unidades, favoritas e mapa. Salve num arquivo para levar a outro aparelho.</p>
         <div className="mt-2 flex flex-wrap gap-2">
           <button className={btn} onClick={backup}><Download className="h-3.5 w-3.5" aria-hidden /> Salvar arquivo</button>

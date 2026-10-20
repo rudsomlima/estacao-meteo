@@ -1,4 +1,5 @@
 import { BatteryCharging, CircleCheck, CircleDashed, Wifi } from 'lucide-react'
+import { go } from '../hooks/useRoute'
 import { useMemo, useState } from 'react'
 import { useEvents, useFirmware, type SaveResult } from '../hooks/useNetwork'
 import { batteryPct, CHEMS } from '../lib/battery'
@@ -7,12 +8,11 @@ import { hasBattery } from '../lib/battery'
 import { ENV_SENSORS, pinValue, type PinKey } from '../lib/pins'
 import type { Reading, Source, Station, StationConfig } from '../types'
 import Chart from './Chart'
-import ConfigPanel from './ConfigPanel'
+import { ConfigSection, KeyTools, SaveBar } from './ConfigPanel'
 import ConfigStatus from './ConfigStatus'
 import DiagnosticsPanel from './DiagnosticsPanel'
 import FirmwarePanel from './FirmwarePanel'
 import Panel from './Panel'
-import { SectionHead } from './Reveal'
 
 /** O que a placa tem ligado, segundo a configuração (sensor e pinos), e se a última leitura mostra que funciona. */
 function sensorsOf(c: StationConfig, r: Reading) {
@@ -46,15 +46,34 @@ interface Props {
   readings: Reading[]
   station: Station
   source: Source
+  tab?: string
   onSave: (s: Station, token: string) => Promise<SaveResult>
   onNewKey: (id: string, token: string) => Promise<SaveResult>
 }
 
-/** Parte técnica de uma estação: energia, telemetria, diagnóstico, firmware e configuração remota. */
-export default function StationSettings({ readings, station, source, onSave, onNewKey }: Props) {
+export const SETTINGS_TABS = [
+  ['geral', 'Visão geral'],
+  ['sensores', 'Placa e sensores'],
+  ['envio', 'Medição, envio e energia'],
+  ['diagnostico', 'Diagnóstico e firmware'],
+  ['instalacao', 'Instalação'],
+] as const
+type Tab = (typeof SETTINGS_TABS)[number][0]
+
+/** Só o que a pessoa edita: nome, local e configuração (a versão e o que a estação informa não contam como alteração). */
+const editable = (s: Station) => JSON.stringify({ n: s.name, c: s.city, la: s.lat, lo: s.lon, al: s.alt, cfg: { ...s.config, version: 0 } })
+
+/** Parte técnica de uma estação, em abas: visão geral, placa e sensores, envio e energia, diagnóstico e firmware, instalação. */
+export default function StationSettings({ readings, station, source, tab: tabProp, onSave, onNewKey }: Props) {
+  const tab: Tab = SETTINGS_TABS.some(([k]) => k === tabProp) ? (tabProp as Tab) : 'geral'
   const [draft, setDraft] = useState(station)
   const [synced, setSynced] = useState(station)
-  if (station !== synced) { setSynced(station); setDraft(station) } // chegou dado novo do servidor
+  const dirty = editable(draft) !== editable(station)
+  // chegou dado novo do servidor (a cada envio): sem alterações pendentes, o rascunho acompanha; com alterações, elas ficam
+  if (station !== synced) {
+    setSynced(station)
+    setDraft(dirty ? { ...station, name: draft.name, city: draft.city, lat: draft.lat, lon: draft.lon, alt: draft.alt, config: { ...draft.config, version: station.config.version } } : station)
+  }
   const chem = CHEMS[draft.config.battery_chem]
   const events = useEvents(station.id, source)
   const { info } = useFirmware(station.id, source)
@@ -64,74 +83,125 @@ export default function StationSettings({ readings, station, source, onSave, onN
   const dayAgo = (now?.ts ?? 0) - 86400
   const last7 = readings.filter((r) => hasBattery(r.vbat)).map((r) => ({ t: r.ts, v: r.vbat }))
   const rssi = readings.filter((r) => r.ts >= dayAgo && r.rssi < 0).map((r) => ({ t: r.ts, v: r.rssi }))
-  const strip = (s: Station) => JSON.stringify({ ...s, latest: null, day: null, config: { ...s.config, version: 0 }, cfg_applied: 0, last_seen: null })
-  const dirty = strip(draft) !== strip(station)
   const sensors = sensorsOf(draft.config, now)
   const awake = est.total - est.phases.filter((p) => p.key === 'sleep' || p.key === 'lsleep').reduce((s, p) => s + p.seconds, 0)
 
+  const energy = (
+    <div className="grid gap-4">
+      <Panel id="ciclo" title={`Uma leitura a cada ${draft.config.interval_min} min`}>
+        <div className="flex h-9 overflow-hidden rounded-lg border border-line" role="img" aria-label="Divisão do tempo entre dormir e medir">
+          {est.phases.map((p) => (
+            <div key={p.key} title={`${p.label}: ${p.seconds.toFixed(1)} s a ${p.mA} mA`} style={{ flex: `${Math.max(p.seconds / est.total, p.key === 'sleep' ? 0 : 0.012)} 0 0`, background: p.color }} />
+          ))}
+        </div>
+        <ul className="num mt-3 flex flex-wrap gap-x-5 gap-y-1.5 text-xs text-ink-2">
+          {est.phases.map((p) => (
+            <li key={p.key} className="flex items-center gap-1.5">
+              <i className="inline-block h-2.5 w-2.5 rounded-sm" style={{ background: p.color }} />
+              {p.label} {p.seconds < 10 ? p.seconds.toFixed(1) : p.seconds.toFixed(0)} s · {p.mA} mA
+            </li>
+          ))}
+        </ul>
+        <p className="mt-3 text-sm text-ink-3">
+          {est.continuous
+            ? `Light sleep o ciclo todo, contando cada pulso do anemômetro. A CPU só fica ativa na leitura (${awake.toFixed(1)} s por ciclo, em média) e no envio, que ocorre a cada ${draft.config.send_every} leituras.`
+            : `Acordada ${awake.toFixed(1)} s de ${est.total} s (${((awake / est.total) * 100).toFixed(1)}%), com envio a cada ${draft.config.send_every} leituras.`}
+        </p>
+        <div className="mt-4 flex flex-wrap items-end gap-x-8 gap-y-2 border-t border-line pt-4">
+          <p className="font-display text-5xl font-extrabold tracking-tight text-ok">{Math.round(est.days)}<span className="ml-2 text-lg font-medium text-ink-2">dias sem sol</span></p>
+          <dl className="num grid grid-cols-2 gap-x-6 gap-y-1 text-sm">
+            <dt className="text-ink-3">Corrente média</dt><dd className="text-right">{est.avg.toFixed(3)} mA</dd>
+            <dt className="text-ink-3">Bateria</dt><dd className="text-right">{chem.label} · {draft.config.battery_mah} mAh</dd>
+          </dl>
+        </div>
+        <p className="mt-3 text-xs text-ink-3">Estimativa pelas folhas de dados dos componentes, recalculada enquanto você muda os valores abaixo. O consumo real depende da placa (LED e regulador gastam em sono) e só se confirma medindo com um multímetro de µA.</p>
+      </Panel>
+    </div>
+  )
+
   return (
-    <div className="mx-auto max-w-7xl px-4 pb-24 pt-6 sm:px-6">
-      <SectionHead id="energia" kicker="Energia e telemetria" title="Quanto a bateria aguenta">
-        A estação dorme quase o tempo todo. Mude os valores na configuração e veja a estimativa se ajustar antes de salvar.
-      </SectionHead>
+    <div className="mx-auto max-w-5xl px-4 pb-32 pt-4 sm:px-6">
+      <nav aria-label="Partes das configurações" className="sticky top-14 z-30 -mx-4 mb-6 overflow-x-auto border-b border-line bg-bg/90 px-4 backdrop-blur-xl sm:-mx-6 sm:px-6">
+        <ul role="tablist" className="flex gap-1 whitespace-nowrap py-2">
+          {SETTINGS_TABS.map(([k, label]) => (
+            <li key={k}>
+              <button role="tab" aria-selected={tab === k} onClick={() => go(`s/${station.id}/config/${k}`)}
+                className={`rounded-lg px-3 py-1.5 text-sm transition-colors ${tab === k ? 'bg-card-hover text-ink ring-1 ring-line-hover' : 'text-ink-3 hover:text-ink'}`}>{label}</button>
+            </li>
+          ))}
+        </ul>
+      </nav>
 
-      <div className="mt-8 grid gap-4 lg:grid-cols-12">
-        <Panel id="ciclo" title={`Um ciclo de ${draft.config.interval_min} min`} className="lg:col-span-12">
-          <div className="flex h-9 overflow-hidden rounded-lg border border-line" role="img" aria-label="Divisão do tempo entre dormir e medir">
-            {est.phases.map((p) => (
-              <div key={p.key} title={`${p.label}: ${p.seconds.toFixed(1)} s a ${p.mA} mA`} style={{ flex: `${Math.max(p.seconds / est.total, p.key === 'sleep' ? 0 : 0.012)} 0 0`, background: p.color }} />
-            ))}
+      {tab === 'geral' && (
+        <div className="grid gap-4">
+          <ConfigStatus station={station} />
+          <div className="grid gap-4 lg:grid-cols-2">
+            <Panel id="sensores" title="Sensores" hint="pela configuração e pela última leitura">
+              <ul className="grid gap-2.5">
+                {sensors.map((s) => (
+                  <li key={s.name} className="flex items-start gap-2.5 text-sm">
+                    {s.state === 'ok' ? <CircleCheck className="mt-0.5 h-4 w-4 shrink-0 text-ok" aria-label="ok" />
+                      : s.state === 'off' ? <CircleDashed className="mt-0.5 h-4 w-4 shrink-0 text-ink-3" aria-label="não usado" />
+                      : <CircleDashed className="mt-0.5 h-4 w-4 shrink-0 text-bad" aria-label="sem resposta" />}
+                    <span className="min-w-0 flex-1">{s.name}</span>
+                    <span className="num text-right text-xs text-ink-3">{s.pin}</span>
+                  </li>
+                ))}
+              </ul>
+              <button onClick={() => go(`s/${station.id}/config/sensores`)} className="mt-3 text-xs text-cyan hover:underline">Mudar o sensor ou os pinos</button>
+            </Panel>
+            <Panel id="agora" title="Energia e sinal agora">
+              <dl className="num grid grid-cols-2 gap-y-1.5 text-sm">
+                <dt className="text-ink-3">Tensão</dt><dd className="text-right">{hasBattery(now.vbat) ? `${now.vbat.toFixed(2)} V · ${batteryPct(now.vbat, draft.config.battery_chem)}%` : 'sem bateria'}</dd>
+                <dt className="text-ink-3">Bateria</dt><dd className="text-right">{chem.label} · {draft.config.battery_mah} mAh</dd>
+                <dt className="text-ink-3">Autonomia estimada</dt><dd className="text-right">{Math.round(est.days)} dias sem sol</dd>
+                <dt className="text-ink-3">Último sinal</dt><dd className="flex items-center justify-end gap-1.5"><Wifi className="h-3.5 w-3.5" aria-hidden />{now.rssi < 0 ? `${now.rssi} dBm` : '—'}</dd>
+                <dt className="text-ink-3">Firmware</dt><dd className="text-right">{station.fw_version ?? '—'}</dd>
+              </dl>
+            </Panel>
+            <Panel id="bateria" title="Tensão da bateria · 7 dias" hint={last7.length ? 'sobe com o sol, cai à noite' : 'sem bateria ligada'}>
+              <Chart unit="V" decimals={2} series={[{ label: 'bateria', color: '#4ade80', points: last7, fill: true }]} />
+            </Panel>
+            <Panel id="wifi" title="Sinal do Wi-Fi · 24 h" hint="dBm">
+              <Chart unit="dBm" decimals={0} height={150} series={[{ label: 'RSSI', color: '#60a5fa', points: rssi }]} />
+            </Panel>
           </div>
-          <ul className="num mt-3 flex flex-wrap gap-x-5 gap-y-1.5 text-xs text-ink-2">
-            {est.phases.map((p) => (
-              <li key={p.key} className="flex items-center gap-1.5">
-                <i className="inline-block h-2.5 w-2.5 rounded-sm" style={{ background: p.color }} />
-                {p.label} {p.seconds < 10 ? p.seconds.toFixed(1) : p.seconds.toFixed(0)} s · {p.mA} mA
-              </li>
-            ))}
-          </ul>
-          <p className="mt-3 text-sm text-ink-3">
-            {est.continuous
-              ? `Light sleep o ciclo todo, contando cada pulso do anemômetro. A CPU só fica ativa na leitura (${awake.toFixed(1)} s por ciclo, em média) e no envio, que ocorre a cada ${draft.config.send_every} leituras.`
-              : `Acordada ${awake.toFixed(1)} s de ${est.total} s (${((awake / est.total) * 100).toFixed(1)}%), com envio a cada ${draft.config.send_every} leituras.`}
-          </p>
+        </div>
+      )}
+
+      {tab === 'sensores' && (
+        <Panel id="cfg-sensores" title="Placa e sensores" hint={`versão ${station.config.version}`}>
+          <ConfigSection section="sensores" station={draft} source={source} onChange={setDraft} />
         </Panel>
+      )}
 
-        <div className="grid content-start gap-4 lg:col-span-5">
-          <Panel id="autonomia" title="Autonomia estimada, sem sol">
-            <p className="font-display text-6xl font-extrabold tracking-tight text-ok">{Math.round(est.days)}<span className="ml-2 text-xl font-medium text-ink-2">dias</span></p>
-            <dl className="num mt-4 grid grid-cols-2 gap-y-1.5 text-sm">
-              <dt className="text-ink-3">Corrente média</dt><dd className="text-right">{est.avg.toFixed(3)} mA</dd>
-              <dt className="text-ink-3">Bateria</dt><dd className="text-right">{chem.label} · {draft.config.battery_mah} mAh</dd>
-              <dt className="text-ink-3">Tensão agora</dt><dd className="text-right">{hasBattery(now.vbat) ? `${now.vbat.toFixed(2)} V · ${batteryPct(now.vbat, draft.config.battery_chem)}%` : 'sem bateria'}</dd>
-              <dt className="text-ink-3">Último sinal</dt><dd className="flex items-center justify-end gap-1.5"><Wifi className="h-3.5 w-3.5" aria-hidden />{now.rssi < 0 ? `${now.rssi} dBm` : '—'}</dd>
-            </dl>
-            <p className="mt-4 text-xs text-ink-3">Estimativa pelas folhas de dados dos componentes. O consumo real depende da placa (LED e regulador gastam em sono) e só se confirma medindo com um multímetro de µA.</p>
-          </Panel>
-
-          <Panel id="sensores" title="Sensores">
-            <ul className="grid gap-2.5">
-              {sensors.map((s) => (
-                <li key={s.name} className="flex items-start gap-2.5 text-sm">
-                  {s.state === 'ok' ? <CircleCheck className="mt-0.5 h-4 w-4 shrink-0 text-ok" aria-label="ok" />
-                    : s.state === 'off' ? <CircleDashed className="mt-0.5 h-4 w-4 shrink-0 text-ink-3" aria-label="não usado" />
-                    : <CircleDashed className="mt-0.5 h-4 w-4 shrink-0 text-bad" aria-label="sem resposta" />}
-                  <span className="min-w-0 flex-1">{s.name}</span>
-                  <span className="num text-xs text-ink-3">{s.pin}</span>
-                </li>
-              ))}
-            </ul>
+      {tab === 'envio' && (
+        <div className="grid gap-4">
+          {energy}
+          <Panel id="cfg-envio" title="Medição, envio e energia" hint={`versão ${station.config.version}`}>
+            <ConfigSection section="envio" station={draft} source={source} onChange={setDraft} />
           </Panel>
         </div>
+      )}
 
-        <div className="grid content-start gap-4 lg:col-span-7">
-          <Panel id="bateria" title="Tensão da bateria · 7 dias" hint={last7.length ? 'sobe com o sol, cai à noite' : 'sem bateria ligada'}>
-            <Chart unit="V" decimals={2} series={[{ label: 'bateria', color: '#4ade80', points: last7, fill: true }]} />
+      {tab === 'diagnostico' && (
+        <div className="grid gap-4 lg:grid-cols-2">
+          <Panel id="eventos" title="Reinícios e eventos" hint={`${events.length} registros`}>
+            <p className="mb-3 text-xs text-ink-3">Reinícios fora do sono de rotina, atualizações e o modo bancada. Quedas de tensão repetidas costumam apontar para a bateria ou o regulador.</p>
+            <DiagnosticsPanel station={station} readings={readings} events={events} />
           </Panel>
-          <Panel id="wifi" title="Sinal do Wi-Fi · 24 h" hint="dBm">
-            <Chart unit="dBm" decimals={0} height={150} series={[{ label: 'RSSI', color: '#60a5fa', points: rssi }]} />
+          <Panel id="firmware" title="Firmware pelo ar" hint={station.fw_version ? `instalado ${station.fw_version}` : undefined}>
+            <FirmwarePanel station={station} info={info} />
           </Panel>
-          <Panel id="primeiro-acesso" title={<span className="flex items-center gap-2"><BatteryCharging className="h-5 w-5 text-cyan" aria-hidden /> Primeiro acesso</span>} defaultOpen={false}>
+        </div>
+      )}
+
+      {tab === 'instalacao' && (
+        <div className="grid gap-4">
+          <Panel id="cfg-instalacao" title="Nome, local e modo bancada" hint={`versão ${station.config.version}`}>
+            <ConfigSection section="instalacao" station={draft} source={source} onChange={setDraft} />
+          </Panel>
+          <Panel id="primeiro-acesso" title={<span className="flex items-center gap-2"><BatteryCharging className="h-5 w-5 text-cyan" aria-hidden /> Primeiro acesso e portal Wi-Fi</span>}>
             <ol className="grid gap-3 sm:grid-cols-2">
               {PORTAL.map(([n, t, d]) => (
                 <li key={n} className="flex gap-3">
@@ -141,41 +211,13 @@ export default function StationSettings({ readings, station, source, onSave, onN
               ))}
             </ol>
           </Panel>
+          <Panel id="chave" title="Chave da estação e código de pareamento">
+            <KeyTools station={station} source={source} onNewKey={onNewKey} />
+          </Panel>
         </div>
-      </div>
+      )}
 
-      <div className="mt-20">
-        <SectionHead id="diagnostico" kicker="Diagnóstico" title="O que a estação conta sobre si mesma">
-          Reinícios fora do sono de rotina, atualizações e o modo bancada. Quedas de tensão repetidas costumam apontar para a bateria ou o regulador.
-        </SectionHead>
-        <div className="mt-6 grid gap-4 lg:grid-cols-2">
-          <Panel id="eventos" title="Reinícios e eventos" hint={`${events.length} registros`}>
-            <DiagnosticsPanel station={station} readings={readings} events={events} />
-          </Panel>
-          <Panel id="firmware" title="Firmware pelo ar" hint={station.fw_version ? `instalado ${station.fw_version}` : undefined}>
-            <FirmwarePanel station={station} info={info} />
-          </Panel>
-        </div>
-      </div>
-
-      <div className="mt-20">
-        <SectionHead id="config" kicker="Configuração remota" title="A estação baixa isto a cada envio">
-          Salvar aumenta o número da versão. A estação manda a versão que tem a cada envio e só aplica quando a do servidor é diferente.
-          {source === 'demo' && ' Você está na demonstração: as alterações ficam só neste navegador.'}
-        </SectionHead>
-        <div className="mt-6 grid max-w-3xl gap-4">
-          <nav aria-label="Ir para" className="flex flex-wrap gap-2 text-sm">
-            <span className="self-center text-ink-3">Ir para:</span>
-            {([['sensores', 'Placa, sensores e pinos'], ['bateria', 'Bateria'], ['envio', 'Envio, vento e economia'], ['estacao', 'Nome e local']] as const).map(([id, label]) => (
-              <button key={id} type="button" onClick={() => document.getElementById(id)?.scrollIntoView({ behavior: 'smooth', block: 'start' })} className="rounded-full border border-line px-3 py-1 hover:bg-card-hover">{label}</button>
-            ))}
-          </nav>
-          <ConfigStatus station={station} />
-          <Panel id="configuracao" title="Parâmetros" hint={`versão ${station.config.version}`}>
-            <ConfigPanel station={draft} source={source} onChange={setDraft} onSave={onSave} onNewKey={onNewKey} dirty={dirty} />
-          </Panel>
-        </div>
-      </div>
+      <SaveBar draft={draft} source={source} dirty={dirty} onSave={onSave} onDiscard={() => setDraft(station)} />
     </div>
   )
 }

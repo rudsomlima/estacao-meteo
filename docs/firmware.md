@@ -74,7 +74,7 @@ O RSSI é o que a estação ouve do roteador; o caminho de volta tende a ser par
 
 ## Sensores e pinos (`env_sensor`, `pin_*`)
 
-Na página da estação, em *Configurações → Placa, sensores e pinos*, escolhe-se o sensor de ambiente e os GPIOs. Tudo chega à placa pela configuração remota.
+Na página da estação, em *Configurações da estação → Placa e sensores*, escolhe-se o sensor de ambiente e os GPIOs. Tudo chega à placa pela configuração remota.
 
 | `env_sensor` | Sensor | Observação |
 |---|---|---|

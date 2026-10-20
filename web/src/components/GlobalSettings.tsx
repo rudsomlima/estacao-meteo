@@ -1,4 +1,4 @@
-﻿import { Star } from 'lucide-react'
+import { Star } from 'lucide-react'
 import { go } from '../hooks/useRoute'
 import { DEFAULT_PREFS, MAP_LAYERS, makeMain, setPrefs, toggleFavorite, usePrefs, type Prefs } from '../lib/prefs'
 import type { Source, Station } from '../types'
@@ -24,7 +24,7 @@ function Choice<K extends keyof Prefs>({ label, name, options, value }: { label:
   )
 }
 
-/** Ajustes do site (valem para todas as estações e ficam só neste navegador), alertas e dados. */
+/** Preferências do site (valem para todas as estações e ficam só neste navegador), alertas e dados. */
 export default function GlobalSettings({ stations, source }: { stations: Station[]; source: Source }) {
   const p = usePrefs()
   const { user, clientId } = useSession()
@@ -36,7 +36,7 @@ export default function GlobalSettings({ stations, source }: { stations: Station
   return (
     <div className="mx-auto max-w-4xl px-4 pb-24 pt-24 sm:px-6">
       <p className="num text-xs text-ink-3">Vale para o site inteiro</p>
-      <h1 className="mt-1 font-display text-4xl font-extrabold tracking-tight sm:text-5xl">Ajustes</h1>
+      <h1 className="mt-1 font-display text-4xl font-extrabold tracking-tight sm:text-5xl">Preferências</h1>
       <p className="mt-2 max-w-2xl text-ink-2">Unidades e mapa, estações favoritas e alertas no Telegram. Placas USB, firmware, atualização dos dados e armazenamento ficam no painel do administrador. A configuração de cada estação fica na página dela.</p>
 
       <div className="mt-10 grid gap-4">

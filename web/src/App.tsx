@@ -85,7 +85,7 @@ function StationPage({ id, net }: { id: string; net: Net }) {
 }
 
 /** Parte técnica da estação: energia, telemetria, sensores e configuração remota. */
-function SettingsPage({ id, net }: { id: string; net: Net }) {
+function SettingsPage({ id, tab, net }: { id: string; tab?: string; net: Net }) {
   return (
     <StationGate id={id} net={net} allowEmpty>
       {(station, loaded) => {
@@ -99,12 +99,11 @@ function SettingsPage({ id, net }: { id: string; net: Net }) {
               back={{ to: `s/${station.id}`, label: station.name }}
             />
             <main>
-              <div className="mx-auto max-w-7xl px-4 pt-24 sm:px-6">
+              <div className="mx-auto max-w-5xl px-4 pt-20 sm:px-6">
                 <p className="num text-xs text-ink-3">{station.name}{station.city ? ` · ${station.city}` : ''}</p>
-                <h1 className="mt-1 font-display text-4xl font-extrabold tracking-tight sm:text-5xl">Configurações</h1>
-                <p className="mt-2 max-w-2xl text-ink-2">Parte técnica da estação: consumo e autonomia, estado dos sensores, bateria e a configuração que ela baixa a cada envio.</p>
+                <h1 className="mt-1 font-display text-3xl font-extrabold tracking-tight sm:text-4xl">Configurações da estação</h1>
               </div>
-              <StationSettings readings={readings} station={station} source={net.source} onSave={net.save} onNewKey={net.newKey} />
+              <StationSettings readings={readings} station={station} source={net.source} tab={tab} onSave={net.save} onNewKey={net.newKey} />
             </main>
           </>
         )
@@ -130,7 +129,7 @@ function Routes({ net }: { net: Net }) {
   if (net.loading) return <div className="grid min-h-svh place-items-center text-sm text-ink-3">Carregando estações…</div>
 
   if (route.page === 'station') return <StationPage id={route.id} net={net} />
-  if (route.page === 'settings') return <SettingsPage id={route.id} net={net} />
+  if (route.page === 'settings') return <SettingsPage id={route.id} tab={route.tab} net={net} />
   if (route.page === 'admin') {
     return (
       <>
@@ -143,7 +142,7 @@ function Routes({ net }: { net: Net }) {
     const cfg = route.page === 'config'
     return (
       <>
-        <Navbar mode={route.page} title={cfg ? 'Ajustes' : 'Análises'} source={net.source} status={null} back={{ to: '', label: 'Rede' }} />
+        <Navbar mode={route.page} title={cfg ? 'Preferências' : 'Análises'} source={net.source} status={null} back={{ to: '', label: 'Rede' }} />
         <main>
           {cfg ? <GlobalSettings stations={net.stations} source={net.source} /> : <Analyses stations={net.stations} source={net.source} />}
         </main>

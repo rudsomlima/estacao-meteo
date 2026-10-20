@@ -27,7 +27,7 @@ function Choice({ label, value, options, onPick }: { label: string; value: strin
   )
 }
 
-/** Atualização dos dados neste navegador, placa USB, gravação de firmware e dados: o que antes ficava em Ajustes. */
+/** Atualização dos dados neste navegador, placa USB, gravação de firmware e dados: o que antes ficava nas Preferências. */
 export default function AdminSite({ stations, source }: { stations: Station[]; source: Source }) {
   const p = usePrefs()
   const live = useLiveState()

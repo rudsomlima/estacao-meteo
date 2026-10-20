@@ -8,12 +8,13 @@ import type { Reading, Station } from '../types'
 import StationFigure from './StationFigure'
 
 function Tile({ icon: Icon, label, value, sub }: { icon: typeof Wind; label: string; value: string; sub?: string }) {
+  const long = value.length > 9 // "14.0° / 19.4°", "1013.2 hPa": letra menor para caber numa linha
   return (
     <div className="rounded-2xl border border-line bg-card p-3.5 transition-colors hover:border-line-hover">
       <div className="flex items-center gap-1.5 text-[11px] uppercase tracking-[0.12em] text-ink-3">
         <Icon className="h-3.5 w-3.5" aria-hidden /> {label}
       </div>
-      <div className="mt-1 font-display text-2xl font-bold leading-none tracking-tight">{value}</div>
+      <div className={`mt-1 whitespace-nowrap font-display font-bold leading-none tracking-tight ${long ? 'text-xl' : 'text-2xl'}`}>{value}</div>
       {sub && <div className="num mt-1 text-xs text-ink-2">{sub}</div>}
     </div>
   )

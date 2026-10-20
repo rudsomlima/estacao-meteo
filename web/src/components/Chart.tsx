@@ -64,7 +64,8 @@ export default function Chart({ series, unit, height = 200, decimals = 1, zeroBa
 
   const onMove = (e: React.PointerEvent<SVGSVGElement>) => {
     const r = e.currentTarget.getBoundingClientRect()
-    const t = t0 + ((e.clientX - r.left - m.l) / (W - m.l - m.r)) * (t1 - t0)
+    const px = ((e.clientX - r.left) * W) / (r.width || W) // o desenho acompanha a largura da tela
+    const t = t0 + ((px - m.l) / (W - m.l - m.r)) * (t1 - t0)
     let best = 0, bd = Infinity
     ref0.forEach((p, i) => { const d = Math.abs(p.t - t); if (d < bd) { bd = d; best = i } })
     setHover(best)
@@ -72,7 +73,7 @@ export default function Chart({ series, unit, height = 200, decimals = 1, zeroBa
 
   return (
     <div ref={ref} className="relative w-full" style={{ height }}>
-      <svg width={W} height={height} onPointerMove={onMove} onPointerLeave={() => setHover(null)} className="block touch-pan-y select-none">
+      <svg width="100%" height={height} viewBox={`0 0 ${W} ${height}`} preserveAspectRatio="none" onPointerMove={onMove} onPointerLeave={() => setHover(null)} className="block touch-pan-y select-none">
         {ticks.map((v) => (
           <g key={v}>
             <line x1={m.l} x2={W - m.r} y1={y(v)} y2={y(v)} stroke="#1d2529" />
