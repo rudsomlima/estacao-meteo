@@ -147,6 +147,12 @@ export default function StationSettings({ readings, station, source, onSave, onN
           {source === 'demo' && ' Você está na demonstração: as alterações ficam só neste navegador.'}
         </SectionHead>
         <div className="mt-6 grid max-w-3xl gap-4">
+          <nav aria-label="Ir para" className="flex flex-wrap gap-2 text-sm">
+            <span className="self-center text-ink-3">Ir para:</span>
+            {([['sensores', 'Placa, sensores e pinos'], ['bateria', 'Bateria'], ['envio', 'Envio, vento e economia'], ['estacao', 'Nome e local']] as const).map(([id, label]) => (
+              <button key={id} type="button" onClick={() => document.getElementById(id)?.scrollIntoView({ behavior: 'smooth', block: 'start' })} className="rounded-full border border-line px-3 py-1 hover:bg-card-hover">{label}</button>
+            ))}
+          </nav>
           <ConfigStatus station={station} />
           <Panel id="configuracao" title="Parâmetros" hint={`versão ${station.config.version}`}>
             <ConfigPanel station={draft} source={source} onChange={setDraft} onSave={onSave} onNewKey={onNewKey} dirty={dirty} />

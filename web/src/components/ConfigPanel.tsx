@@ -83,21 +83,13 @@ export default function ConfigPanel({ station, source, onChange, onSave, onNewKe
       )}
       <fieldset disabled={!editable} className="grid gap-5 disabled:opacity-60">
       <div className="grid gap-5">
-        <fieldset className="grid gap-3 sm:grid-cols-2">
-          <legend className="mb-2 font-display text-lg font-semibold">Bateria</legend>
-          <label className="grid gap-1 text-sm font-medium">Tipo
-            <select className={input} value={cfg.battery_chem} onChange={(e) => pickChem(e.target.value as BatteryChem)}>
-              {CHEM_KEYS.map((k) => <option key={k} value={k}>{CHEMS[k].label} ({CHEMS[k].min.toFixed(1)} a {CHEMS[k].max.toFixed(1)} V)</option>)}
-            </select>
-          </label>
-          <label className="grid gap-1 text-sm font-medium">Capacidade (mAh)
-            <input type="number" min={100} max={100000} step={100} className={input} value={cfg.battery_mah} onChange={(e) => setCfg({ battery_mah: Number(e.target.value) })} />
-          </label>
-          <p className="text-xs text-ink-3 sm:col-span-2">Ao trocar o tipo, os limites de economia e de hibernação abaixo recebem valores sugeridos para ele. O divisor de tensão do firmware precisa cobrir a tensão cheia da bateria escolhida.</p>
-        </fieldset>
-
-        <fieldset className="grid gap-3 sm:grid-cols-2">
-          <legend className="mb-2 font-display text-lg font-semibold">Sensores e pinos</legend>
+        <fieldset id="sensores" className="grid scroll-mt-24 gap-3 sm:grid-cols-2">
+          <legend className="mb-2 font-display text-lg font-semibold">Placa, sensores e pinos</legend>
+          <div className="rounded-xl border border-line bg-bg p-3 text-sm sm:col-span-2">
+            <div className="text-xs text-ink-3">Placa</div>
+            <b className="font-medium">ESP32-C3 (SuperMini ou módulo nu)</b>
+            <span className="ml-2 text-xs text-ink-3">firmware {station.fw_version ?? '—'} · é a placa que este firmware suporta; o modelo muda só a fiação, que se define pelos pinos abaixo.</span>
+          </div>
           <label className="grid gap-1 text-sm font-medium sm:col-span-2">Sensor de ambiente
             <select className={input} value={cfg.env_sensor ?? 1} onChange={(e) => setCfg({ env_sensor: Number(e.target.value) })}>
               {ENV_SENSORS.map((x) => <option key={x.id} value={x.id}>{x.label}</option>)}
@@ -125,6 +117,20 @@ export default function ConfigPanel({ station, source, onChange, onSave, onNewKe
             <p className="mt-2 text-xs text-ink-3">Mudar um pino reinicia a placa quando ela recebe a configuração, e a fiação precisa estar igual ao que está aqui. Ficam de fora os pinos de boot (8 e 9), da USB (18 e 19) e da memória flash (11 a 17).</p>
           </div>
         </fieldset>
+
+        <fieldset id="bateria" className="grid scroll-mt-24 gap-3 sm:grid-cols-2">
+          <legend className="mb-2 font-display text-lg font-semibold">Bateria</legend>
+          <label className="grid gap-1 text-sm font-medium">Tipo
+            <select className={input} value={cfg.battery_chem} onChange={(e) => pickChem(e.target.value as BatteryChem)}>
+              {CHEM_KEYS.map((k) => <option key={k} value={k}>{CHEMS[k].label} ({CHEMS[k].min.toFixed(1)} a {CHEMS[k].max.toFixed(1)} V)</option>)}
+            </select>
+          </label>
+          <label className="grid gap-1 text-sm font-medium">Capacidade (mAh)
+            <input type="number" min={100} max={100000} step={100} className={input} value={cfg.battery_mah} onChange={(e) => setCfg({ battery_mah: Number(e.target.value) })} />
+          </label>
+          <p className="text-xs text-ink-3 sm:col-span-2">Ao trocar o tipo, os limites de economia e de hibernação abaixo recebem valores sugeridos para ele. O divisor de tensão do firmware precisa cobrir a tensão cheia da bateria escolhida.</p>
+        </fieldset>
+
 
         <label className="flex items-start gap-3 rounded-xl border border-line bg-bg p-3 text-sm">
           <input
@@ -156,6 +162,7 @@ export default function ConfigPanel({ station, source, onChange, onSave, onNewKe
           </span>
         </label>
 
+        <div id="envio" className="scroll-mt-24 font-display text-lg font-semibold">Envio, vento e economia</div>
         {FIELDS.map((f) => {
           const id = `cfg-${f.key}`
           const v = cfg[f.key] as number
@@ -171,7 +178,7 @@ export default function ConfigPanel({ station, source, onChange, onSave, onNewKe
           )
         })}
 
-        <div className="grid gap-3 border-t border-line pt-5 sm:grid-cols-3">
+        <div id="estacao" className="grid scroll-mt-24 gap-3 border-t border-line pt-5 sm:grid-cols-3">
           <label className="grid gap-1 text-sm font-medium sm:col-span-2">Nome da estação
             <input className={input} value={station.name} maxLength={40} onChange={(e) => setMeta({ name: e.target.value })} />
           </label>
