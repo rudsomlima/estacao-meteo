@@ -136,7 +136,7 @@ Sem PlatformIO e sem instalar nada: o site grava o firmware numa placa pelo cabo
    ```
 
    Isso compila o firmware e escreve `estacao-c3.bin` e `manifest.json` em `web/public/firmware/` (fora do git). O site mostra a versão e a hora em que a imagem foi gerada, para você ver se está desatualizada. Em desenvolvimento (`npm run dev`) a pasta já é servida; para publicar, rode `npm run build`.
-2. No site, entre como administrador e abra **Administração → Site e placas → Gravar firmware e deixar a placa pronta**: escolha a placa e a estação e toque em *Gravar e deixar a placa pronta* (o botão *Avançado* grava só o firmware). Também dá para usar um `.bin` seu (imagem completa em 0x0, ou só o aplicativo em 0x10000).
+2. No site, entre como administrador e abra **Administração → Site e placas → Placa USB: gravar firmware e deixar a placa pronta**: escolha a placa e a estação e toque em *Gravar e deixar a placa pronta* (o botão *Avançado* grava só o firmware). Também dá para usar um `.bin` seu (imagem completa em 0x0, ou só o aplicativo em 0x10000).
 3. Terminada a gravação, a placa reinicia sozinha e o site a reconhece (veja abaixo).
 
 Se a placa estiver dormindo (a porta não aparece), o site avisa para apertar RESET e recomeça a gravação sozinho quando ela surgir. A USB nativa do ESP32-C3 entra em modo de gravação sozinha; com uma ponte CH340 ou CP210x pode ser preciso segurar BOOT, apertar RESET, soltar o RESET e depois o BOOT. *Apagar toda a flash* remove Wi-Fi, chave e calibração salvos.
@@ -154,7 +154,7 @@ O pareamento só funciona com o endereço em `https://`, porque a chave viaja na
 
 ## Reconhecimento pela USB (Web Serial)
 
-Com o site aberto no Chrome, Edge ou Opera, a placa plugada é reconhecida sozinha: o site mostra um aviso, diz qual estação ela é e oferece **configurar Wi-Fi, endereço e chave** sem o portal. Na primeira vez, autorize a placa em *Administração → Site e placas → Placa USB* (o navegador exige um clique); depois ela é reconhecida a cada plugada.
+Com o site aberto no Chrome, Edge ou Opera, a placa plugada é reconhecida sozinha: o site mostra um aviso, diz qual estação ela é e oferece **configurar Wi-Fi, endereço e chave** sem o portal. Na primeira vez, autorize a placa em *Administração → Site e placas → Placa USB* (botão *Autorizar uma placa*) (o navegador exige um clique); depois ela é reconhecida a cada plugada.
 
 Como funciona: ao ligar com o cabo num computador, o firmware escuta a USB por 10 s (60 s se ainda não está configurado; cada comando renova a janela) e responde a comandos em JSON, uma linha por comando (`hello`, `scan`, `provision`, `restart`, em [usblink.cpp](../firmware/src/usblink.cpp)). Ao configurar, o site **gera uma chave nova** para a estação, entrega direto à placa e ela reinicia. Se a placa não responder, o site tenta reiniciá-la pelos sinais DTR/RTS.
 
@@ -212,7 +212,7 @@ Quando o motivo do reinício **não** é o acordar normal do deep sleep (queda d
 
 ## Atualização pelo ar (OTA)
 
-Gere o binário (`pio run`, arquivo `firmware/.pio/build/esp32c3/firmware.bin`), mude `FW_VERSION` em [config.h](../firmware/src/config.h) **antes** de compilar e publique em *Configurações → Firmware pelo ar*. A estação:
+Gere o binário (`pio run`, arquivo `firmware/.pio/build/esp32c3/firmware.bin`), mude `FW_VERSION` em [config.h](../firmware/src/config.h) **antes** de compilar e publique em *Administração → Firmware* e atribua a versão às estações (a página da estação mostra só a situação, em *Configurações → Firmware pelo ar*). A estação:
 
 1. envia as leituras; só se der certo, olha se há firmware publicado com versão **diferente** da dela;
 2. adia se a bateria estiver baixa e desiste da versão depois de 3 falhas;

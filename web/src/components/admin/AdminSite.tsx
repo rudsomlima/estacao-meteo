@@ -62,19 +62,14 @@ export default function AdminSite({ stations, source }: { stations: Station[]; s
         <button onClick={() => setPrefs({ updates: DEFAULT_PREFS.updates, pollS: DEFAULT_PREFS.pollS })} className="mt-3 rounded-lg border border-line px-3 py-1.5 text-xs hover:bg-card-hover">Voltar ao padrão</button>
       </Panel>
 
-      <Panel id="g-placa" title="Placa USB" hint="reconhece o ESP32 ao plugar e o configura">
-        {usbSupported() ? (
-          <>
-            <p className="text-sm text-ink-2">Depois de autorizar a placa uma vez, o site a reconhece sozinho sempre que você plugar o cabo e oferece configurar o Wi-Fi, o endereço e a chave, sem usar o portal.</p>
-            <button onClick={requestUsb} className="mt-3 flex items-center gap-2 rounded-xl bg-blue px-4 py-2.5 text-sm font-semibold text-white"><Usb className="h-4 w-4" aria-hidden /> Autorizar uma placa</button>
-            <p className="mt-3 text-xs text-ink-3">Precisa do firmware da estação (grave em <b>Gravar firmware</b>, abaixo) e de um cabo de dados. Com o cabo no computador a placa fica acordada, e o site solta a porta quando você troca de janela (para o PlatformIO poder usá-la).</p>
-          </>
-        ) : (
-          <p className="text-sm text-ink-2">Este navegador não tem Web Serial. Use o Chrome, o Edge ou o Opera, em endereço https:// ou localhost.</p>
+      <Panel id="g-gravar" title="Placa USB: gravar firmware e deixar a placa pronta" hint="reconhece o ESP32 ao plugar, grava e configura Wi-Fi, endereço e chave pela USB">
+        {!usbSupported() && <p className="mb-3 text-sm text-ink-2">Este navegador não tem Web Serial. Use o Chrome, o Edge ou o Opera, em endereço https:// ou localhost.</p>}
+        {usbSupported() && (
+          <div className="mb-5 flex flex-wrap items-center gap-3 rounded-xl border border-line p-3 text-sm">
+            <button onClick={requestUsb} className="flex items-center gap-2 rounded-xl border border-line px-3 py-2 hover:bg-card-hover"><Usb className="h-4 w-4" aria-hidden /> Autorizar uma placa</button>
+            <span className="min-w-0 flex-1 text-xs text-ink-3">Autorize uma vez e o site passa a reconhecer a placa sempre que você plugar o cabo (de dados), oferecendo configurá-la sem o portal. Com o cabo no computador a placa fica acordada, e o site solta a porta quando você troca de janela.</span>
+          </div>
         )}
-      </Panel>
-
-      <Panel id="g-gravar" title="Gravar firmware e deixar a placa pronta" hint="grava, configura Wi-Fi, endereço e chave pela USB">
         <FlashSetup stations={stations} />
         <details className="mt-5 rounded-xl border border-line p-3 text-sm">
           <summary className="cursor-pointer text-ink-2">Avançado: gravar só o firmware, ou um arquivo .bin</summary>

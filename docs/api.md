@@ -169,7 +169,7 @@ O administrador cadastra a estação e pode já indicar o **dono** (`owner_email
 | `POST /stations/:id/restart`, `DELETE /stations/:id/command` | Pede que a estação reinicie (ela recebe no próximo envio, no campo `cmd` da resposta) ou cancela o pedido. A confirmação é o reinício dela: o envio seguinte traz um evento `boot` depois da entrega. O painel mostra pedido, entregue e confirmado. |
 | `DELETE /stations/:id/events` | Apaga os eventos da estação (zera o diagnóstico de reinícios). |
 | `PUT /stations/:id/owner` | Transfere a estação (`{"email": ...}`; vazio = sem dono). |
-| `POST /token/rotate`, `DELETE /token` | Troca o token de administrador (mostrado uma vez) ou volta ao segredo `ADMIN_TOKEN` do Worker. |
+| `POST /token/rotate`, `DELETE /token` | Só pela API (sem tela no site): troca o token de administrador (mostrado uma vez) ou volta ao segredo `ADMIN_TOKEN` do Worker. |
 | `POST /sessions/revoke` | Encerra todas as sessões. |
 | `GET /audit` | Registro de quem fez o quê. |
 

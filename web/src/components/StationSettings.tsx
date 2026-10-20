@@ -42,7 +42,7 @@ export default function StationSettings({ readings, station, source, onSave, onN
   if (station !== synced) { setSynced(station); setDraft(station) } // chegou dado novo do servidor
   const chem = CHEMS[draft.config.battery_chem]
   const events = useEvents(station.id, source)
-  const { info, reload } = useFirmware(station.id, source)
+  const { info } = useFirmware(station.id, source)
 
   const now = readings[readings.length - 1]
   const est = useMemo(() => cycle(draft.config), [draft.config])
@@ -136,7 +136,7 @@ export default function StationSettings({ readings, station, source, onSave, onN
             <DiagnosticsPanel station={station} readings={readings} events={events} />
           </Panel>
           <Panel id="firmware" title="Firmware pelo ar" hint={station.fw_version ? `instalado ${station.fw_version}` : undefined}>
-            <FirmwarePanel station={station} info={info} source={source} onChanged={reload} />
+            <FirmwarePanel station={station} info={info} />
           </Panel>
         </div>
       </div>

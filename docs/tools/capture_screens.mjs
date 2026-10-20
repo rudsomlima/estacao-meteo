@@ -62,8 +62,7 @@ await session({ viewport: { width: 1280, height: 800 } }, async ({ p, open, top,
   await open('admin', 2500)
   await p.getByText('Visão geral', { exact: true }).first().click(); await p.waitForTimeout(1500); await shot('guia/14-painel-do-administrador.png')
   await p.getByText('Site e placas', { exact: true }).first().click(); await p.waitForTimeout(800)
-  await top('Placa USB'); await shot('guia/04-ajustes-placa-usb.png')
-  await top('Gravar firmware e deixar a placa pronta'); await shot('guia/05-ajustes-gravar-firmware.png')
+  await top('Placa USB: gravar firmware e deixar a placa pronta'); await shot('guia/04-ajustes-placa-usb.png')
 
   await open('config', 2500); await shot('guia/15-ajustes-do-site.png')
   await open('s/serra', 4000); await shot('guia/11-pagina-da-estacao.png')

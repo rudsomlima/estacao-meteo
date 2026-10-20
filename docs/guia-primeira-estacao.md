@@ -93,15 +93,13 @@ Há três jeitos de configurar a placa. Use o **Caminho A** se for a primeira ve
 
 ## 3. Caminho A: pela USB (recomendado, só administrador)
 
-Entre como administrador (veja acima) e abra **Administração → Site e placas**. Dois painéis interessam:
+Entre como administrador (veja acima) e abra **Administração → Site e placas → Placa USB**. O painel reúne a autorização da placa e a gravação:
 
 ![Administração: Placa USB](img/guia/04-ajustes-placa-usb.png)
 
-**Placa USB** → **Autorizar uma placa** (uma vez por navegador): depois disso o site reconhece a placa sempre que você plugar o cabo.
+**Autorizar uma placa** (uma vez por navegador): depois disso o site reconhece a placa sempre que você plugar o cabo.
 
-![Administração: Gravar firmware e deixar a placa pronta](img/guia/05-ajustes-gravar-firmware.png)
-
-1. Em **Gravar firmware e deixar a placa pronta**, plugue a placa e clique em **Escolher a placa** (o navegador pede a porta serial uma vez).
+1. Plugue a placa e clique em **Escolher a placa** (o navegador pede a porta serial uma vez).
 2. Escolha a **estação** (ou *Nova estação…*, com nome, local e, se quiser, o e-mail do dono) e informe a **rede Wi-Fi de 2,4 GHz** e a senha. O site pode lembrar a rede para as próximas placas.
 3. Clique em **Gravar e deixar a placa pronta**. O site grava o firmware, configura Wi-Fi, endereço do site e chave pela USB e avisa quando a primeira leitura chegar. Não há código para digitar: quem confirma é o seu login de administrador.
 

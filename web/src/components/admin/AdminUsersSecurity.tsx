@@ -1,6 +1,6 @@
-import { Copy, KeyRound, LogOut, ShieldCheck, Trash2 } from 'lucide-react'
+import { LogOut, ShieldCheck, Trash2 } from 'lucide-react'
 import { useState } from 'react'
-import { addUser, getAudit, listUsers, removeUser, restoreAdminToken, revokeSessions, rotateAdminToken, setStationOwner, setUserRole, type AdminStation } from '../../lib/admin'
+import { addUser, getAudit, listUsers, removeUser, revokeSessions, setStationOwner, setUserRole, type AdminStation } from '../../lib/admin'
 import { ago } from '../../lib/derive'
 import { useSession } from '../../lib/session'
 import { btn, btnMain, errText, input, Msg, Section, useLoad } from './ui'
@@ -19,7 +19,7 @@ export function AdminUsers({ stations, onChanged }: { stations: AdminStation[]; 
 
   return (
     <div className="grid gap-4">
-      <Section title="Usuários" hint="Quem entrou com o Google (e quem você adicionou). Usuário comum altera os ajustes só das estações que são dele; administrador cadastra dispositivos, grava firmware e altera tudo.">
+      <Section title="Usuários e donos das estações" hint="Quem entrou com o Google (e quem você adicionou). Usuário comum altera os ajustes só das estações que são dele; administrador cadastra dispositivos, grava firmware e altera tudo.">
         <form className="flex flex-wrap items-end gap-3 rounded-xl border border-line p-3" onSubmit={(e) => { e.preventDefault(); void run(async () => { await addUser(newAdmin); setNewAdmin('') }, `${newAdmin.trim().toLowerCase()} agora é administrador. No primeiro acesso com o Google ela já entra com esse papel.`) }}>
           <label className="grid gap-1 text-sm">Adicionar administrador (e-mail da conta Google)
             <input className={`${input} w-72`} type="email" required placeholder="pessoa@gmail.com" value={newAdmin} onChange={(e) => setNewAdmin(e.target.value)} />
@@ -49,27 +49,29 @@ export function AdminUsers({ stations, onChanged }: { stations: AdminStation[]; 
             </tbody>
           </table>
         </div>
-        <Msg m={msg} />
-      </Section>
-
-      <Section title="Donos das estações" hint="Passe uma estação para outra conta (por e-mail) ou deixe-a sem dono.">
-        <div className="overflow-x-auto rounded-xl border border-line">
-          <table className="num w-full min-w-[560px] text-left text-sm">
-            <thead><tr className="text-[11px] uppercase tracking-[0.1em] text-ink-3">{['Estação', 'Dono', 'Novo dono', ''].map((h, i) => <th key={i} className="border-b border-line px-3 py-2 font-semibold">{h}</th>)}</tr></thead>
-            <tbody>
-              {stations.map((s) => (
-                <tr key={s.id} className="border-b border-line last:border-0">
-                  <td className="px-3 py-2 font-sans font-semibold">{s.name}</td>
-                  <td className="px-3 py-2 text-ink-2">{s.owner_email ?? 'sem dono'}</td>
-                  <td className="px-3 py-2"><input className={`${input} w-56`} type="email" placeholder="e-mail do novo dono" value={owner[s.id] ?? ''} onChange={(e) => setOwner({ ...owner, [s.id]: e.target.value })} aria-label={`novo dono de ${s.name}`} /></td>
-                  <td className="px-3 py-2 text-right">
-                    <button className={btn} onClick={() => void run(() => setStationOwner(s.id, owner[s.id] ?? ''), owner[s.id] ? 'Dono alterado.' : 'Estação sem dono.')}>{owner[s.id] ? 'Transferir' : 'Tirar o dono'}</button>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+        <div className="grid gap-2">
+          <h3 className="font-display text-base font-semibold">Dono de cada estação</h3>
+          <p className="text-xs text-ink-3">Escolha um usuário da lista (ou digite um e-mail) e transfira. Sem e-mail, a estação fica sem dono.</p>
+          <datalist id="owner-emails">{(users ?? []).map((x) => <option key={x.email} value={x.email} />)}</datalist>
+    <div className="overflow-x-auto rounded-xl border border-line">
+            <table className="num w-full min-w-[560px] text-left text-sm">
+              <thead><tr className="text-[11px] uppercase tracking-[0.1em] text-ink-3">{['Estação', 'Dono', 'Novo dono', ''].map((h, i) => <th key={i} className="border-b border-line px-3 py-2 font-semibold">{h}</th>)}</tr></thead>
+              <tbody>
+                {stations.map((s) => (
+                  <tr key={s.id} className="border-b border-line last:border-0">
+                    <td className="px-3 py-2 font-sans font-semibold">{s.name}</td>
+                    <td className="px-3 py-2 text-ink-2">{s.owner_email ?? 'sem dono'}</td>
+                    <td className="px-3 py-2"><input className={`${input} w-56`} type="email" list="owner-emails" placeholder="e-mail do novo dono" value={owner[s.id] ?? ''} onChange={(e) => setOwner({ ...owner, [s.id]: e.target.value })} aria-label={`novo dono de ${s.name}`} /></td>
+                    <td className="px-3 py-2 text-right">
+                      <button className={btn} onClick={() => void run(() => setStationOwner(s.id, owner[s.id] ?? ''), owner[s.id] ? 'Dono alterado.' : 'Estação sem dono.')}>{owner[s.id] ? 'Transferir' : 'Tirar o dono'}</button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         </div>
+        <Msg m={msg} />
       </Section>
     </div>
   )
@@ -78,7 +80,6 @@ export function AdminUsers({ stations, onChanged }: { stations: AdminStation[]; 
 const loadAudit = () => getAudit(150) // referência estável: o useLoad recarrega quando ela muda
 
 export function AdminSecurity() {
-  const [newToken, setNewToken] = useState('')
   const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null)
   const { data: audit, reload } = useLoad(loadAudit, false)
 
@@ -86,25 +87,12 @@ export function AdminSecurity() {
 
   return (
     <div className="grid gap-4">
-      <Section title="Token de administrador" hint="Usado só por scripts e pela API (assina os pedidos; nunca viaja). Quem entra com o Google não precisa dele.">
-        <div className="flex flex-wrap items-center gap-3">
-          <button className={btnMain} onClick={() => { if (window.confirm('Gerar um token novo? O anterior deixa de valer na hora.')) void run(async () => { setNewToken((await rotateAdminToken()).token); return 'Token trocado. Copie agora: ele não é mostrado de novo.' }) }}><KeyRound className="mr-1.5 inline h-4 w-4" aria-hidden />Gerar token novo</button>
-          <button className={btn} onClick={() => { if (window.confirm('Voltar a valer o segredo ADMIN_TOKEN do Worker (o token gerado aqui deixa de valer)?')) void run(async () => { await restoreAdminToken(); setNewToken(''); return 'Voltou a valer o segredo ADMIN_TOKEN do Worker.' }) }}>Voltar ao token do Worker</button>
-        </div>
-        {newToken && (
-          <div className="flex items-center gap-2 rounded-lg border border-line bg-bg p-3">
-            <code className="num min-w-0 flex-1 break-all text-cyan">{newToken}</code>
-            <button className="flex shrink-0 items-center gap-1.5 rounded-lg border border-line px-3 py-1.5 text-xs hover:bg-card-hover" onClick={() => void navigator.clipboard.writeText(newToken)}><Copy className="h-3.5 w-3.5" aria-hidden /> Copiar</button>
-          </div>
-        )}
+      <Section title="Sessões" hint="Encerra o login de todos os usuários, inclusive o seu. Use se suspeitar que alguém entrou indevidamente.">
+        <div><button className={btn} onClick={() => { if (window.confirm('Encerrar todas as sessões? Todos precisarão entrar de novo.')) void run(async () => { await revokeSessions(); return 'Sessões encerradas. Entre de novo.' }) }}><LogOut className="mr-1.5 inline h-4 w-4" aria-hidden />Encerrar todas as sessões</button></div>
         <Msg m={msg} />
       </Section>
 
-      <Section title="Sessões" hint="Encerra o login de todos os usuários, inclusive o seu. Use se suspeitar que alguém entrou indevidamente.">
-        <div><button className={btn} onClick={() => { if (window.confirm('Encerrar todas as sessões? Todos precisarão entrar de novo.')) void run(async () => { await revokeSessions(); return 'Sessões encerradas. Entre de novo.' }) }}><LogOut className="mr-1.5 inline h-4 w-4" aria-hidden />Encerrar todas as sessões</button></div>
-      </Section>
-
-      <Section title="Registro de atividades" hint="Quem fez o quê: acessos, alterações de configuração, firmware, usuários e token.">
+      <Section title="Registro de atividades" hint="Quem fez o quê: acessos, alterações de configuração, firmware e usuários.">
         <div className="overflow-x-auto rounded-xl border border-line">
           <table className="num w-full min-w-[560px] text-left text-sm">
             <thead><tr className="text-[11px] uppercase tracking-[0.1em] text-ink-3">{['Quando', 'Quem', 'Ação', 'Alvo', 'Detalhe'].map((h) => <th key={h} className="border-b border-line px-3 py-2 font-semibold">{h}</th>)}</tr></thead>
