@@ -12,30 +12,28 @@ Obrigado por ajudar! O projeto está em fase inicial e **o que mais falta é val
 ## Preparar o ambiente
 
 ```bash
-# tudo de uma vez (banco, estações de exemplo simuladas, API e site): na raiz
+# tudo de uma vez (banco, migrações, estações de exemplo simuladas, API e site): na raiz
+(cd web && npm ci) && (cd worker && npm ci)   # na primeira vez
 npm run dev
 
-# ou separado
-# site
-cd web && npm ci && npm run dev
-
-# API local
-cd worker && npm ci && npm run db:local && npm run seed:local && npm run dev
-cd worker && npm run smoke            # testes da API
+# testes da API (com a API rodando)
+cd worker && npm run smoke
 
 # firmware
 pip install platformio
 cd firmware && pio run
+# verificações numa placa de verdade (opcional): veja firmware/tools/hwtest/README.md
+python firmware/tools/hwtest/checks.py
 ```
 
 ## Antes de abrir um pull request
 
 - `cd web && npm run build` passa (inclui a checagem de tipos).
 - `cd worker && npx tsc --noEmit && npm run smoke` passam com a API rodando.
-- `cd firmware && pio run` compila.
+- `cd firmware && pio run` compila. Se houver uma placa, `python firmware/tools/hwtest/checks.py` passa.
 - Mudou a ligação, a energia ou a arquitetura? Atualize `docs/tools/make_diagrams.py`, rode `python docs/tools/make_diagrams.py` e inclua os SVGs gerados.
 - Mudou uma tela que aparece na documentação? Refaça as capturas com `node docs/tools/capture_screens.mjs` (veja [docs/README.md](docs/README.md#figuras)) e confira o texto do guia.
-- Mudou um valor de configuração? Atualize juntos: `worker/src/index.ts`, `web/src/types.ts`, `web/src/components/ConfigPanel.tsx`, `firmware/src/settings.cpp` e `docs/firmware.md`.
+- Mudou um valor de configuração? Atualize juntos: `worker/src/shared.ts` (limites e padrões), `web/src/types.ts`, `web/src/components/ConfigPanel.tsx`, `web/src/lib/demo.ts`, `firmware/src/config.h` e `settings.cpp`, e `docs/api.md`/`docs/firmware.md`.
 - Evite números de consumo sem fonte. Se medir, diga como.
 
 ## Estilo

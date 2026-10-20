@@ -8,7 +8,7 @@ A API é um Cloudflare Worker ([worker/src/index.ts](../worker/src/index.ts)) co
 |---|---|---|
 | **Estação, por HTTPS** | Header `X-Device-Key` com a chave | Enviar leituras e baixar o próprio firmware. O servidor guarda só o SHA-256 da chave. |
 | **Estação, por HTTP** | Assinatura HMAC (veja abaixo). A chave **não** viaja | O mesmo, sem expor a chave na rede. |
-| **Administrador** | Assinatura HMAC com o `ADMIN_TOKEN`. O token **não** viaja | Criar, editar e apagar estações, gerar chaves, publicar firmware, alertas e uso do banco. |
+| **Administrador** | Cookie de sessão do **login com Google** (normal); ou assinatura HMAC com o `ADMIN_TOKEN` como acesso de emergência (sem tela, só via API) | Criar, editar e apagar estações, gerar chaves, publicar firmware (por *releases*), alertas e uso do banco. |
 
 Os endpoints de leitura (`GET /api/stations...`) são **públicos**. Se você não quer o mapa público, ponha o site atrás do Cloudflare Access ou de outra autenticação.
 
@@ -190,7 +190,7 @@ O administrador cadastra a estação e pode já indicar o **dono** (`owner_email
 | `POST /sessions/revoke` | Encerra todas as sessões. |
 | `GET /audit` | Registro de quem fez o quê. |
 
-Para bancos criados antes do login, rode uma vez `migrations/0002_usuarios_e_firmware.sql`.
+Bancos antigos precisam das migrações em `worker/migrations/` (0002 login e firmware, 0003 comandos e confirmações, 0004 entrega da configuração, 0005 resumo por hora). Rode cada uma uma vez.
 
 ## Telegram por usuário
 
@@ -226,13 +226,13 @@ Para instalar uma estação sem copiar a chave: o administrador gera um código 
 O servidor guarda só o SHA-256 do código. O alfabeto não tem 0, O, 1, I nem L, e o código aceita minúsculas, espaço ou hífen. Como a rota é pública, **depois de 20 códigos errados em 10 minutos ela responde `429`** para todo mundo (contador global, para ninguém adivinhar códigos). Use sempre HTTPS: a chave viaja na resposta.
 
 
+O firmware é publicado por **versão** e atribuído a estações no painel do administrador (veja [Administração](#administração-apiadmin-só-administradores): `POST /api/admin/releases` e `/releases/:id/assign`). O acompanhamento por estação fica em `GET /api/admin/rollout`.
+
 | Método e rota | Auth | Descrição |
 |---|---|---|
-| `POST /api/stations/:id/firmware?version=1.2.0` | admin | Corpo: o `.bin` (até 1,6 MB). Guarda em pedaços no D1. |
-| `DELETE /api/stations/:id/firmware` | admin | Despublica. |
-| `GET /api/ota/firmware.bin` | estação | Baixa o firmware publicado para ela. Cabeçalhos `X-Sha256` e `X-Version`. |
+| `GET /api/ota/firmware.bin` | estação | Baixa o firmware atribuído a ela. Cabeçalhos `X-Sha256` e `X-Version`. |
 
-A estação só atualiza depois de enviar leituras com sucesso, só se a versão publicada for **diferente** da instalada, e confere tamanho e SHA-256. **Não há reversão automática** se o firmware novo travar logo ao iniciar: teste antes numa estação de bancada.
+A estação só atualiza depois de enviar leituras com sucesso, só se a versão atribuída for **diferente** da instalada, e confere tamanho e SHA-256. **Não há reversão automática** se o firmware novo travar logo ao iniciar: teste antes numa estação de bancada (`firmware/tools/hwtest/`). O caminho antigo de publicar firmware por estação (`POST`/`DELETE /api/stations/:id/firmware`) foi removido.
 
 ## Alertas no Telegram
 
