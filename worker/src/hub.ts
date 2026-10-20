@@ -2,8 +2,9 @@
  * Ponto de encontro do tempo real. Os navegadores abrem um WebSocket em /api/live; quando algo muda (a estação enviou, uma
  * estação foi criada, alterada ou removida), o Worker avisa este objeto, que repassa a todos os navegadores conectados.
  *
- * A mensagem é só um aviso curto ({"t":"update","id":"usina","ts":1792355899000}): o navegador então busca o dado novo pelas rotas normais.
- * Assim a lógica de leitura fica num lugar só.
+ * A mensagem é um aviso curto ({"t":"update","id":"usina","ts":1792355899000}). Quando é um envio da estação, ela já leva o que
+ * mudou (`st`: último contato, bateria, sinal, versões e a leitura nova) e se vieram eventos (`ev`): o navegador atualiza sem
+ * buscar a lista de estações de novo e pede só as leituras que faltam. Sem `st`, busca tudo pelas rotas normais.
  *
  * Usa a API de hibernação: com as conexões paradas o objeto sai da memória e não cobra tempo de execução, e o "ping" do
  * navegador é respondido pela plataforma sem acordá-lo.
@@ -44,10 +45,10 @@ export class Hub implements DurableObject {
 }
 
 /** Avisa os navegadores conectados. Nunca falha o pedido de quem chamou: tempo real é um acréscimo. */
-export async function notifyLive(env: Env, id: string | null): Promise<void> {
+export async function notifyLive(env: Env, id: string | null, extra?: Record<string, unknown>): Promise<void> {
   try {
     const stub = env.HUB.get(env.HUB.idFromName('rede'))
-    await stub.fetch('https://hub/notify', { method: 'POST', body: JSON.stringify({ t: 'update', id, ts: Date.now() }) })
+    await stub.fetch('https://hub/notify', { method: 'POST', body: JSON.stringify({ t: 'update', id, ts: Date.now(), ...extra }) })
   } catch (e) {
     console.warn('aviso em tempo real falhou', e)
   }

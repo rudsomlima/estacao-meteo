@@ -10,6 +10,8 @@ export interface Reading {
   rain: number // mm acumulados desde a leitura anterior
   vbat: number // V
   rssi: number // dBm
+  /** "h": média de uma hora (histórico longo); sem isso é uma leitura da estação */
+  agg?: 'h'
 }
 
 export type BatteryChem = 'li' | 'lfp' | 'lipo' | 'aa'

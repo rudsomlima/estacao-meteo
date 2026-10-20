@@ -66,9 +66,18 @@ export async function adminRequest<T>(method: string, path: string, token: strin
 
 // ---------------- leitura pública ----------------
 // o servidor manda null quando o sensor não mede umidade (MS5611): no site isso é NaN e aparece como "—"
-const noHum = <T extends { hum?: number | null }>(r: T): T => (r.hum == null ? { ...r, hum: NaN } : r)
-export const fetchStations = () => request<Station[]>('/api/stations')
-export const fetchReadings = (id: string, hours: number) => request<Reading[]>(`/api/stations/${id}/readings?hours=${hours}`).then((l) => l.map(noHum))
+/** O servidor manda null quando falta a medida (umidade no MS5611, direção sem biruta, hora sem leitura): no site é NaN e aparece como "—". */
+export const fixNulls = <T extends object>(r: T): T => {
+  const o = { ...r } as Record<string, unknown>
+  for (const k of ['temp', 'hum', 'pres', 'wind', 'gust', 'dir', 'rain', 'vbat', 'rssi']) if (k in o && o[k] == null) o[k] = NaN
+  return o as T
+}
+export const fetchStations = () => request<Station[]>('/api/stations').then((l) => l.map((st) => (st.latest ? { ...st, latest: fixNulls(st.latest) } : st)))
+export const fetchReadings = (id: string, hours: number) => request<Reading[]>(`/api/stations/${id}/readings?hours=${hours}`).then((l) => l.map(fixNulls))
+/** Só as leituras depois de `since` (unix): o que chegou desde a última vez. */
+export const fetchReadingsSince = (id: string, since: number) => request<Reading[]>(`/api/stations/${id}/readings?since=${since}`).then((l) => l.map(fixNulls))
+/** Leitura a leitura, sem resumo por hora (exportação). Até 30 dias. */
+export const fetchReadingsRaw = (id: string, hours: number) => request<Reading[]>(`/api/stations/${id}/readings?hours=${hours}&res=raw`).then((l) => l.map(fixNulls))
 export const fetchDaily = (id: string, days: number, tz: number) => request<DailyRow[]>(`/api/stations/${id}/daily?days=${days}&tz=${tz}`)
 export const fetchEvents = (id: string, limit = 50) => request<StationEvent[]>(`/api/stations/${id}/events?limit=${limit}`)
 export const fetchFirmware = (id: string) => request<FirmwareInfo>(`/api/stations/${id}/firmware`)

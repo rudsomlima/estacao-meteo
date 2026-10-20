@@ -43,7 +43,7 @@ function prepareDb() {
   log('banco local: esquema e migrações…')
   wrangler(['--file=schema.sql'])
   const cols = new Set(query("SELECT name FROM pragma_table_info('stations')").map((c) => c.name))
-  for (const [col, file] of [['owner_email', '0002_usuarios_e_firmware.sql'], ['cmd', '0003_comandos_e_confirmacoes.sql'], ['cfg_sent', '0004_entrega_da_configuracao.sql']]) {
+  for (const [col, file] of [['owner_email', '0002_usuarios_e_firmware.sql'], ['cmd', '0003_comandos_e_confirmacoes.sql'], ['cfg_sent', '0004_entrega_da_configuracao.sql'], ['latest', '0005_resumo_por_hora.sql']]) {
     if (cols.size && !cols.has(col)) {
       log(`aplicando migração ${file}`)
       wrangler([`--file=migrations/${file}`])
@@ -139,6 +139,8 @@ run('site', 'npm', ['run', 'dev', '--', '--host'], WEB)
 run('build', 'npx', ['vite', 'build', '--watch', '--logLevel', 'warn'], WEB)
 
 if (!(await waitApi())) { log('a API não subiu em 90 s'); stop() }
+// o resumo por hora é feito pelo cron a cada 5 min; aqui roda já, algumas vezes, para o calendário e a semana aparecerem
+for (let i = 0; i < 4; i++) { try { await fetch(`${API}/__scheduled?cron=*/5+*+*+*+*`) } catch { /* segue */ } }
 const lan = ips[0]
 console.log(`
   ┌──────────────────────────────────────────────────────────────┐

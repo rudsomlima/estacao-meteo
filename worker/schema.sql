@@ -23,7 +23,8 @@ CREATE TABLE IF NOT EXISTS stations (
   cmd         TEXT,                       -- comando pedido pelo administrador ("restart"); a estação o recebe no próximo envio
   cmd_at      INTEGER,                    -- quando foi pedido
   cmd_sent    INTEGER,                    -- quando a resposta com o comando foi entregue à estação
-  cmd_done    INTEGER                     -- quando a estação confirmou (voltou a ligar depois de receber)
+  cmd_done    INTEGER,                    -- quando a estação confirmou (voltou a ligar depois de receber)
+  latest      TEXT                        -- a leitura mais recente (JSON), para a lista de estações não varrer as leituras
 );
 
 CREATE TABLE IF NOT EXISTS readings (
@@ -35,6 +36,20 @@ CREATE TABLE IF NOT EXISTS readings (
   vbat REAL, rssi REAL,
   PRIMARY KEY (station_id, ts)
 ) WITHOUT ROWID;
+
+-- Resumo por hora das leituras: 24 h da lista, calendário e histórico longo (veja src/hourly.ts).
+CREATE TABLE IF NOT EXISTS readings_hourly (
+  station_id TEXT NOT NULL,
+  hour       INTEGER NOT NULL,             -- unix / 3600
+  n INTEGER NOT NULL,
+  temp_avg REAL, temp_min REAL, temp_max REAL,
+  hum_avg REAL, hum_n INTEGER NOT NULL DEFAULT 0,
+  pres_avg REAL, pres_min REAL, pres_max REAL,
+  wind_avg REAL, gust_max REAL, dir REAL,
+  rain REAL NOT NULL DEFAULT 0, vbat_avg REAL, rssi_avg REAL,
+  PRIMARY KEY (station_id, hour)
+) WITHOUT ROWID;
+CREATE INDEX IF NOT EXISTS readings_hourly_hour ON readings_hourly (hour);
 
 -- Eventos do firmware: reinícios, falhas de atualização, modo bancada.
 CREATE TABLE IF NOT EXISTS events (

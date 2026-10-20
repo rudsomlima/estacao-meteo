@@ -57,6 +57,9 @@ for (let i = 0; i < 40; i++) {
   try { await fetch(BASE + '/api/stations'); break } catch { await sleep(1000) }
 }
 
+// o resumo por hora das leituras do seed é feito pelo cron: roda algumas vezes antes dos testes
+for (let i = 0; i < 4; i++) await fetch(BASE + '/__scheduled?cron=*/5+*+*+*+*').catch(() => undefined)
+
 // ================= leitura pública
 let r = await call('GET', '/api/stations')
 check('lista as estações', r.status === 200 && Array.isArray(r.json) && r.json.length >= 1)
@@ -80,6 +83,8 @@ check('aceita leitura solta e devolve a configuração', r.status === 200 && r.j
   await call('POST', '/api/ingest', { body: reading, headers: dev })
   await sleep(500)
   check('avisa os navegadores quando a estação envia', msgs.some((m) => m.includes('"update"') && m.includes('serra')), JSON.stringify(msgs))
+  const upd = msgs.map((m) => { try { return JSON.parse(m) } catch { return {} } }).find((m) => m.t === 'update' && m.id === 'serra')
+  check('o aviso já traz a leitura nova e o último contato (o navegador não busca a lista)', upd?.st?.latest?.wind === reading.wind && upd.st.last_seen > Date.now() / 1000 - 60 && upd.st.day && 'rain' in upd.st.day, JSON.stringify(upd))
   ws.close()
 }
 check('a resposta vem assinada', r.headers.get('x-sig') === hmac(SECRET, `|${r.text}`))
@@ -158,6 +163,24 @@ check('rejeita firmware pequeno demais', r.status === 422)
 r = await admin('DELETE', '/api/stations/serra/firmware')
 r = await call('GET', '/api/stations/serra/firmware')
 check('despublicar apaga o firmware', r.json.published === null)
+
+// ================= resumo por hora e leituras incrementais
+r = await call('GET', '/api/stations')
+const serraNow = r.json.find((x) => x.id === 'serra')
+check('a lista traz a leitura mais recente sem varrer as leituras', serraNow?.latest?.ts > Date.now() / 1000 - 120 && serraNow.day && typeof serraNow.day.rain === 'number', JSON.stringify(serraNow?.latest))
+{
+  const t0 = Math.floor(Date.now() / 1000) - 2
+  await call('POST', '/api/ingest', { body: { ...reading, wind: 7.7 }, headers: dev })
+  const rs = await call('GET', `/api/stations/serra/readings?since=${t0}`)
+  check('?since devolve só as leituras novas', rs.status === 200 && rs.json.length >= 1 && rs.json.every((x) => x.ts > t0) && rs.json.some((x) => x.wind === 7.7), rs.text.slice(0, 200))
+  const wk = await call('GET', '/api/stations/serra/readings?hours=168')
+  const agg = wk.json.filter((x) => x.agg === 'h'), raw24 = wk.json.filter((x) => !x.agg)
+  check('a semana vem resumida por hora fora das últimas 24 h', agg.length >= 100 && agg.length <= 170 && raw24.length >= 1 && raw24.every((x) => x.ts >= Date.now() / 1000 - 25 * 3600), `${agg.length} horas, ${raw24.length} brutas`)
+  const rawWk = await call('GET', '/api/stations/serra/readings?hours=168&res=raw')
+  check('?res=raw devolve leitura a leitura (exportação)', rawWk.json.length > wk.json.length && rawWk.json.every((x) => !x.agg), `${rawWk.json.length} contra ${wk.json.length}`)
+  const day = await call('GET', '/api/stations/serra/daily?days=2&tz=-180')
+  check('o calendário vem do resumo por hora e inclui a leitura de agora', day.status === 200 && day.json.length >= 1 && day.json.some((d) => d.gust >= reading.gust), day.text.slice(0, 160))
+}
 
 // ================= resumo diário e uso
 r = await call('GET', '/api/stations/serra/daily?days=10&tz=-180')

@@ -8,7 +8,7 @@
  * Público (somente leitura):
  *   GET  /api/live                WebSocket: avisa quando uma estação envia ou muda (o navegador então busca o dado novo)
  *   GET  /api/stations, /api/stations/:id, /:id/readings, /:id/daily, /:id/events, /:id/firmware
- * Administrador (assinatura HMAC com o ADMIN_TOKEN, o token nunca viaja):
+ * Administrador (sessão do login com Google; o ADMIN_TOKEN só como acesso de emergência):
  *   POST /api/stations, PUT|DELETE /api/stations/:id, POST /:id/key, POST /:id/claim, POST|DELETE /:id/firmware
  *   GET|PUT /api/settings/telegram, POST /api/telegram/test, POST /api/telegram/detect-chat, GET /api/usage
  */
@@ -19,6 +19,7 @@ import { adminRoute, defaultConfig } from './admin'
 import { audit, type Actor, getActor, getUser, newSession, sessionCookie, upsertUser, verifyGoogleToken, type User } from './auth'
 import { cleanConfig, pinProblem } from './config'
 import { notifyLive } from './hub'
+import { backfillHourly, daySummaries, hourAsReading, rebuildTouched, type HourRow } from './hourly'
 import { fromBase64, hmacHex, newKey, randomHex, same, sha256Hex, toBase64 } from './crypto'
 import {
   type Config, DEFAULT_CONFIG, type Env, EVENT_KINDS, json, MAX_AGE_S, MAX_BATCH, READING_RANGES,
@@ -33,8 +34,9 @@ interface StationRow {
   key_hash: string; nonce: string; cfg_applied: number; last_seen: number | null; fw_version: string | null
   vbat: number | null; rssi: number | null; owner_email: string | null
   cfg_applied_at: number | null; cfg_sent: number | null; cfg_sent_at: number | null; cmd: string | null; cmd_at: number | null; cmd_sent: number | null; cmd_done: number | null
+  latest: string | null
 }
-const COLS = 'id,name,city,lat,lon,alt,config,created_at,key_hash,nonce,cfg_applied,last_seen,fw_version,vbat,rssi,owner_email,cfg_applied_at,cfg_sent,cfg_sent_at,cmd,cmd_at,cmd_sent,cmd_done'
+const COLS = 'id,name,city,lat,lon,alt,config,created_at,key_hash,nonce,cfg_applied,last_seen,fw_version,vbat,rssi,owner_email,cfg_applied_at,cfg_sent,cfg_sent_at,cmd,cmd_at,cmd_sent,cmd_done,latest'
 const dec = new TextDecoder()
 
 // ---------------- autenticação ----------------
@@ -134,13 +136,13 @@ async function ingest(req: Request, env: Env, ctx: ExecutionContext) {
   const items: unknown[] = Array.isArray(body.batch) ? body.batch : [body]
   // lote vazio é permitido: a placa está conectada mas sem leitura de sensor (BME280 ausente). Conta como "visto" e troca a configuração
   const heartbeat = Array.isArray(body.batch) && body.batch.length === 0
-  if (heartbeat) console.warn(`ingest sem leituras (${st.id}): a placa conectou mas não mediu nada (BME280 ausente?)`)
   if ((items.length < 1 && !heartbeat) || items.length > MAX_BATCH) return json({ error: `o lote precisa ter de 1 a ${MAX_BATCH} leituras` }, 422)
 
   const nowTs = Math.floor(Date.now() / 1000)
   const ins = env.DB.prepare('INSERT OR REPLACE INTO readings (station_id,ts,temp,hum,pres,wind,gust,dir,rain,vbat,rssi) VALUES (?,?,?,?,?,?,?,?,?,?,?)')
   const writes: D1PreparedStatement[] = []
-  let latest: { ts: number; gust: number; dir: number; vbat: number; rain: number; rssi: number } | null = null
+  let latest: ({ ts: number } & Record<string, number | null>) | null = null
+  const stamps: number[] = []
   for (const rawItem of items) {
     const item = (rawItem ?? {}) as Record<string, unknown>
     const v: Record<string, number> = {}
@@ -156,7 +158,8 @@ async function ingest(req: Request, env: Env, ctx: ExecutionContext) {
     const age = typeof item.age === 'number' && Number.isFinite(item.age) ? Math.min(MAX_AGE_S, Math.max(0, Math.round(item.age))) : 0
     const ts = nowTs - age
     writes.push(ins.bind(st.id, ts, v.temp, v.hum, v.pres, v.wind, v.gust, v.dir, v.rain, v.vbat, v.rssi))
-    if (!latest || ts >= latest.ts) latest = { ts, gust: v.gust, dir: v.dir, vbat: v.vbat, rain: v.rain, rssi: v.rssi }
+    stamps.push(ts)
+    if (!latest || ts >= latest.ts) latest = { ts, temp: v.temp, hum: v.hum, pres: v.pres, wind: v.wind, gust: v.gust, dir: v.dir, rain: v.rain, vbat: v.vbat, rssi: v.rssi }
   }
 
   // eventos do firmware (reinício, falha de atualização...)
@@ -196,17 +199,33 @@ async function ingest(req: Request, env: Env, ctx: ExecutionContext) {
     if (st.cmd_sent && lastBootTs >= st.cmd_sent - 5) writes.push(env.DB.prepare('UPDATE stations SET cmd_done = ? WHERE id = ?').bind(nowTs, st.id))
     else { cmdOut = st.cmd; writes.push(env.DB.prepare('UPDATE stations SET cmd_sent = ? WHERE id = ?').bind(nowTs, st.id)) }
   }
+  // a leitura mais recente fica na própria estação: a lista de estações não precisa varrer as leituras
+  if (latest) writes.push(env.DB.prepare("UPDATE stations SET latest = ? WHERE id = ? AND (latest IS NULL OR json_extract(latest, '$.ts') <= ?)").bind(JSON.stringify(latest), st.id, latest.ts))
   await env.DB.batch(writes)
+  if (stamps.length) await rebuildTouched(env, st.id, stamps) // resumo por hora das horas que este lote tocou
   if (Math.random() < 0.01) {
     await env.DB.batch([
       env.DB.prepare('DELETE FROM readings WHERE ts < ?').bind(nowTs - 400 * 86400),
+      env.DB.prepare('DELETE FROM readings_hourly WHERE hour < ?').bind(Math.floor((nowTs - 800 * 86400) / 3600)),
       env.DB.prepare('DELETE FROM events WHERE ts < ?').bind(nowTs - 120 * 86400),
     ])
   }
 
   const fwMeta = await otaFor(env, st.id)
-  ctx.waitUntil(notifyLive(env, st.id))
-  if (latest) ctx.waitUntil(evaluateAfterIngest(env, { id: st.id, name: st.name, city: st.city, config: cfg, owner_email: st.owner_email }, latest).catch(() => undefined))
+  // o aviso aos navegadores já leva o que mudou: eles atualizam sem buscar a lista de novo
+  const prevLatest = st.latest ? (JSON.parse(st.latest) as { ts: number }) : null
+  const appliedNow = Number.isFinite(reported) ? reported : st.cfg_applied
+  const snapshot = {
+    last_seen: nowTs, vbat: stV ?? st.vbat, rssi: stR ?? st.rssi, fw_version: fw ?? st.fw_version,
+    cfg_applied: appliedNow, cfg_applied_at: appliedNow !== st.cfg_applied ? nowTs : st.cfg_applied_at,
+    cfg_sent: sendCfg ? cfg.version : st.cfg_sent, cfg_sent_at: sendCfg ? (st.cfg_sent === cfg.version ? st.cfg_sent_at : nowTs) : st.cfg_sent_at,
+    latest: latest && (!prevLatest || latest.ts >= prevLatest.ts) ? latest : prevLatest,
+    day: stamps.length ? ((await daySummaries(env, st.id)).get(st.id) ?? null) : undefined,
+  }
+  const cmdChanged = !!st.cmd && !st.cmd_done // o estado do comando só vai para quem pode mexer na estação: estes buscam a estação
+  const ev = Array.isArray(body.events) && body.events.length > 0 // vieram eventos: quem mostra o diagnóstico busca de novo
+  ctx.waitUntil(notifyLive(env, st.id, cmdChanged ? { ev } : { st: snapshot, ev }))
+  if (latest) ctx.waitUntil(evaluateAfterIngest(env, { id: st.id, name: st.name, city: st.city, config: cfg, owner_email: st.owner_email }, latest as unknown as Parameters<typeof evaluateAfterIngest>[2]).catch(() => undefined))
 
   return signedJson(auth, {
     ts: nowTs,
@@ -241,28 +260,11 @@ async function firmwareDownload(req: Request, env: Env) {
 
 // ---------------- leitura pública ----------------
 async function listStations(env: Env, user: User | null) {
-  const now = Math.floor(Date.now() / 1000)
-  const [stations, latest, day] = await Promise.all([
+  const [stations, day] = await Promise.all([
     env.DB.prepare(`SELECT ${COLS} FROM stations ORDER BY name`).all<StationRow>(),
-    env.DB.prepare(
-      `SELECT r.* FROM readings r JOIN (SELECT station_id, MAX(ts) m FROM readings GROUP BY station_id) x
-       ON x.station_id = r.station_id AND x.m = r.ts`,
-    ).all<Record<string, number | string>>(),
-    env.DB.prepare(
-      `SELECT station_id, SUM(rain) rain24, MIN(temp) tmin, MAX(temp) tmax, MAX(gust) gustmax
-       FROM readings WHERE ts >= ? GROUP BY station_id`,
-    ).bind(now - 86400).all<Record<string, number | string>>(),
+    daySummaries(env),
   ])
-  const last = new Map(latest.results.map((r) => [r.station_id as string, r]))
-  const sum = new Map(day.results.map((r) => [r.station_id as string, r]))
-  return json(
-    stations.results.map((s) => {
-      const l = last.get(s.id)
-      const d = sum.get(s.id)
-      const reading = l ? { ts: l.ts, temp: l.temp, hum: l.hum, pres: l.pres, wind: l.wind, gust: l.gust, dir: l.dir, rain: l.rain, vbat: l.vbat, rssi: l.rssi } : null
-      return { ...publicStation(s, user), latest: reading, day: d ? { rain: d.rain24, tmin: d.tmin, tmax: d.tmax, gust: d.gustmax } : null }
-    }),
-  )
+  return json(stations.results.map((s) => ({ ...publicStation(s, user), latest: s.latest ? JSON.parse(s.latest) : null, day: day.get(s.id) ?? null })))
 }
 
 async function getStation(env: Env, id: string, user: User | null) {
@@ -270,28 +272,46 @@ async function getStation(env: Env, id: string, user: User | null) {
   return s ? json(publicStation(s, user)) : json({ error: 'estação não encontrada' }, 404)
 }
 
+/**
+ * Leituras de uma estação.
+ *  - `since=<unix>`: só as leituras depois desse instante (o site pede só o que falta a cada aviso), no máximo 2000;
+ *  - `hours=<n>` (padrão 24): até 48 h vêm leitura a leitura; acima disso, as últimas 24 h leitura a leitura e o resto resumido
+ *    por hora (com `agg: "h"`), para a semana não custar milhares de linhas;
+ *  - `res=raw`: tudo leitura a leitura (exportação), até 30 dias.
+ */
 async function readings(url: URL, env: Env, id: string) {
+  const raw = (from: number, limit = 50000) => env.DB
+    .prepare('SELECT ts,temp,hum,pres,wind,gust,dir,rain,vbat,rssi FROM readings WHERE station_id = ? AND ts > ? ORDER BY ts ASC LIMIT ?')
+    .bind(id, from, limit).all()
+  const since = Number(url.searchParams.get('since'))
+  if (Number.isFinite(since) && since > 0) return json((await raw(Math.floor(since), 2000)).results)
   const hours = Math.min(24 * 30, Math.max(1, Number(url.searchParams.get('hours')) || 24))
-  const since = Math.floor(Date.now() / 1000) - hours * 3600
-  const { results } = await env.DB
-    .prepare('SELECT ts,temp,hum,pres,wind,gust,dir,rain,vbat,rssi FROM readings WHERE station_id = ? AND ts >= ? ORDER BY ts ASC')
-    .bind(id, since)
-    .all()
-  return json(results)
+  const now = Math.floor(Date.now() / 1000)
+  const start = now - hours * 3600
+  if (hours <= 48 || url.searchParams.get('res') === 'raw') return json((await raw(start - 1)).results)
+  const recentFrom = now - 24 * 3600
+  const [old, recent] = await Promise.all([
+    env.DB.prepare('SELECT * FROM readings_hourly WHERE station_id = ? AND hour >= ? AND hour < ? ORDER BY hour')
+      .bind(id, Math.floor(start / 3600), Math.floor(recentFrom / 3600)).all<HourRow>(),
+    raw(Math.floor(recentFrom / 3600) * 3600 - 1),
+  ])
+  return json([...old.results.map(hourAsReading), ...recent.results])
 }
 
-/** Um resumo por dia local (tz em minutos a leste de UTC; o Brasil é -180). Alimenta o calendário e o resumo do mês. */
+/** Um resumo por dia local (tz em minutos a leste de UTC; o Brasil é -180), a partir do resumo por hora. Alimenta o calendário e o resumo do mês. */
 async function daily(url: URL, env: Env, id: string) {
   const days = Math.min(730, Math.max(1, Number(url.searchParams.get('days')) || 90))
   const tz = Math.min(840, Math.max(-720, Math.round(Number(url.searchParams.get('tz')) || 0)))
   const since = Math.floor(Date.now() / 1000) - days * 86400
   const { results } = await env.DB
     .prepare(
-      `SELECT date(ts + ? * 60, 'unixepoch') AS day, MIN(temp) tmin, MAX(temp) tmax, AVG(temp) tavg, SUM(rain) rain,
-              MAX(gust) gust, AVG(wind) wind, MIN(pres) pmin, MAX(pres) pmax, COUNT(*) n
-       FROM readings WHERE station_id = ? AND ts >= ? GROUP BY day ORDER BY day`,
+      `SELECT date(hour * 3600 + ? * 60, 'unixepoch') AS day, MIN(temp_min) tmin, MAX(temp_max) tmax,
+              ROUND(SUM(temp_avg * n) / SUM(CASE WHEN temp_avg IS NULL THEN 0 ELSE n END), 2) tavg, ROUND(SUM(rain), 2) rain,
+              MAX(gust_max) gust, ROUND(SUM(wind_avg * n) / SUM(CASE WHEN wind_avg IS NULL THEN 0 ELSE n END), 2) wind,
+              MIN(pres_min) pmin, MAX(pres_max) pmax, SUM(n) n
+       FROM readings_hourly WHERE station_id = ? AND hour >= ? GROUP BY day ORDER BY day`,
     )
-    .bind(tz, id, since)
+    .bind(tz, id, Math.floor(since / 3600))
     .all()
   return json(results)
 }
@@ -402,6 +422,7 @@ async function claim(req: Request, env: Env, raw: Uint8Array) {
 async function deleteStation(env: Env, id: string) {
   await env.DB.batch([
     env.DB.prepare('DELETE FROM readings WHERE station_id = ?').bind(id),
+    env.DB.prepare('DELETE FROM readings_hourly WHERE station_id = ?').bind(id),
     env.DB.prepare('DELETE FROM events WHERE station_id = ?').bind(id),
     env.DB.prepare('DELETE FROM alert_state WHERE station_id = ?').bind(id),
     env.DB.prepare('DELETE FROM firmware_chunks WHERE station_id = ?').bind(id),
@@ -630,8 +651,9 @@ export default {
     return env.ASSETS.fetch(req)
   },
 
-  /** A cada 5 minutos: avisa de estações que pararam de enviar. */
+  /** A cada 5 minutos: avisa de estações que pararam de enviar e completa o resumo por hora. */
   async scheduled(_event: ScheduledEvent, env: Env, ctx: ExecutionContext) {
     ctx.waitUntil(evaluateOffline(env))
+    ctx.waitUntil(backfillHourly(env).catch((e) => console.warn('resumo por hora', e)))
   },
 }

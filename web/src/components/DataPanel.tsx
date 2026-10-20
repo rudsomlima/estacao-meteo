@@ -1,7 +1,7 @@
 import { Download, Upload } from 'lucide-react'
 import { useRef, useState } from 'react'
 import { useToken } from '../hooks/useToken'
-import { ApiError, fetchReadings, getUsage, type Usage } from '../lib/api'
+import { ApiError, fetchReadingsRaw, getUsage, type Usage } from '../lib/api'
 import { demoHistory } from '../lib/demo'
 import { getPrefs, sanitize, setPrefs } from '../lib/prefs'
 import type { Source, Station } from '../types'
@@ -36,7 +36,7 @@ export default function DataPanel({ stations, source }: { stations: Station[]; s
     setMsg(null)
     try {
       const hours = days * 24
-      const rs = source === 'api' ? await fetchReadings(id, hours) : demoHistory(id, hours)
+      const rs = source === 'api' ? await fetchReadingsRaw(id, hours) : demoHistory(id, hours)
       const head = 'data_hora_utc,unix,temperatura_c,umidade_pct,pressao_hpa,vento_ms,rajada_ms,direcao_graus,chuva_mm,bateria_v,sinal_dbm'
       const lines = rs.map((r) =>
         [new Date(r.ts * 1000).toISOString(), r.ts, r.temp, r.hum, r.pres, r.wind, r.gust, r.dir, r.rain, r.vbat, r.rssi].join(','))

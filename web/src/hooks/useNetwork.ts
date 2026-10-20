@@ -1,7 +1,7 @@
-import { subscribeRefresh } from '../lib/refresh'
+import { subscribeRefresh, type LiveInfo } from '../lib/refresh'
 import { pushConfigToUsb } from '../lib/usb'
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { ApiError, createStation, deleteStation, fetchDaily, fetchEvents, fetchFirmware, fetchReadings, fetchStations, rotateKey, store, updateStation, type StationEdit } from '../lib/api'
+import { ApiError, createStation, deleteStation, fetchDaily, fetchEvents, fetchFirmware, fetchReadings, fetchReadingsSince, fetchStations, fixNulls, rotateKey, store, updateStation, type StationEdit } from '../lib/api'
 import { aggregateDaily, localTzMinutes } from '../lib/daily'
 import { demoHistory, demoNetwork, demoNext } from '../lib/demo'
 import type { DailyRow, FirmwareInfo, Reading, Source, Station, StationEvent } from '../types'
@@ -36,7 +36,15 @@ export function useNetwork() {
     let unsub = () => {}
     refresh().then((ok) => {
       if (!alive) return
-      if (ok) { unsub = subscribeRefresh(() => void refresh()); return }
+      if (ok) {
+        // envio de uma estação: o aviso já traz o que mudou e só ela é atualizada; o resto (cadastro, configuração,
+        // reconexão) busca a lista de novo
+        unsub = subscribeRefresh((id, info) => {
+          if (id && info?.st) setStations((prev) => prev.map((p) => (p.id === id ? patchLive(p, info.st!) : p)))
+          else void refresh()
+        })
+        return
+      }
       // sem API (por exemplo `npm run dev` sozinho): rede simulada
       sourceRef.current = 'demo'
       setStations(demoNetwork().map((s) => ({ ...s, ...patchFromLocal(s) })))
@@ -114,6 +122,15 @@ export function useNetwork() {
   return { stations, source, loading, save, add, remove, newKey, refresh }
 }
 
+/** Aplica numa estação o que veio no aviso em tempo real (último contato, bateria, sinal, versões, leitura e resumo do dia). */
+function patchLive(p: Station, st: Record<string, unknown>): Station {
+  const next = { ...p } as Record<string, unknown>
+  for (const k of ['last_seen', 'vbat', 'rssi', 'fw_version', 'cfg_applied', 'cfg_applied_at', 'cfg_sent', 'cfg_sent_at']) if (k in st) next[k] = st[k]
+  if (st.latest) next.latest = fixNulls(st.latest as Reading)
+  if (st.day !== undefined) next.day = st.day
+  return next as unknown as Station
+}
+
 function patchFromLocal(s: Station): Partial<Station> {
   try {
     const raw = store.get('meteo.demo.' + s.id)
@@ -141,17 +158,32 @@ export function useReadings(id: string | null, source: Source, hours = HISTORY_H
     let timer = 0
     let unsub = () => {}
     setLoading(true)
+    let last = 0 // instante da leitura mais nova que já temos
     const load = async () => {
       try {
         const list = await fetchReadings(id, hours)
-        if (alive) { setReadings(list); setLoading(false) }
+        if (!alive) return
+        last = list.length ? list[list.length - 1].ts : Math.floor(Date.now() / 1000) - hours * 3600
+        setReadings(list)
+        setLoading(false)
       } catch {
         if (alive) setLoading(false)
       }
     }
+    // só as leituras novas, coladas no fim; a janela anda (as mais antigas que ela saem)
+    const more = async () => {
+      try {
+        const add = await fetchReadingsSince(id, last)
+        if (!alive || !add.length) return
+        if (add.length >= 2000) { void load(); return } // ficou muito tempo sem atualizar: recarrega tudo
+        last = add[add.length - 1].ts
+        const from = last - hours * 3600
+        setReadings((prev) => [...prev.filter((r) => r.ts >= from && r.ts < add[0].ts), ...add])
+      } catch { /* tenta no próximo aviso */ }
+    }
     if (source === 'api') {
-      load()
-      unsub = subscribeRefresh((sid) => { if (!sid || sid === id) void load() })
+      void load()
+      unsub = subscribeRefresh((sid) => { if (!sid || sid === id) void more() })
     } else {
       setReadings(demoHistory(id, hours))
       setLoading(false)
@@ -228,7 +260,7 @@ export function useEvents(id: string | null, source: Source) {
     const load = () => (source === 'api' ? fetchEvents(id, 50).catch(() => [] as StationEvent[]) : Promise.resolve(DEMO_EVENTS()))
       .then((e) => { if (alive) setEvents(e) })
     load()
-    const unsub = source === 'api' ? subscribeRefresh((sid) => { if (!sid || sid === id) load() }) : () => {}
+    const unsub = source === 'api' ? subscribeRefresh((sid, info?: LiveInfo) => { if (!sid || (sid === id && info?.ev !== false)) load() }) : () => {}
     return () => { alive = false; unsub() }
   }, [id, source])
 

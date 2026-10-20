@@ -28,14 +28,11 @@ sequenceDiagram
     Note over S: acorda, mede e guarda no lote
     S->>W: POST /api/ingest (X-Device-Key, cfg, batch[age,...])
     W->>D: busca a estação pelo SHA-256 da chave
-    W->>D: grava cada leitura com ts = agora - age
+    W->>D: grava cada leitura (ts = agora - age), a mais recente na estação e o resumo das horas tocadas
     W-->>S: { stored, config: nova ou null }
-    Note over S: se veio config, salva na flash e dorme
-    B->>W: GET /api/stations
-    W->>D: última leitura + resumo de 24 h
-    W-->>B: estações
-    B->>W: GET /api/stations/serra/readings?hours=168
-    W-->>B: leituras
+    W-)B: WebSocket: aviso com a leitura nova e o último contato
+    B->>W: GET /api/stations/serra/readings?since=… (só o que falta)
+    Note over B: ao abrir a página: /api/stations (sem varrer as leituras) e /readings?hours=168 (24 h brutas + horas resumidas)
 ```
 
 ## Fluxo de configuração
@@ -67,6 +64,7 @@ sequenceDiagram
 - **Sensor e pinos são configuração.** Trocar o sensor de ambiente (BME280, MS5611, os dois, nenhum) ou um GPIO não exige regravar o firmware; as regras do ESP32-C3 são conferidas no site, no servidor e na placa.
 - **Chave por estação, guardada como hash.** Vazou uma? Gera outra sem mexer nas demais. O banco nunca tem chaves em claro.
 - **Um Worker só.** O mesmo Worker serve o site (`web/dist`) e a API, sem CORS e com um único deploy.
+- **Resumo por hora.** `readings_hourly` guarda médias, mínimas, máximas, chuva e rajada de cada hora. A lista de estações, o calendário e o histórico longo leem as horas (e a última leitura guardada na própria estação), não as leituras brutas: no plano gratuito o banco cobra por linha lida.
 - **Banco simples.** O essencial são `stations` e `readings`; o resto (`events`, `users`, `releases`, `settings`, `claims`, `audit`...) guarda diagnóstico, contas, firmware e configurações. O vento fica em m/s e a pressão em hPa, e o site converte para as unidades escolhidas.
 - **Campo de vento do mapa.** As partículas usam ponderação inversa da distância entre as estações online. É uma **estimativa visual**, e não um modelo meteorológico.
 

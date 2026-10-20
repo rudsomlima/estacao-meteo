@@ -12,7 +12,9 @@ import { getPrefs, subscribePrefs } from './prefs'
  *
  * Com a aba escondida não consulta; ao voltar, atualiza na hora. Quem precisa de dado novo assina com `subscribeRefresh`.
  */
-type Listener = (stationId: string | null) => void
+/** O que veio no aviso: `st` (o que mudou na estação, quando foi um envio) e `ev` (vieram eventos do firmware). */
+export interface LiveInfo { st?: Record<string, unknown>; ev?: boolean }
+type Listener = (stationId: string | null, info?: LiveInfo) => void
 export type LiveState = 'live' | 'connecting' | 'poll' | 'idle'
 
 const listeners = new Set<Listener>()
@@ -27,7 +29,7 @@ let lastSeen = 0
 let everOpen = false
 let running = false
 
-const emit = (id: string | null) => listeners.forEach((l) => l(id))
+const emit = (id: string | null, info?: LiveInfo) => listeners.forEach((l) => l(id, info))
 function setState(s: LiveState) {
   if (s === state) return
   state = s
@@ -63,9 +65,9 @@ function connect() {
     lastSeen = Date.now()
     if (e.data === 'pong') return
     try {
-      const m = JSON.parse(String(e.data)) as { t?: string; id?: string | null; ts?: number }
+      const m = JSON.parse(String(e.data)) as { t?: string; id?: string | null; ts?: number; st?: Record<string, unknown>; ev?: boolean }
       if (typeof m.ts === 'number') syncServerMs(m.ts) // o relógio do servidor vem de graça nos avisos
-      if (m.t === 'update') emit(m.id ?? null)
+      if (m.t === 'update') emit(m.id ?? null, { st: m.st, ev: m.ev })
     } catch { /* mensagem desconhecida */ }
   }
   sock.onclose = () => { if (ws === sock) { ws = null; window.clearInterval(heartbeat); retry() } }

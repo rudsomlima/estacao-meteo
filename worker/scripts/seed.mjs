@@ -25,6 +25,7 @@ const step = 600
 // apaga só as estações de exemplo (e os dados delas): estações reais cadastradas no banco local não são tocadas
 const ids = STATIONS.map((s) => q(s.id)).join(',')
 const out = ['readings', 'events', 'alert_state', 'firmware_chunks', 'firmware', 'fw_assign'].map((t) => `DELETE FROM ${t} WHERE station_id IN (${ids});`)
+out.push(`DELETE FROM readings_hourly WHERE station_id IN (${ids});`, "DELETE FROM settings WHERE key = 'hourly_backfill';") // o cron refaz o resumo por hora
 out.push(`DELETE FROM stations WHERE id IN (${ids});`)
 
 STATIONS.forEach((s, si) => {
@@ -62,5 +63,6 @@ STATIONS.forEach((s, si) => {
     out.push(`INSERT INTO readings (station_id,ts,temp,hum,pres,wind,gust,dir,rain,vbat,rssi) VALUES ${rows.slice(i, i + 200).join(',')};`)
 })
 
+out.push(`UPDATE stations SET latest = (SELECT json_object('ts', ts, 'temp', temp, 'hum', hum, 'pres', pres, 'wind', wind, 'gust', gust, 'dir', dir, 'rain', rain, 'vbat', vbat, 'rssi', rssi) FROM readings r WHERE r.station_id = stations.id ORDER BY ts DESC LIMIT 1) WHERE id IN (${ids});`)
 writeFileSync(new URL('../seed.sql', import.meta.url), out.join('\n') + '\n')
 console.log(`seed.sql: ${STATIONS.length} estações. Chaves de teste: dev-key-<id>`)

@@ -91,8 +91,8 @@ O servidor carimba cada leitura com `agora - age`. Uma leitura solta (sem `batch
 |---|---|---|
 | `GET /api/stations` | pública | Lista com a última leitura e o resumo de 24 h (`day`). Inclui `cfg_applied`, `last_seen` e `fw_version`. |
 | `GET /api/stations/:id` | pública | Uma estação, com a configuração. |
-| `GET /api/stations/:id/readings?hours=24` | pública | Leituras em ordem de tempo (1 a 720 horas). |
-| `GET /api/stations/:id/daily?days=30&tz=-180` | pública | Um resumo por dia (mín, máx, média, chuva, rajada, pressão). `tz` é o fuso em minutos. Até 366 dias. |
+| `GET /api/stations/:id/readings?hours=24` | pública | Leituras em ordem de tempo (1 a 720 horas). Até 48 h, leitura a leitura; acima disso, as últimas 24 h leitura a leitura e o resto em médias por hora (marcadas com `"agg":"h"`). `?since=<unix>` devolve só as leituras depois desse instante (até 2000). `&res=raw` força leitura a leitura (exportação, até 30 dias). |
+| `GET /api/stations/:id/daily?days=30&tz=-180` | pública | Um resumo por dia (mín, máx, média, chuva, rajada, pressão), calculado do resumo por hora. `tz` é o fuso em minutos (fusos de meia hora caem na hora cheia). Até 730 dias. |
 | `GET /api/stations/:id/events?limit=50` | pública | Eventos do firmware (reinícios, atualizações, modo bancada). |
 | `GET /api/stations/:id/firmware` | pública | Firmware publicado e instalado. |
 | `POST /api/stations` | admin | Cria a estação e devolve a chave **uma única vez**. |
@@ -193,7 +193,7 @@ Cada usuário configura o **seu** bot e chat para as estações **dele**: `GET`/
 {"t":"update","id":"usina","ts":1792355899000}
 ```
 
-O `ts` é a hora do servidor em ms (o site a usa para corrigir o relógio das idades sem gastar requisição). O aviso não traz dados: o site então busca o que mudou pelas rotas normais (`/api/stations`, `/readings`, `/events`). O cliente pode mandar o texto `ping` e recebe `pong` (respondido pela plataforma, sem acordar o objeto). Quem implementa o Durable Object é [`worker/src/hub.ts`](../worker/src/hub.ts), com a API de hibernação: conexões paradas não gastam tempo de execução. O limite é de 200 conexões simultâneas.
+O `ts` é a hora do servidor em ms (o site a usa para corrigir o relógio das idades sem gastar requisição). Quando o aviso é de um envio da estação, ele já traz o que mudou em `st` (`last_seen`, `vbat`, `rssi`, `fw_version`, as versões da configuração, a leitura mais recente em `latest` e o resumo das 24 h em `day`) e `ev: true` se vieram eventos do firmware. O site atualiza a estação com isso, pede só as leituras novas (`/readings?since=`) e só busca os eventos quando `ev` é verdadeiro. Avisos sem `st` (estação criada, alterada ou removida, ou com comando pendente) fazem o site buscar pelas rotas normais. O cliente pode mandar o texto `ping` e recebe `pong` (respondido pela plataforma, sem acordar o objeto). Quem implementa o Durable Object é [`worker/src/hub.ts`](../worker/src/hub.ts), com a API de hibernação: conexões paradas não gastam tempo de execução. O limite é de 200 conexões simultâneas.
 
 No plano gratuito da Cloudflare, cada 20 mensagens do WebSocket contam como 1 requisição (limite de 100 mil por dia). Em *Administração → Site e placas → Atualização dos dados* o site escolhe entre tempo real e consulta periódica e define a consulta de segurança (padrão 60 s) que cobre uma conexão que caia sem aviso.
 
