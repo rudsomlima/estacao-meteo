@@ -1,3 +1,4 @@
+import { hasBattery } from '../lib/battery'
 import { useState } from 'react'
 import { go } from '../hooks/useRoute'
 import { useNow } from '../hooks/useNow'
@@ -49,7 +50,7 @@ function Overview({ stations, users }: { stations: AdminStation[]; users: number
                   <td className="px-3 py-2">{s.fw_version ?? '—'}</td>
                   <td className="px-3 py-2">v{s.cfg_version}{s.cfg_version !== s.cfg_applied ? <span className="text-warn"> (a estação tem v{s.cfg_applied}: aguardando)</span> : <span className="text-ok"> aplicada{s.cfg_applied_at ? ` ${ago(s.cfg_applied_at)}` : ''}</span>}</td>
                   <td className={`px-3 py-2 text-xs ${s.command?.done ? 'text-ok' : s.command ? 'text-warn' : 'text-ink-3'}`}>{s.command ? (s.command.done ? 'reinício confirmado' : s.command.sent ? 'reinício entregue, sem confirmação' : 'reinício pedido') : '—'}</td>
-                  <td className="px-3 py-2">{s.vbat != null && s.vbat > 1 ? `${s.vbat.toFixed(2)} V` : '—'}</td>
+                  <td className="px-3 py-2">{hasBattery(s.vbat) ? `${s.vbat!.toFixed(2)} V` : '—'}</td>
                   <td className="px-3 py-2">{s.rssi != null ? `${s.rssi} dBm` : '—'}</td>
                 </tr>
               ))}

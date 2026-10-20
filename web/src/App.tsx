@@ -43,7 +43,7 @@ function StationGate({ id, net, allowEmpty, children }: { id: string; net: Net; 
         <div className="max-w-sm">
           <h1 className="font-display text-2xl font-bold">{station.name} ainda não enviou leituras</h1>
           <div className="text-left"><NoReadings s={station} /></div>
-          <p className="mt-3 text-xs text-ink-3">Sensor BME280: 3V3, GND, SDA no GPIO 6 e SCL no GPIO 7. Depois aperte RESET na placa.</p>
+          <p className="mt-3 text-xs text-ink-3">Confira em Configurações da estação, em Placa, sensores e pinos, se o sensor e os pinos escolhidos são os da sua fiação. A placa aplica a mudança no próximo envio.</p>
           <button onClick={() => go(`s/${station.id}/config`)} className="mt-4 rounded-xl border border-line px-4 py-2.5 text-sm hover:bg-card-hover">Configurações da estação</button>
           <button onClick={() => go('')} className="mt-4 rounded-xl bg-blue px-4 py-2.5 text-sm font-semibold text-white">Voltar ao mapa</button>
         </div>
@@ -54,7 +54,7 @@ function StationGate({ id, net, allowEmpty, children }: { id: string; net: Net; 
 }
 
 function statusOf(station: Station, now: Reading, source: Net['source']) {
-  const on = isOnline({ latest: now, config: station.config })
+  const on = isOnline({ last_seen: station.last_seen, latest: now, config: station.config })
   return { color: source === 'demo' ? 'bg-warn' : on ? 'bg-ok' : 'bg-bad', text: source === 'demo' ? 'demonstração' : on ? 'online' : 'atrasada' }
 }
 

@@ -123,7 +123,7 @@ Campos com os limites que o servidor aplica (valores fora da faixa são ajustado
 | `gust_window_s` | 1 a 10 | `critical_v` | 1,5 a 4,0 |
 | `samples` | 1 a 32 | `charge_above_v` | 0 a 5 (0 desliga) |
 | `wifi_timeout_s` | 4 a 30 | `charge_interval_min` | 1 a 60 |
-| `mm_per_tip` | 0,01 a 5 | `send_every` | 1 a 12 |
+| `mm_per_tip` | 0,01 a 2 | `send_every` | 1 a 12 |
 | `k_wind` | 0,05 a 3 | `continuous_wind` | 0 ou 1 |
 | `dir_offset` | 0 a 359,99 | `urgent_gust_kmh` | 0 a 200 |
 | `battery_mah` | 100 a 100000 | `bench_min` | 0 a 30 (minutos do modo bancada; 0 desliga) |

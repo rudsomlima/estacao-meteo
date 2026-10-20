@@ -87,15 +87,27 @@ export function ago(ts: number, now = serverNow()) {
 }
 
 /** Visto há pouco: a placa falou com o servidor, mesmo sem leitura de sensor (por exemplo, sem BME280). */
+/** Tempo esperado entre dois contatos da estação: intervalo × leituras por envio (ela junta N leituras antes de mandar). */
+export const contactS = (c: { interval_min: number; send_every?: number }) => c.interval_min * 60 * Math.max(1, c.send_every ?? 1)
+/** Passou disto sem contato: atrasada. 2,5 contatos + 1 min de folga, a mesma regra do alerta de offline do servidor. */
+export const lateAfterS = (c: { interval_min: number; send_every?: number }) => contactS(c) * 2.5 + 60
+
+/** A estação falou com o servidor dentro do esperado (o envio pode ser só o sinal de vida, sem leitura de sensor). */
 export function isSeen(s: { last_seen: number | null; config: { interval_min: number; send_every?: number } }, now = serverNow()) {
-  return !!s.last_seen && now - s.last_seen < s.config.interval_min * 60 * Math.max(1, s.config.send_every ?? 1) * 2.5
+  return !!s.last_seen && now - s.last_seen < lateAfterS(s.config)
 }
 
 /** Qualidade do sinal Wi-Fi a partir do RSSI (dBm). */
 export const wifiLabel = (rssi: number) => (rssi >= -60 ? 'ótimo' : rssi >= -70 ? 'bom' : rssi >= -80 ? 'fraco' : 'muito fraco')
 export const wifiColor = (rssi: number) => (rssi >= -60 ? '#4ade80' : rssi >= -70 ? '#a3e635' : rssi >= -80 ? '#fbbf24' : '#f87171')
 
-/** Online se a última leitura tem menos de 2,5 ciclos de idade. */
-export function isOnline(s: { latest: { ts: number } | null; config: { interval_min: number } }, now = serverNow()) {
-  return !!s.latest && now - s.latest.ts < s.config.interval_min * 60 * 2.5
+/** Online: o último contato (envio ou sinal de vida) ou, sem ele, a última leitura está dentro do esperado. */
+export function isOnline(s: { last_seen?: number | null; latest: { ts: number } | null; config: { interval_min: number; send_every?: number } }, now = serverNow()) {
+  const t = Math.max(s.last_seen ?? 0, s.latest?.ts ?? 0)
+  return t > 0 && now - t < lateAfterS(s.config)
+}
+
+/** A última leitura de sensor ainda vale (para desenhar vento e temperatura no mapa). */
+export function hasFreshReading(s: { latest: { ts: number } | null; config: { interval_min: number; send_every?: number } }, now = serverNow()) {
+  return !!s.latest && now - s.latest.ts < lateAfterS(s.config)
 }

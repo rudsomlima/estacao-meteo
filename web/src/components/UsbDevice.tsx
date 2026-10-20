@@ -1,3 +1,4 @@
+import { hasBattery } from '../lib/battery'
 import { CircleCheck, MapPin, Usb, X } from 'lucide-react'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { go } from '../hooks/useRoute'
@@ -344,7 +345,7 @@ function Ready({ state, stations, source, onPickMap, onLost, onCreated, onDone }
   return (
     <div className="mt-2 grid gap-3 text-sm">
       <p className="text-ink-2">
-        {info.chip} · firmware <span className="num">{info.fw}</span> · {info.vbat > 1 ? `${info.vbat.toFixed(2)} V` : 'sem bateria'}
+        {info.chip} · firmware <span className="num">{info.fw}</span> · {hasBattery(info.vbat) ? `${info.vbat.toFixed(2)} V` : 'sem bateria'}
       </p>
       <p className={known ? 'text-ok' : 'text-ink-2'}>
         {known ? `Reconhecida: estação ${known.name}.` : info.id ? `Configurada como "${info.id}", que não existe neste site.` : info.provisioned ? 'Já tem rede e chave salvas.' : 'Placa nova, ainda sem configuração.'}

@@ -31,7 +31,7 @@ export default function FlashSetup({ stations }: { stations: Station[] }) {
   const [pos, setPos] = useState({ lat: '', lon: '' })
   const [ssid, setSsid] = useState(saved.ssid ?? store.get('meteo.lastSsid'))
   const [pass, setPass] = useState(saved.pass ?? '')
-  const [remember, setRemember] = useState(true)
+  const [remember, setRemember] = useState(!!saved.pass) // lembrar a SENHA é opcional: ela fica sem proteção no navegador
   const [step, setStep] = useState<Step>({ k: 'idle' })
   const [hasImage, setHasImage] = useState<boolean | null>(null)
 
@@ -64,7 +64,7 @@ export default function FlashSetup({ stations }: { stations: Station[] }) {
       } else {
         key = (await rotateKey(id, token)).key // a chave anterior deixa de valer; esta vai direto para a placa
       }
-      if (remember) store.set(WIFI_KEY, JSON.stringify({ ssid: ssid.trim(), pass }))
+      store.set(WIFI_KEY, JSON.stringify(remember ? { ssid: ssid.trim(), pass } : { ssid: ssid.trim() })) // o nome da rede sempre; a senha só se pedir
       store.set('meteo.lastSsid', ssid.trim())
 
       const since = Math.floor(Date.now() / 1000)
@@ -144,7 +144,7 @@ export default function FlashSetup({ stations }: { stations: Station[] }) {
         )}
         <label className="grid gap-1 text-xs text-ink-3">Rede Wi-Fi (2,4 GHz)<input className={field} value={ssid} onChange={(e) => setSsid(e.target.value)} autoComplete="off" /></label>
         <label className="grid gap-1 text-xs text-ink-3">Senha do Wi-Fi<input className={field} type="password" value={pass} onChange={(e) => setPass(e.target.value)} autoComplete="off" /></label>
-        <label className="flex items-center gap-2 text-xs text-ink-2 sm:col-span-2"><input type="checkbox" checked={remember} onChange={(e) => setRemember(e.target.checked)} /> Lembrar a rede e a senha neste navegador (para as próximas placas)</label>
+        <label className="flex items-center gap-2 text-xs text-ink-2 sm:col-span-2"><input type="checkbox" checked={remember} onChange={(e) => setRemember(e.target.checked)} /> Lembrar também a senha neste navegador (fica guardada sem proteção; o nome da rede é sempre lembrado)</label>
         {!clientId && token !== SESSION_TOKEN && (
           <label className="grid gap-1 text-xs text-ink-3 sm:col-span-2">Token de administrador<input className={field} type="password" value={token} onChange={(e) => setToken(e.target.value)} autoComplete="off" /></label>
         )}

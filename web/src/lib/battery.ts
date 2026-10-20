@@ -38,3 +38,7 @@ export function batteryPct(v: number, chem: BatteryChem) {
   }
   return 100
 }
+
+/** Abaixo disto não há célula ligada (placa na USB ou pino solto): o firmware usa o mesmo limite. */
+export const NO_BATTERY_V = 2
+export const hasBattery = (v: number | null | undefined) => v != null && v >= NO_BATTERY_V

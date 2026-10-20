@@ -3,7 +3,9 @@ import { useMemo, useState } from 'react'
 import { useEvents, useFirmware, type SaveResult } from '../hooks/useNetwork'
 import { batteryPct, CHEMS } from '../lib/battery'
 import { cycle } from '../lib/energy'
-import type { Reading, Source, Station } from '../types'
+import { hasBattery } from '../lib/battery'
+import { ENV_SENSORS, pinValue, type PinKey } from '../lib/pins'
+import type { Reading, Source, Station, StationConfig } from '../types'
 import Chart from './Chart'
 import ConfigPanel from './ConfigPanel'
 import ConfigStatus from './ConfigStatus'
@@ -12,19 +14,32 @@ import FirmwarePanel from './FirmwarePanel'
 import Panel from './Panel'
 import { SectionHead } from './Reveal'
 
-const SENSORS = (r: Reading) => [
-  { name: 'BME280 · temperatura, umidade, pressão', ok: r.temp > -40 && r.temp < 85 && r.hum > 0 && r.pres > 300, pin: 'I²C 0x76' },
-  { name: 'QMC5883L · direção da biruta', ok: Number.isFinite(r.dir), pin: 'I²C 0x0D' },
-  { name: 'Hall · giro do anemômetro', ok: r.wind >= 0, pin: 'GPIO4' },
-  { name: 'Hall · tanque de chuva', ok: r.rain >= 0, pin: 'GPIO3 (acorda)' },
-  { name: 'Divisor da bateria', ok: r.vbat > 2.5 && r.vbat < 4.5, pin: 'GPIO0 (ADC)' },
-]
+/** O que a placa tem ligado, segundo a configuração (sensor e pinos), e se a última leitura mostra que funciona. */
+function sensorsOf(c: StationConfig, r: Reading) {
+  const pin = (k: PinKey) => `GPIO${pinValue(c, k)}`
+  const env = c.env_sensor ?? 1
+  const i2c = `I²C ${pin('pin_sda')}/${pin('pin_scl')}`
+  const envRow = env === 0
+    ? { name: 'Sensor de ambiente: nenhum', state: 'off' as const, pin: '—' }
+    : {
+        name: ENV_SENSORS.find((x) => x.id === env)?.label ?? 'Sensor de ambiente',
+        state: (Number.isFinite(r.temp) && Number.isFinite(r.pres) && (env === 2 || Number.isFinite(r.hum)) ? 'ok' : 'bad') as 'ok' | 'bad',
+        pin: `${i2c} · ${env === 2 ? '0x77' : env === 3 ? '0x76 + 0x77' : '0x76'}`,
+      }
+  return [
+    envRow,
+    { name: 'QMC5883L · direção da biruta', state: (Number.isFinite(r.dir) ? 'ok' : 'bad') as 'ok' | 'bad', pin: `${i2c} · 0x0D` },
+    { name: 'Hall · giro do anemômetro', state: (Number.isFinite(r.wind) ? 'ok' : 'bad') as 'ok' | 'bad', pin: pin('pin_wind') },
+    { name: 'Hall · tanque de chuva', state: (Number.isFinite(r.rain) ? 'ok' : 'bad') as 'ok' | 'bad', pin: `${pin('pin_rain')} (acorda)` },
+    { name: 'Divisor da bateria', state: (hasBattery(r.vbat) && r.vbat < 4.5 ? 'ok' : 'off') as 'ok' | 'off', pin: `${pin('pin_vbat')} (ADC)` },
+  ]
+}
 
 const PORTAL = [
-  ['1', 'Ligue a estação', 'Sem rede salva ela abre o ponto de acesso EstacaoMeteo-XXXX.'],
-  ['2', 'Conecte pelo celular', 'A página de configuração abre sozinha (ou acesse 192.168.4.1).'],
-  ['3', 'Escolha a rede e a senha', 'Informe o endereço do site, o ID da estação, a chave do dispositivo e os minutos do modo bancada.'],
-  ['4', 'Modo bancada', 'Depois de conectar, a estação abre por alguns minutos uma página local para ver as leituras e calibrar a biruta.'],
+  ['1', 'Ligue a estação', 'Sem rede salva ela abre sozinha o ponto de acesso EstacaoMeteo-XXXX.'],
+  ['2', 'Já tem rede salva?', 'Ligue a placa e, nos primeiros 6 segundos, aperte o botão BOOT por meio segundo. Não segure o BOOT ao ligar: a placa entraria em modo de gravação.'],
+  ['3', 'Conecte pelo celular', 'A página de configuração abre sozinha (ou acesse 192.168.4.1). Escolha a rede, a senha e preencha o código de pareamento.'],
+  ['4', 'Com a placa no computador', 'Mais fácil: no painel do administrador, em Site e placas, grave e configure a placa pela USB, sem portal.'],
 ]
 
 interface Props {
@@ -46,12 +61,12 @@ export default function StationSettings({ readings, station, source, onSave, onN
 
   const now = readings[readings.length - 1]
   const est = useMemo(() => cycle(draft.config), [draft.config])
-  const real = readings.filter((r) => Number.isFinite(r.temp))  // sem leitura de sensor não há o que desenhar
-  const last7 = real.map((r) => ({ t: r.ts, v: r.vbat }))
-  const rssi = real.slice(-144).map((r) => ({ t: r.ts, v: r.rssi }))
+  const dayAgo = (now?.ts ?? 0) - 86400
+  const last7 = readings.filter((r) => hasBattery(r.vbat)).map((r) => ({ t: r.ts, v: r.vbat }))
+  const rssi = readings.filter((r) => r.ts >= dayAgo && r.rssi < 0).map((r) => ({ t: r.ts, v: r.rssi }))
   const strip = (s: Station) => JSON.stringify({ ...s, latest: null, day: null, config: { ...s.config, version: 0 }, cfg_applied: 0, last_seen: null })
   const dirty = strip(draft) !== strip(station)
-  const sensors = SENSORS(now)
+  const sensors = sensorsOf(draft.config, now)
   const awake = est.total - est.phases.filter((p) => p.key === 'sleep' || p.key === 'lsleep').reduce((s, p) => s + p.seconds, 0)
 
   return (
@@ -88,17 +103,19 @@ export default function StationSettings({ readings, station, source, onSave, onN
             <dl className="num mt-4 grid grid-cols-2 gap-y-1.5 text-sm">
               <dt className="text-ink-3">Corrente média</dt><dd className="text-right">{est.avg.toFixed(3)} mA</dd>
               <dt className="text-ink-3">Bateria</dt><dd className="text-right">{chem.label} · {draft.config.battery_mah} mAh</dd>
-              <dt className="text-ink-3">Tensão agora</dt><dd className="text-right">{now.vbat > 1 ? `${now.vbat.toFixed(2)} V · ${batteryPct(now.vbat, draft.config.battery_chem)}%` : '—'}</dd>
+              <dt className="text-ink-3">Tensão agora</dt><dd className="text-right">{hasBattery(now.vbat) ? `${now.vbat.toFixed(2)} V · ${batteryPct(now.vbat, draft.config.battery_chem)}%` : 'sem bateria'}</dd>
               <dt className="text-ink-3">Último sinal</dt><dd className="flex items-center justify-end gap-1.5"><Wifi className="h-3.5 w-3.5" aria-hidden />{now.rssi < 0 ? `${now.rssi} dBm` : '—'}</dd>
             </dl>
-            <p className="mt-4 text-xs text-ink-3">Estimativa por folha de dados. Meça a corrente de sono com um multímetro de µA e ajuste os valores em <span className="num">lib/energy.ts</span>.</p>
+            <p className="mt-4 text-xs text-ink-3">Estimativa pelas folhas de dados dos componentes. O consumo real depende da placa (LED e regulador gastam em sono) e só se confirma medindo com um multímetro de µA.</p>
           </Panel>
 
           <Panel id="sensores" title="Sensores">
             <ul className="grid gap-2.5">
               {sensors.map((s) => (
                 <li key={s.name} className="flex items-start gap-2.5 text-sm">
-                  {s.ok ? <CircleCheck className="mt-0.5 h-4 w-4 shrink-0 text-ok" aria-label="ok" /> : <CircleDashed className="mt-0.5 h-4 w-4 shrink-0 text-bad" aria-label="sem resposta" />}
+                  {s.state === 'ok' ? <CircleCheck className="mt-0.5 h-4 w-4 shrink-0 text-ok" aria-label="ok" />
+                    : s.state === 'off' ? <CircleDashed className="mt-0.5 h-4 w-4 shrink-0 text-ink-3" aria-label="não usado" />
+                    : <CircleDashed className="mt-0.5 h-4 w-4 shrink-0 text-bad" aria-label="sem resposta" />}
                   <span className="min-w-0 flex-1">{s.name}</span>
                   <span className="num text-xs text-ink-3">{s.pin}</span>
                 </li>
@@ -108,7 +125,7 @@ export default function StationSettings({ readings, station, source, onSave, onN
         </div>
 
         <div className="grid content-start gap-4 lg:col-span-7">
-          <Panel id="bateria" title="Tensão da bateria · 7 dias" hint="sobe com o sol, cai à noite">
+          <Panel id="bateria" title="Tensão da bateria · 7 dias" hint={last7.length ? 'sobe com o sol, cai à noite' : 'sem bateria ligada'}>
             <Chart unit="V" decimals={2} series={[{ label: 'bateria', color: '#4ade80', points: last7, fill: true }]} />
           </Panel>
           <Panel id="wifi" title="Sinal do Wi-Fi · 24 h" hint="dBm">

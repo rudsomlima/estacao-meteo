@@ -1,6 +1,6 @@
 import { Check, CircleDashed, Hourglass, TriangleAlert } from 'lucide-react'
 import { useNow } from '../hooks/useNow'
-import { ago } from '../lib/derive'
+import { ago, contactS, lateAfterS } from '../lib/derive'
 import { serverNow } from '../lib/clock'
 import { appliedViaCable } from '../lib/usb'
 import type { Station } from '../types'
@@ -22,10 +22,10 @@ export default function ConfigStatus({ station }: { station: Station }) {
   useNow() // anda a cada segundo
   const now = serverNow()
   const v = station.config.version
-  const every = station.config.interval_min * Math.max(1, station.config.send_every) * 60 // segundos entre contatos
+  const every = contactS(station.config) // segundos entre contatos
   const seen = station.last_seen
   const sinceSeen = seen ? now - seen : null
-  const online = sinceSeen !== null && sinceSeen < every * 2.5 + 30
+  const online = sinceSeen !== null && sinceSeen < lateAfterS(station.config)
   const cableAt = appliedViaCable(station.id, v) // aplicada pelo cabo USB neste navegador
   const sent = station.cfg_sent === v || cableAt !== null
   const applied = station.cfg_applied === v

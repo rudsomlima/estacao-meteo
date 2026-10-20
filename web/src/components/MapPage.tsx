@@ -4,7 +4,7 @@ import type { SaveResult } from '../hooks/useNetwork'
 import { useNow } from '../hooks/useNow'
 import { go } from '../hooks/useRoute'
 import { store, type StationEdit } from '../lib/api'
-import { batteryPct, CHEMS } from '../lib/battery'
+import { batteryPct, CHEMS, hasBattery } from '../lib/battery'
 import { batteryColor, windColor } from '../lib/colors'
 import { ago, compass16, isOnline, kmh } from '../lib/derive'
 import { toggleFavorite, usePrefs } from '../lib/prefs'
@@ -213,7 +213,7 @@ export default function MapPage({ stations, source, onCreate, onSave, onRemove }
               {rows.map((s) => {
                 const l = s.latest, on = isOnline(s)
                 const vb = l?.vbat ?? s.vbat
-                const pct = vb != null && vb > 1 ? batteryPct(vb, s.config.battery_chem) : 0
+                const pct = hasBattery(vb) ? batteryPct(vb!, s.config.battery_chem) : 0
                 const seenTs = s.last_seen ?? l?.ts
                 return (
                   <tr key={s.id} tabIndex={0} onClick={() => go(`s/${s.id}`)} onKeyDown={(e) => e.key === 'Enter' && go(`s/${s.id}`)}
@@ -229,7 +229,7 @@ export default function MapPage({ stations, source, onCreate, onSave, onRemove }
                     <td className="px-4 py-3">{l ? <span style={{ color: windColor(kmh(l.wind)) }}>{f.wind(l.wind)} {compass16(l.dir)}</span> : '—'}</td>
                     <td className="px-4 py-3">{s.day ? f.rain(s.day.rain) : '—'}</td>
                     <td className="px-4 py-3">
-                      {vb != null && vb > 1 ? (
+                      {hasBattery(vb) ? (
                         <span className="flex items-center gap-2">
                           <span className="h-2 w-14 overflow-hidden rounded-full bg-line"><i className="block h-full" style={{ width: `${pct}%`, background: batteryColor(pct) }} /></span>
                           {pct}% <span className="text-xs text-ink-3">{CHEMS[s.config.battery_chem].label} · {s.config.battery_mah} mAh</span>

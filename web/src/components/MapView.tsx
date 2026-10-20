@@ -5,7 +5,8 @@ import { useEffect, useRef, useState } from 'react'
 import { batteryColor, rainColor, tempColor, windColor } from '../lib/colors'
 import { batteryPct } from '../lib/battery'
 import { store } from '../lib/api'
-import { ago, compass16, isOnline, isSeen, kmh, wifiColor } from '../lib/derive'
+import { NO_BATTERY_V } from '../lib/battery'
+import { ago, compass16, hasFreshReading, isOnline, isSeen, kmh, wifiColor } from '../lib/derive'
 import { getPrefs, setPrefs, usePrefs, type MapLayer, type Prefs } from '../lib/prefs'
 import { makeFmt } from '../lib/units'
 import type { Station } from '../types'
@@ -80,7 +81,7 @@ function pin(s: Station, layers: Layer[]) {
       if (layers.includes('rain')) { const mm = s.day?.rain ?? 0; add(f.rain(mm), rainColor(mm)) }
     } else if (sensors) lines.push({ text: 'sem sensor', color: '#94a3b8' }) // conectou, mas não mediu nada
     if (layers.includes('battery') && vbat != null) {
-      if (vbat < 1) add('sem bateria', '#94a3b8') // placa na USB
+      if (vbat < NO_BATTERY_V) add('sem bateria', '#94a3b8') // placa na USB ou pino solto
       else { const p = batteryPct(vbat, s.config.battery_chem); add(`${p}%`, batteryColor(p)) }
     }
     if (layers.includes('wifi') && rssi != null) add(`${rssi} dBm`, wifiColor(rssi))
@@ -237,7 +238,7 @@ export default function MapView({ stations, selectedId, layers, pickMode, onSele
     m.on('movestart', clear)
     m.on('zoomstart', clear)
 
-    const sources = () => live.current.stations.filter((s) => s.latest && isOnline(s))
+    const sources = () => live.current.stations.filter((s) => s.latest && hasFreshReading(s))
     // vetor (leste, norte) em m/s por ponderação inversa da distância ao quadrado
     const buildGrid = () => {
       const src = sources().map((s) => {
