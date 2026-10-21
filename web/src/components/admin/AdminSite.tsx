@@ -1,6 +1,10 @@
 import { Usb } from 'lucide-react'
+import { useState } from 'react'
+import photoThumb from '../../assets/cenario-estacao.jpg'
+import { putScene } from '../../lib/admin'
 import { DEFAULT_PREFS, setPrefs, usePrefs } from '../../lib/prefs'
 import { useLiveState } from '../../lib/refresh'
+import { setSceneLocal, useScene, type Scene } from '../../lib/scene'
 import { usbSupported } from '../../lib/usb'
 import type { Source, Station } from '../../types'
 import DataPanel from '../DataPanel'
@@ -31,9 +35,33 @@ function Choice({ label, value, options, onPick }: { label: string; value: strin
 export default function AdminSite({ stations, source }: { stations: Station[]; source: Source }) {
   const p = usePrefs()
   const live = useLiveState()
+  const scene = useScene()
+  const [saving, setSaving] = useState(false)
+  const [msg, setMsg] = useState('')
+  const pick = async (v: Scene) => {
+    setSaving(true); setMsg('')
+    try { await putScene(v); setSceneLocal(v); setMsg('Cenário salvo.') } catch { setMsg('Não consegui salvar o cenário. Tente de novo.') }
+    setSaving(false)
+  }
 
   return (
     <div className="grid gap-4">
+      <Panel id="g-cenario" title="Cenário da página da estação" hint="o fundo do topo da página pública; vale para todos os visitantes">
+        <div role="radiogroup" aria-label="Cenário" className="grid gap-3 sm:grid-cols-3">
+          {([['animada', 'Animada', 'Desenho com sol, nuvens, chuva e a estação em movimento. A veleta aparece vista de cima, com o norte para o alto da tela.'], ['foto', 'Foto', 'Foto da estação que escurece à noite, avermelha no amanhecer e no entardecer e fecha com chuva, neblina ou céu encoberto, conforme as leituras.'], ['diorama', 'Diorama 3D', 'Cena escura com um instrumento 3D para cada medição: termômetro, umidade, pressão, anemômetro, biruta com rosa dos ventos, pluviômetro, painel solar e datalogger.']] as const).map(([v, name, text]) => (
+            <button
+              key={v} role="radio" aria-checked={scene === v} disabled={saving} onClick={() => void pick(v)}
+              className={`grid gap-2 rounded-xl border p-3 text-left transition-colors ${scene === v ? 'border-cyan bg-card-hover' : 'border-line hover:border-line-hover'}`}
+            >
+              <span className="aspect-[3/2] w-full overflow-hidden rounded-lg border border-line" style={v === 'foto' ? { background: `center / cover url(${photoThumb})` } : v === 'diorama' ? { background: 'radial-gradient(120% 90% at 50% 0, #1d4a6e, #0d2236 55%, #07121c)' } : { background: 'linear-gradient(#3b82c4, #cfeaf7 60%, #4f9a62 60%, #2a5a40)' }} aria-hidden />
+              <span className="text-sm font-semibold">{name}{scene === v ? ' (em uso)' : ''}</span>
+              <span className="text-xs text-ink-3">{text}</span>
+            </button>
+          ))}
+        </div>
+        {msg && <p className="mt-3 text-sm text-ink-2" role="status">{msg}</p>}
+      </Panel>
+
       <Panel id="g-atualizacao" title="Atualização dos dados" hint="como o site fica sabendo que a estação enviou (vale para este navegador)">
         <div className="grid gap-5 sm:grid-cols-2">
           <Choice label="Como atualizar" value={p.updates} options={[['live', 'Tempo real (WebSocket)'], ['poll', 'Consulta periódica']]} onPick={(v) => setPrefs({ updates: v as typeof p.updates })} />

@@ -322,13 +322,19 @@ export async function adminRoute(req: Request, env: Env, actor: Actor, raw: Uint
 export const CARD_KEYS = ['temp', 'hum', 'wind', 'pres', 'rain', 'windrose'] as const
 export type CardKey = (typeof CARD_KEYS)[number]
 
+/** Cenário do topo da página da estação: a figura animada, a foto que muda com a hora e o tempo, ou o diorama 3D de instrumentos. */
+export const SCENES = ['animada', 'foto', 'diorama'] as const
+
 async function putLayout(env: Env, actor: Actor, raw: Uint8Array) {
   const body = parse(raw)
-  const order = body?.order
-  if (!Array.isArray(order) || order.length !== CARD_KEYS.length || !CARD_KEYS.every((k) => order.includes(k))) {
+  const order = body?.order, scene = body?.scene
+  if (order === undefined && scene === undefined) return json({ error: 'nada para alterar' }, 422)
+  if (order !== undefined && (!Array.isArray(order) || order.length !== CARD_KEYS.length || !CARD_KEYS.every((k) => order.includes(k)))) {
     return json({ error: 'ordem inválida' }, 422)
   }
-  await putSetting(env, 'card_layout', JSON.stringify(order))
-  await audit(env, actor, 'layout.alterado')
-  return json({ ok: true, order })
+  if (scene !== undefined && !(SCENES as readonly unknown[]).includes(scene)) return json({ error: 'cenário inválido' }, 422)
+  if (order !== undefined) await putSetting(env, 'card_layout', JSON.stringify(order))
+  if (scene !== undefined) await putSetting(env, 'scene', scene as string)
+  await audit(env, actor, scene !== undefined ? 'cenario.alterado' : 'layout.alterado')
+  return json({ ok: true, order, scene })
 }

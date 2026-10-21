@@ -24,3 +24,17 @@
   position: absolute; left: calc(var(--k) * 14); bottom: calc(var(--k) * 12); font: 500 calc(var(--k) * 11) var(--font-mono); color: #fff;
   background: rgba(8, 22, 46, 0.7); padding: calc(var(--k) * 5) calc(var(--k) * 9); border-radius: 99px; border: 1px solid rgba(130, 175, 255, 0.3);
 }
+
+/* Versão com foto: a foto fica numa camada própria para o filtro de hora e tempo não atingir as caixas. */
+.fig-photo { background: #3a78b8; }
+.ph-img { position: absolute; inset: 0; background-size: cover; background-position: center; transition: filter 1.5s ease; }
+.ph-fog { position: absolute; inset: 0; background: linear-gradient(to bottom, rgba(235, 242, 247, 0.1), rgba(235, 242, 247, 0.9)); transition: opacity 1.5s ease; pointer-events: none; }
+.ph-rain {
+  position: absolute; inset: 0; pointer-events: none; opacity: 0.55;
+  background-image: repeating-linear-gradient(103deg, transparent 0 15px, rgba(205, 228, 246, 0.8) 15px 16px);
+  background-size: 120px 120px; animation: ph-rain 0.45s linear infinite;
+}
+@keyframes ph-rain { to { background-position: -12px 120px; } }
+@media (prefers-reduced-motion: reduce) { .ph-rain { animation: none; } }
+.fig-photo-list { --k: 1px; }
+.fig-photo-list .fig-co { position: static; width: auto; }

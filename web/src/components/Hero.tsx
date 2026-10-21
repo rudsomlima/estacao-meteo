@@ -3,8 +3,11 @@ import { motion } from 'motion/react'
 import { useMemo } from 'react'
 import { batteryPct, CHEMS } from '../lib/battery'
 import { beaufort, compass16, dayStats, dewPoint, feelsLike, trend } from '../lib/derive'
+import { useScene } from '../lib/scene'
 import { useFmt } from '../lib/units'
 import type { Reading, Station } from '../types'
+import DioramaFigure from './DioramaFigure'
+import PhotoFigure from './PhotoFigure'
 import StationFigure from './StationFigure'
 
 function Tile({ icon: Icon, label, value, sub }: { icon: typeof Wind; label: string; value: string; sub?: string }) {
@@ -22,6 +25,7 @@ function Tile({ icon: Icon, label, value, sub }: { icon: typeof Wind; label: str
 
 export default function Hero({ readings, station }: { readings: Reading[]; station: Station }) {
   const config = station.config
+  const scene = useScene()
   const f = useFmt()
   const now = readings[readings.length - 1]
   const day = useMemo(() => dayStats(readings), [readings])
@@ -56,7 +60,7 @@ export default function Hero({ readings, station }: { readings: Reading[]; stati
       </motion.div>
 
       <motion.div className="mt-8" initial={{ opacity: 0, y: 24 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.7, delay: 0.1, ease: 'easeOut' }}>
-        <StationFigure station={station} readings={readings} />
+        {scene === 'foto' ? <PhotoFigure station={station} readings={readings} /> : scene === 'diorama' ? <DioramaFigure station={station} readings={readings} /> : <StationFigure station={station} readings={readings} />}
       </motion.div>
 
       <div className="mt-4 grid grid-cols-2 gap-2.5 sm:grid-cols-4 lg:grid-cols-8">

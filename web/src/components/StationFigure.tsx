@@ -12,7 +12,7 @@ const rad = (d: number) => (d * Math.PI) / 180
 const clamp = (v: number, a: number, b: number) => Math.min(b, Math.max(a, v))
 
 /** Dados ao vivo que a figura mostra. Tudo vem das leituras reais da estação. */
-interface Live {
+export interface Live {
   ws: number; gust: number; wd: number; rain: number; temp: number; hum: number; pres: number
   pct: number; vbat: number; chem: Station['config']['battery_chem']; mah: number
   dayRain: number; dv: number; ts: number; intervalS: number; name: string
@@ -26,9 +26,9 @@ const LAY = {
 } as const
 
 // pontos de ligação em coordenadas locais da estação (y negativo = para cima)
-const CO = [
+export const CO = [
   { id: 'anemo', a: [-85, -446], t: 'Anemômetro', s: 'Velocidade do vento', v: (L: Live) => L.f.wind(L.ws / 3.6), x: (L: Live) => `rajada ${L.f.wind(L.gust / 3.6)}` },
-  { id: 'vane', a: [85, -440], t: 'Veleta', s: 'Direção do vento (°)', v: (L: Live) => (Number.isFinite(L.wd) ? `${compass16(L.wd)} ${Math.round(L.wd)}°` : '—'), x: (L: Live) => (Number.isFinite(L.wd) ? 'de onde o vento vem' : 'sem leitura da biruta') },
+  { id: 'vane', a: [85, -450], t: 'Veleta', s: 'Direção do vento (°)', v: (L: Live) => (Number.isFinite(L.wd) ? `${compass16(L.wd)} ${Math.round(L.wd)}°` : '—'), x: (L: Live) => (Number.isFinite(L.wd) ? 'de onde o vento vem' : 'sem leitura da biruta') },
   { id: 'shield', a: [-84, -300], t: 'Sensor de temperatura e umidade do ar', s: 'Temperatura, umidade e pressão', v: (L: Live) => `${L.f.temp(L.temp)}${Number.isFinite(L.hum) ? ` · ${Math.round(L.hum)}%` : ''}`, x: (L: Live) => [Number.isFinite(L.pres) ? L.f.pres(L.pres) : '', Number.isFinite(L.hum) ? `orvalho ${L.f.temp(dewPoint(L.temp, L.hum))}` : 'sem umidade neste sensor'].filter(Boolean).join(' · ') },
   { id: 'rain', a: [84, -292], t: 'Pluviômetro', s: 'Precipitação', v: (L: Live) => L.f.rainRate(L.rain), x: (L: Live) => `hoje ${L.f.rain(L.dayRain)}` },
   { id: 'solar', a: [-88, -158], t: 'Painel solar', s: 'Alimentação do sistema',
@@ -45,20 +45,25 @@ const hourNow = () => { const d = new Date(); return d.getHours() + d.getMinutes
 const dayL = (h: number) => clamp(Math.sin(((h - 6) / 12) * Math.PI) * 2.2 + 0.25, 0, 1)
 const sunE = (h: number) => Math.max(0, Math.sin(((h - 6) / 12) * Math.PI))
 
+/** Os dados ao vivo que as duas versões da figura (animada e foto) mostram. */
+export function buildLive(station: Station, readings: Reading[]): Live {
+  const now = readings[readings.length - 1]
+  const st = dayStats(readings)
+  return {
+    ws: kmh(now.wind), gust: kmh(now.gust), wd: now.dir, rain: st.rainHour, temp: now.temp, hum: now.hum, pres: now.pres,
+    pct: batteryPct(now.vbat, station.config.battery_chem), vbat: now.vbat, chem: station.config.battery_chem, mah: station.config.battery_mah,
+    dayRain: st.rainDay, dv: trend(readings, (r) => r.vbat, 3), ts: now.ts, intervalS: station.config.interval_min * 60, name: station.name, f: makeFmt(getPrefs()),
+  }
+}
+
 export default function StationFigure({ station, readings }: { station: Station; readings: Reading[] }) {
   const host = useRef<HTMLDivElement>(null)
   const stage = useRef<HTMLDivElement>(null)
   const svg = useRef<SVGSVGElement>(null)
   const cos = useRef<HTMLDivElement>(null)
 
-  const now = readings[readings.length - 1]
-  const st = dayStats(readings)
   const live = useRef<Live>({} as Live)
-  live.current = {
-    ws: kmh(now.wind), gust: kmh(now.gust), wd: now.dir, rain: st.rainHour, temp: now.temp, hum: now.hum, pres: now.pres,
-    pct: batteryPct(now.vbat, station.config.battery_chem), vbat: now.vbat, chem: station.config.battery_chem, mah: station.config.battery_mah,
-    dayRain: st.rainDay, dv: trend(readings, (r) => r.vbat, 3), ts: now.ts, intervalS: station.config.interval_min * 60, name: station.name, f: makeFmt(getPrefs()),
-  }
+  live.current = buildLive(station, readings)
 
   useEffect(() => {
     const hostEl = host.current, stageEl = stage.current, svgEl = svg.current, cosEl = cos.current
@@ -121,19 +126,20 @@ export default function StationFigure({ station, readings }: { station: Station;
     </g><circle r="5" fill="#dfe6eb" stroke="#7b8895"/></g>
 
     <rect x="83" y="-436" width="4" height="14" fill="#aab4bd"/>
-    <g transform="translate(85,-440)">
-      <path d="M-26,10 H26" stroke="#7b8895" stroke-width="2.2" stroke-linecap="round"/>
-      <circle cx="-26" cy="10" r="3" fill="#9aa6b1"/><circle cx="26" cy="10" r="3" fill="#9aa6b1"/>
-      <text x="-26" y="26" font-size="9" text-anchor="middle" font-family="Geist Mono Variable, monospace" fill="#27323a">O</text>
-      <text x="26" y="26" font-size="9" text-anchor="middle" font-family="Geist Mono Variable, monospace" fill="#27323a">L</text>
-      <path d="M0,0 V10" stroke="#7b8895" stroke-width="3"/>
-      <g id="vane">
-        <rect x="-44" y="-2.2" width="86" height="4.4" rx="2.2" fill="#2b3a4a"/>
-        <path d="M30,-10 L66,0 L30,10 L38,0 Z" fill="#f2b632" stroke="#9a6d0c" stroke-width="1"/>
-        <path d="M-6,-2.2 L-26,-20 L-52,-24 L-42,0 L-52,24 L-26,20 L-6,2.2 Z" fill="#d7413a" stroke="#7a1f1b" stroke-width="1"/>
-        <path d="M-26,-20 L-34,0 L-26,20" fill="none" stroke="#fff" stroke-opacity=".7" stroke-width="1.6"/>
+    <g transform="translate(85,-424)">
+      <!-- biruta vista de cima, com o eixo sobre a barra de apoio e uma rosa dos ventos pequena (alto da tela = norte).
+           O aro fica virado para o lado de onde o vento vem; a manga listrada se estica para onde ele vai. -->
+      <circle r="40" fill="#0b1b2e" fill-opacity=".82" stroke="#cbd5df" stroke-width="2.5"/>
+      <g stroke="#7f95aa" stroke-width="1.2">${Array.from({ length: 16 }, (_, i) => `<path d="M0,-37 V${i % 4 === 0 ? -31 : -34}" transform="rotate(${i * 22.5})"/>`).join('')}</g>
+      <g font-size="10" text-anchor="middle" font-family="Geist Mono Variable, monospace" fill="#dbe6f0">
+        <text y="-24" fill="#ff7a70" font-weight="700">N</text><text y="31">S</text><text x="-28" y="3.500">O</text><text x="28" y="3.500">L</text>
       </g>
-      <circle r="5" fill="#e0a526" stroke="#9a6d0c"/>
+      <g id="vane">
+        <path d="M0,0 V-10" stroke="#2b3a4a" stroke-width="2.4" stroke-linecap="round"/>
+        ${[0, 1, 2, 3, 4].map((i) => { const hw = (y: number) => 6.5 - ((y + 9) / 45) * 3.6, y0 = -9 + i * 9, y1 = y0 + 9; return `<path d="M${-hw(y0)},${y0} L${hw(y0)},${y0} L${hw(y1)},${y1} L${-hw(y1)},${y1}Z" fill="${i % 2 ? '#fff' : '#f26a1b'}" stroke="#7a3a10" stroke-width=".7"/>` }).join('')}
+        <rect x="-8" y="-10" width="16" height="3.600" rx="1.800" fill="#2b3a4a"/>
+      </g>
+      <circle r="3.500" fill="#e0a526" stroke="#9a6d0c"/>
     </g>
 
     <rect x="-80" y="-306" width="76" height="6" rx="2" fill="url(#gMetal)"/>
@@ -214,7 +220,7 @@ export default function StationFigure({ station, readings }: { station: Station;
     }
 
     // ---- animação
-    let angCups = 0, vaneSx = 0.7, last = performance.now(), acc = 0, glintX = -160, txPhase = -1, lastTs = live.current.ts, visible = true, raf = 0
+    let angCups = 0, vaneAng = Number.isFinite(live.current.wd) ? live.current.wd : 0, last = performance.now(), acc = 0, glintX = -160, txPhase = -1, lastTs = live.current.ts, visible = true, raf = 0
     const frame = (nowMs: number) => {
       raf = requestAnimationFrame(frame)
       if (!visible) { last = nowMs; return }
@@ -262,10 +268,8 @@ export default function StationFigure({ station, readings }: { station: Station;
         ;(g as unknown as HTMLElement).style.opacity = (0.62 + (0.38 * (dp + 1)) / 2).toFixed(2)
         R.cups.appendChild(g)
       })
-      let target = Math.sin(rad(Number.isFinite(Lv.wd) ? Lv.wd : 0))
-      if (Math.abs(target) < 0.14) target = 0.14 * (Math.sign(target) || 1)
-      vaneSx += (target - vaneSx) * Math.min(1, dt * 3)
-      A(R.vane, 'transform', `scale(${vaneSx.toFixed(3)},1)`)
+      if (Number.isFinite(Lv.wd)) vaneAng += ((((Lv.wd - vaneAng) % 360) + 540) % 360 - 180) * Math.min(1, dt * 3) // pelo caminho mais curto
+      A(R.vane, 'transform', `rotate(${vaneAng.toFixed(1)})`); A(R.vane, 'opacity', Number.isFinite(Lv.wd) ? 1 : 0.3)
 
       const th = clamp((Lv.temp + 5) / 45, 0, 1)
       A(R.sensor, 'fill', th < 0.5 ? mix('#60a5fa', '#4ade80', th * 2) : mix('#fbbf24', '#ef4444', (th - 0.5) * 2))

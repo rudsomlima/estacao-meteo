@@ -276,7 +276,9 @@ async function getLayout(env: Env) {
   const raw = await getSetting(env, 'card_layout')
   let order: string[] | null = null
   try { const v = raw ? JSON.parse(raw) : null; if (Array.isArray(v) && v.length === CARD_KEYS.length && CARD_KEYS.every((k) => v.includes(k))) order = v } catch { /* ignora: volta ao padrão */ }
-  return json({ order: order ?? CARD_KEYS })
+  const saved = await getSetting(env, 'scene')
+  const scene = saved === 'foto' || saved === 'diorama' ? saved : 'animada'
+  return json({ order: order ?? CARD_KEYS, scene })
 }
 
 async function listStations(env: Env, user: User | null) {
