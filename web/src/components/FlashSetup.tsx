@@ -99,8 +99,7 @@ export default function FlashSetup({ stations }: { stations: Station[] }) {
         if (!info) { await link.reset(); info = await link.hello(12000) }
         if (!info) throw new Error('A placa gravou mas não respondeu. Aperte RESET nela e tente de novo (o firmware novo já está gravado).')
         const cfg = { ssid: ssid.trim(), pass, server: deviceServer(), id, key }
-        let r = await link.provision(cfg)
-        if (!r.ok && r.error === 'a placa não respondeu' && (await link.revive())) r = await link.provision(cfg)
+        const r = await link.provisionWithRetry(cfg)
         if (!r.ok) throw new Error(`A placa recusou a configuração (${r.error ?? 'erro'}). Confira o Wi-Fi e tente de novo.`)
       } finally { await link.close(); setFlashing(false) }
 
@@ -120,7 +119,7 @@ export default function FlashSetup({ stations }: { stations: Station[] }) {
 
   return (
     <div className="grid gap-4 text-sm">
-      <p className="text-ink-2">Escolha a estação e a rede Wi-Fi, plugue a placa e clique em um botão: o site grava o firmware, configura Wi-Fi, endereço e chave pela USB e confirma quando a primeira leitura chegar. Nenhum código para digitar.</p>
+      <p className="text-ink-2">Escolha a estação e a rede Wi-Fi, escolha a placa (o navegador mostra as portas seriais, mesmo de uma placa em branco) e clique no botão abaixo. O site confirma quando a primeira leitura chegar.</p>
 
       <div className="flex flex-wrap items-center gap-3">
         <button onClick={() => void choose()} disabled={busy} className="flex items-center gap-2 rounded-xl border border-line px-4 py-2.5 hover:bg-card-hover disabled:opacity-50"><Cpu className="h-4 w-4" aria-hidden /> {port ? 'Trocar placa' : 'Escolher a placa'}</button>

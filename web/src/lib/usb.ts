@@ -200,6 +200,17 @@ export class Link {
     } finally { this.busy = false }
   }
 
+  /**
+   * Como `provision`, mas tenta uma vez mais se a placa não responder: provavelmente a janela de escuta dela acabou
+   * (ela foi para o portal Wi-Fi), e `revive()` a reinicia e espera o "hello" de novo antes da segunda tentativa.
+   * Usada nos dois lugares que configuram a placa pela USB (o aviso ao plugar e "gravar e deixar a placa pronta").
+   */
+  async provisionWithRetry(p: Provision): Promise<{ ok: boolean; error?: string }> {
+    let r = await this.provision(p)
+    if (!r.ok && r.error === 'a placa não respondeu' && (await this.revive())) r = await this.provision(p)
+    return r
+  }
+
   get usable() { return this.alive && this.info !== null }
 
   /**

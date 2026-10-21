@@ -264,6 +264,7 @@ function Ready({ state, stations, source, onPickMap, onLost, onCreated, onDone }
   const [token, setToken] = useToken()
   const [sid, setSid] = useState(known?.id ?? (mine.length ? mine[0].id : NEW))
   const [name, setName] = useState('')
+  const [owner, setOwner] = useState('')
   const [pos, setPos] = useState<{ lat: string; lon: string }>({ lat: '', lon: '' })
   const [nets, setNets] = useState<WifiNet[] | null>(null)
   const [ssid, setSsid] = useState(() => info.ssid || store.get(SSID_KEY))
@@ -324,7 +325,7 @@ function Ready({ state, stations, source, onPickMap, onLost, onCreated, onDone }
         if (!id) throw new Error('Dê um nome à estação.')
         const lat = Number(pos.lat), lon = Number(pos.lon)
         if (!pos.lat || !pos.lon || !Number.isFinite(lat) || !Number.isFinite(lon)) throw new Error('Informe o local (latitude e longitude). Dá para ajustar depois no mapa.')
-        const c = await createStation({ id, name: label, city: '', lat, lon, alt: 0, config: DEFAULT_CONFIG }, token)
+        const c = await createStation({ id, name: label, city: '', lat, lon, alt: 0, config: DEFAULT_CONFIG, ...(owner.trim() ? { owner_email: owner.trim() } : {}) }, token)
         key = c.key // a chave da criação já serve: não precisa gerar outra
         void onCreated() // a estação já existe: mostra no mapa sem esperar a próxima atualização
       } else {
@@ -332,9 +333,7 @@ function Ready({ state, stations, source, onPickMap, onLost, onCreated, onDone }
       }
       store.set(SSID_KEY, ssid.trim())
       const data = { ssid: ssid.trim(), pass, server: server.trim(), id, key }
-      let r = await link.provision(data)
-      // a placa não respondeu: provavelmente a janela de escuta dela acabou. Reinicia e tenta uma vez mais
-      if (!r.ok && r.error === 'a placa não respondeu' && (await link.revive())) r = await link.provision(data)
+      const r = await link.provisionWithRetry(data)
       if (!r.ok) throw new Error(`A placa recusou (${r.error ?? 'erro'}). Confira os dados e tente de novo.`)
       onDone(id, label)
       return
@@ -371,6 +370,7 @@ function Ready({ state, stations, source, onPickMap, onLost, onCreated, onDone }
           {sid === NEW && (
             <div className="grid gap-2 rounded-lg border border-line p-3">
               <input className={input} value={name} onChange={(e) => setName(e.target.value)} placeholder="Nome (ex.: Sítio)" maxLength={40} />
+              <input className={input} type="email" value={owner} onChange={(e) => setOwner(e.target.value)} placeholder="Dono (e-mail Google, opcional)" />
               <div className="grid grid-cols-[1fr_1fr_auto] gap-2">
                 <input className={input} inputMode="decimal" value={pos.lat} onChange={(e) => setPos({ ...pos, lat: e.target.value })} placeholder="Latitude" />
                 <input className={input} inputMode="decimal" value={pos.lon} onChange={(e) => setPos({ ...pos, lon: e.target.value })} placeholder="Longitude" />

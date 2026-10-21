@@ -62,13 +62,18 @@ export default function AdminSite({ stations, source }: { stations: Station[]; s
         <button onClick={() => setPrefs({ updates: DEFAULT_PREFS.updates, pollS: DEFAULT_PREFS.pollS })} className="mt-3 rounded-lg border border-line px-3 py-1.5 text-xs hover:bg-card-hover">Voltar ao padrão</button>
       </Panel>
 
-      <Panel id="g-gravar" title="Placa USB: gravar firmware e deixar a placa pronta" hint="reconhece o ESP32 ao plugar, grava e configura Wi-Fi, endereço e chave pela USB">
+      <Panel id="g-gravar" title="Preparar placa (USB)" hint="grava o firmware que faltar e configura Wi-Fi, endereço e chave pela USB, sem portal nem código">
         {!usbSupported() && <p className="mb-3 text-sm text-ink-2">Este navegador não tem Web Serial. Use o Chrome, o Edge ou o Opera, em endereço https:// ou localhost.</p>}
         {usbSupported() && (
-          <div className="mb-5 flex flex-wrap items-center gap-3 rounded-xl border border-line p-3 text-sm">
-            <button onClick={requestUsb} className="flex items-center gap-2 rounded-xl border border-line px-3 py-2 hover:bg-card-hover"><Usb className="h-4 w-4" aria-hidden /> Autorizar uma placa</button>
-            <span className="min-w-0 flex-1 text-xs text-ink-3">Autorize uma vez e o site passa a reconhecer a placa sempre que você plugar o cabo (de dados), oferecendo configurá-la sem o portal. Com o cabo no computador a placa fica acordada, e o site solta a porta quando você troca de janela.</span>
-          </div>
+          <>
+            <p className="mb-3 text-xs text-ink-3">
+              Duas formas de chegar ao mesmo lugar: plugue a placa com o cabo (de dados) e, se o navegador já a conhece, um aviso aparece sozinho no canto da tela para configurar ou reconfigurar. Placa nova, em branco, ou primeira vez? Use o formulário abaixo: ele grava o firmware que faltar e configura tudo num só passo. Com o cabo no computador a placa fica acordada, e o site solta a porta quando você troca de janela.
+            </p>
+            <div className="mb-5 flex flex-wrap items-center gap-3 rounded-xl border border-line p-3 text-sm">
+              <button onClick={requestUsb} className="flex items-center gap-2 rounded-xl border border-line px-3 py-2 hover:bg-card-hover"><Usb className="h-4 w-4" aria-hidden /> Autorizar uma placa já plugada</button>
+              <span className="min-w-0 flex-1 text-xs text-ink-3">Só na primeira vez com essa placa: o navegador pede para você escolhê-la numa lista.</span>
+            </div>
+          </>
         )}
         <FlashSetup stations={stations} />
         <details className="mt-5 rounded-xl border border-line p-3 text-sm">
