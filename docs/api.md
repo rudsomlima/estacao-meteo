@@ -112,6 +112,8 @@ Para gastar menos rádio, o firmware 0.5 em diante manda o lote **em colunas**: 
 | `GET /api/stations/:id/daily?days=30&tz=-180` | pública | Um resumo por dia (mín, máx, média, chuva, rajada, pressão), calculado do resumo por hora. `tz` é o fuso em minutos (fusos de meia hora caem na hora cheia). Até 730 dias. |
 | `GET /api/stations/:id/events?limit=50` | pública | Eventos do firmware (reinícios, atualizações, modo bancada). |
 | `GET /api/stations/:id/firmware` | pública | Firmware publicado e instalado. |
+| `GET /api/layout` | pública | Ordem dos cartões de gráfico na página da estação: `{ "order": ["temp","hum","wind","pres","rain","windrose"] }`. |
+| `PUT /api/admin/layout` | admin | Troca a ordem (mesmas seis chaves, em qualquer posição). Salva para todo mundo. |
 | `POST /api/stations` | admin | Cria a estação e devolve a chave **uma única vez**. |
 | `PUT /api/stations/:id` | admin | Atualiza nome, local e configuração. Sobe a `version`. |
 | `POST /api/stations/:id/key` | admin | Gera uma chave nova. A antiga deixa de valer. |

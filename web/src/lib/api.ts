@@ -81,6 +81,7 @@ export const fetchReadingsRaw = (id: string, hours: number) => request<Reading[]
 export const fetchDaily = (id: string, days: number, tz: number) => request<DailyRow[]>(`/api/stations/${id}/daily?days=${days}&tz=${tz}`)
 export const fetchEvents = (id: string, limit = 50) => request<StationEvent[]>(`/api/stations/${id}/events?limit=${limit}`)
 export const fetchFirmware = (id: string) => request<FirmwareInfo>(`/api/stations/${id}/firmware`)
+export const fetchLayout = () => request<{ order: string[] }>('/api/layout')
 
 // ---------------- administrador ----------------
 export interface StationEdit {

@@ -1,7 +1,19 @@
+import { execSync } from 'node:child_process'
 import { networkInterfaces } from 'node:os'
 import tailwindcss from '@tailwindcss/vite'
 import react from '@vitejs/plugin-react'
 import { defineConfig, type Plugin } from 'vite'
+
+/** Número de commits + hash curto, para saber qual build está no ar (mostrado no menu da conta). */
+function gitVersion(): string {
+  try {
+    const n = execSync('git rev-list --count HEAD', { cwd: __dirname }).toString().trim()
+    const hash = execSync('git rev-parse --short HEAD', { cwd: __dirname }).toString().trim()
+    return `${n}-${hash}`
+  } catch {
+    return 'dev'
+  }
+}
 
 /**
  * Só em desenvolvimento: diz ao site qual é o IP deste computador na rede local. A placa não alcança "localhost", então o
@@ -33,4 +45,5 @@ export default defineConfig({
     proxy: { '/api': { target: `http://127.0.0.1:${process.env.API_PORT ?? 8787}`, changeOrigin: false, ws: true } }, // ws: o tempo real (WebSocket em /api/live)
   },
   build: { chunkSizeWarningLimit: 1200 },
+  define: { __APP_VERSION__: JSON.stringify(gitVersion()) },
 })

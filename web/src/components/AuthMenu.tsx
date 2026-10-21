@@ -55,6 +55,7 @@ export default function AuthMenu() {
                 <button role="menuitem" onClick={() => { setOpen(false); go('admin') }} className="flex items-center gap-2 rounded-lg border border-line px-3 py-2 text-left hover:bg-card-hover"><ShieldCheck className="h-4 w-4 text-cyan" aria-hidden /> Painel do administrador</button>
               )}
               <button role="menuitem" onClick={() => { setOpen(false); void signOut() }} className="flex items-center gap-2 rounded-lg border border-line px-3 py-2 text-left hover:bg-card-hover"><LogOut className="h-4 w-4" aria-hidden /> Sair</button>
+              <p className="num text-center text-[10px] text-ink-3">versão {__APP_VERSION__}</p>
             </div>
           ) : (
             <div className="grid gap-3">

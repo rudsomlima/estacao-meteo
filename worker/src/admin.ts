@@ -313,5 +313,22 @@ export async function adminRoute(req: Request, env: Env, actor: Actor, raw: Uint
     return json({ ok: true })
   }
   if (p === '/audit' && m === 'GET') return auditLog(url, env)
+
+  if (p === '/layout' && m === 'PUT') return putLayout(env, actor, raw)
   return null
+}
+
+/** Ordem dos cartões de gráfico na página da estação, escolhida pelo administrador e salva para todo mundo. */
+export const CARD_KEYS = ['temp', 'hum', 'wind', 'pres', 'rain', 'windrose'] as const
+export type CardKey = (typeof CARD_KEYS)[number]
+
+async function putLayout(env: Env, actor: Actor, raw: Uint8Array) {
+  const body = parse(raw)
+  const order = body?.order
+  if (!Array.isArray(order) || order.length !== CARD_KEYS.length || !CARD_KEYS.every((k) => order.includes(k))) {
+    return json({ error: 'ordem inválida' }, 422)
+  }
+  await putSetting(env, 'card_layout', JSON.stringify(order))
+  await audit(env, actor, 'layout.alterado')
+  return json({ ok: true, order })
 }

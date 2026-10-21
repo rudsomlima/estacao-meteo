@@ -8,6 +8,7 @@
  * Público (somente leitura):
  *   GET  /api/live                WebSocket: avisa quando uma estação envia ou muda (o navegador então busca o dado novo)
  *   GET  /api/stations, /api/stations/:id, /:id/readings, /:id/daily, /:id/events, /:id/firmware
+ *   GET  /api/layout              ordem dos cartões de gráfico na página da estação (PUT em /api/admin/layout)
  * Administrador (sessão do login com Google; o ADMIN_TOKEN só como acesso de emergência):
  *   POST /api/stations, PUT|DELETE /api/stations/:id, POST /:id/key, POST /:id/claim
  *   firmware: POST /api/admin/releases (publica uma versão) e /releases/:id/assign (atribui a estações) — veja admin.ts
@@ -16,8 +17,8 @@
 import {
   userKey, detectChat, DEFAULT_TEMPLATES, evaluateAfterIngest, evaluateOffline, loadTelegram, publicTelegram, render, saveTelegram, sendTelegram,
 } from './alerts'
-import { adminRoute, defaultConfig } from './admin'
-import { audit, type Actor, getActor, getUser, newSession, sessionCookie, upsertUser, verifyGoogleToken, type User } from './auth'
+import { adminRoute, CARD_KEYS, defaultConfig } from './admin'
+import { audit, type Actor, getActor, getSetting, getUser, newSession, sessionCookie, upsertUser, verifyGoogleToken, type User } from './auth'
 import { cleanConfig, pinProblem } from './config'
 import { notifyLive } from './hub'
 import { backfillHourly, daySummaries, hourAsReading, rebuildTouched, type HourRow } from './hourly'
@@ -271,6 +272,13 @@ async function firmwareDownload(req: Request, env: Env) {
 }
 
 // ---------------- leitura pública ----------------
+async function getLayout(env: Env) {
+  const raw = await getSetting(env, 'card_layout')
+  let order: string[] | null = null
+  try { const v = raw ? JSON.parse(raw) : null; if (Array.isArray(v) && v.length === CARD_KEYS.length && CARD_KEYS.every((k) => v.includes(k))) order = v } catch { /* ignora: volta ao padrão */ }
+  return json({ order: order ?? CARD_KEYS })
+}
+
 async function listStations(env: Env, user: User | null) {
   const [stations, day] = await Promise.all([
     env.DB.prepare(`SELECT ${COLS} FROM stations ORDER BY name`).all<StationRow>(),
@@ -529,6 +537,7 @@ async function route(req: Request, env: Env, ctx: ExecutionContext): Promise<Res
 
   // leitura pública
   if (m === 'GET') {
+    if (p === '/api/layout') return getLayout(env)
     if (p === '/api/stations') return listStations(env, await getUser(req, env))
     const g = p.match(/^\/api\/stations\/([a-z0-9-]+)(?:\/(readings|daily|events|firmware))?$/)
     if (g) {

@@ -42,6 +42,8 @@ export const restoreAdminToken = () => call<{ ok: boolean }>('DELETE', '/api/adm
 export const revokeSessions = () => call<{ ok: boolean }>('POST', '/api/admin/sessions/revoke', {})
 export const getAudit = (limit = 100) => call<AuditRow[]>('GET', `/api/admin/audit?limit=${limit}`)
 
+export const putLayout = (order: string[]) => call<{ ok: boolean; order: string[] }>('PUT', '/api/admin/layout', { order })
+
 export const restartStation = (id: string) => call<{ ok: boolean }>('POST', `/api/admin/stations/${id}/restart`, {})
 export const cancelStationCommand = (id: string) => call<{ ok: boolean }>('DELETE', `/api/admin/stations/${id}/command`)
 export const clearStationEvents = (id: string) => call<{ ok: boolean; removed: number }>('DELETE', `/api/admin/stations/${id}/events`)

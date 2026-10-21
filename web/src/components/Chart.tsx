@@ -41,15 +41,28 @@ interface Props {
   zeroBase?: boolean
 }
 
+/** Separa os pontos em trechos sem falha (NaN): quem não tem o sensor, ou perdeu uma leitura, fica com um buraco no traço em vez de quebrar o gráfico todo. */
+function segments(points: Pt[]): Pt[][] {
+  const out: Pt[][] = []
+  let cur: Pt[] = []
+  for (const p of points) {
+    if (Number.isFinite(p.v)) cur.push(p)
+    else if (cur.length) { out.push(cur); cur = [] }
+  }
+  if (cur.length) out.push(cur)
+  return out
+}
+
 export default function Chart({ series, unit, height = 200, decimals = 1, zeroBase = false }: Props) {
   const [ref, W] = useWidth()
   const [hover, setHover] = useState<number | null>(null)
   const all = series.flatMap((s) => s.points)
+  const finite = all.filter((p) => Number.isFinite(p.v))
   if (!all.length) return <div ref={ref} style={{ height }} />
 
   const m = { l: 40, r: 10, t: 8, b: 22 }
   const t0 = Math.min(...all.map((p) => p.t)), t1 = Math.max(...all.map((p) => p.t))
-  let lo = Math.min(...all.map((p) => p.v)), hi = Math.max(...all.map((p) => p.v))
+  let lo = finite.length ? Math.min(...finite.map((p) => p.v)) : 0, hi = finite.length ? Math.max(...finite.map((p) => p.v)) : 1
   if (zeroBase) lo = Math.min(0, lo)
   const ticks = nice(lo, hi)
   const yMin = ticks[0], yMax = ticks[ticks.length - 1]
@@ -94,12 +107,22 @@ export default function Chart({ series, unit, height = 200, decimals = 1, zeroBa
               </g>
             )
           }
-          const d = s.points.map((p, i) => `${i ? 'L' : 'M'}${x(p.t).toFixed(1)},${y(p.v).toFixed(1)}`).join('')
+          const segs = segments(s.points)
+          if (!segs.length) return null
+          const last = segs[segs.length - 1]
+          const lastPt = last[last.length - 1]
           return (
             <g key={s.label}>
-              {s.fill && <path d={`${d}L${x(s.points[s.points.length - 1].t)},${base}L${x(s.points[0].t)},${base}Z`} fill={s.color} opacity="0.14" />}
-              <path d={d} fill="none" stroke={s.color} strokeWidth="1.8" strokeLinejoin="round" />
-              <circle cx={x(s.points[s.points.length - 1].t)} cy={y(s.points[s.points.length - 1].v)} r="3.5" fill={s.color} />
+              {segs.map((seg, i) => {
+                const d = seg.map((p, j) => `${j ? 'L' : 'M'}${x(p.t).toFixed(1)},${y(p.v).toFixed(1)}`).join('')
+                return (
+                  <g key={i}>
+                    {s.fill && seg.length > 1 && <path d={`${d}L${x(seg[seg.length - 1].t)},${base}L${x(seg[0].t)},${base}Z`} fill={s.color} opacity="0.14" />}
+                    <path d={d} fill="none" stroke={s.color} strokeWidth="1.8" strokeLinejoin="round" />
+                  </g>
+                )
+              })}
+              <circle cx={x(lastPt.t)} cy={y(lastPt.v)} r="3.5" fill={s.color} />
             </g>
           )
         })}
@@ -116,7 +139,7 @@ export default function Chart({ series, unit, height = 200, decimals = 1, zeroBa
             return (
               <div key={s.label} className="num flex items-center gap-1.5 text-ink">
                 <i className="inline-block h-2 w-2 rounded-full" style={{ background: s.color }} />
-                {p.v.toFixed(decimals)} {unit} <span className="text-ink-3">{s.label}</span>
+                {Number.isFinite(p.v) ? `${p.v.toFixed(decimals)} ${unit}` : '—'} <span className="text-ink-3">{s.label}</span>
               </div>
             )
           })}
