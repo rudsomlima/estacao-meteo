@@ -14,7 +14,7 @@ static Preferences prefs;
  */
 #define CFG_U8(X)  X(windWindowS, "wwin") X(gustWindowS, "gwin") X(samples, "samp") X(wifiTimeoutS, "wto") X(chargeIntervalMin, "chint") \
   X(benchMin, "bench") X(slowFactor, "slowf") X(sendEvery, "sendn") X(continuousWind, "cont") X(urgentGustKmh, "urg") X(envSensor, "env") \
-  X(hasWind, "hwind") X(hasRain, "hrain") \
+  X(hasWind, "hwind") X(hasVane, "hvane") X(hasRain, "hrain") \
   X(pinSda, "psda") X(pinScl, "pscl") X(pinWind, "pwind") X(pinRain, "prain") X(pinVbat, "pvbat") X(wifiTxSave, "txs") X(idleEvery, "idle")
 #define CFG_F(X)   X(mmPerTip, "mmtip") X(kWind, "kwind") X(dirOffset, "north") X(slowBelowV, "slowv") X(criticalV, "critv") X(chargeAboveV, "chgv")
 
@@ -118,6 +118,7 @@ bool applyRemoteConfig(JsonObjectConst c) {
   cfg.idleEvery = constrain((int)(c["idle_every"] | cfg.idleEvery), 1, 12);
   cfg.envSensor = constrain((int)(c["env_sensor"] | cfg.envSensor), 0, 3);
   cfg.hasWind = constrain((int)(c["has_wind"] | cfg.hasWind), 0, 1);
+  cfg.hasVane = constrain((int)(c["has_vane"] | cfg.hasVane), 0, 1);
   cfg.hasRain = constrain((int)(c["has_rain"] | cfg.hasRain), 0, 1);
   // pinos: só aceita um conjunto válido; qualquer mudança reinicia a placa para religar interrupções e I2C nos pinos novos
   const int sda = c["pin_sda"] | cfg.pinSda, scl = c["pin_scl"] | cfg.pinScl, wind = c["pin_wind"] | cfg.pinWind;

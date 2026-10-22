@@ -71,7 +71,7 @@ function StationPage({ id, net }: { id: string; net: Net }) {
             />
             <main>
               <Hero readings={readings} station={station} />
-              <Trends readings={readings} stationId={net.source === 'api' ? station.id : undefined} />
+              <Trends readings={readings} stationId={net.source === 'api' ? station.id : undefined} config={station.config} />
               <TechCard station={station} readings={readings} />
             </main>
             <footer className="border-t border-line px-4 py-8 text-center text-xs text-ink-3">

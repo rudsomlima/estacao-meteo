@@ -123,9 +123,12 @@ export function ConfigSection({ section, station, source, onChange }: { section:
                 </select>
                 <span className="text-xs font-normal text-ink-3">{sensor.hint}</span>
               </label>
-              <div className="grid gap-3 sm:grid-cols-2">
+              <div className="grid gap-3 sm:grid-cols-3">
                 <Toggle checked={(cfg.has_wind ?? 1) === 1} onChange={(v) => set({ has_wind: v ? 1 : 0 })} title="Tem anemômetro">
-                  Desligue se não há biruta/rotor instalados: vento, rajada e direção somem da página (em vez de mostrar ruído do pino solto).
+                  Desligue se não há rotor instalado: velocidade e rajada somem da página (em vez de mostrar ruído do pino solto).
+                </Toggle>
+                <Toggle checked={(cfg.has_vane ?? 1) === 1} onChange={(v) => set({ has_vane: v ? 1 : 0 })} title="Tem biruta">
+                  Desligue se não há biruta (bússola QMC5883L) instalada: direção do vento some da página.
                 </Toggle>
                 <Toggle checked={(cfg.has_rain ?? 1) === 1} onChange={(v) => set({ has_rain: v ? 1 : 0 })} title="Tem pluviômetro">
                   Desligue se não há tanque basculante instalado: chuva some da página.

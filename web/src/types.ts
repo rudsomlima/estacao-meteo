@@ -38,6 +38,7 @@ export interface StationConfig {
   idle_every?: number // sem leitura de sensor: sinal de vida a cada N leituras
   env_sensor?: number // 0 nenhum, 1 BME280, 2 MS5611 (GY-63), 3 BME280 + MS5611
   has_wind?: number // 0 = sem anemômetro: vento e rajada não existem (e o servidor ignora o que a placa mandar)
+  has_vane?: number // 0 = sem biruta: direção do vento não existe
   has_rain?: number // 0 = sem pluviômetro: chuva não existe
   pin_sda?: number // pinos do ESP32-C3 (GPIO)
   pin_scl?: number

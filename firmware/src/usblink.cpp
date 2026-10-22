@@ -142,7 +142,7 @@ bool usbHandleLine(const String &line) {
     c["dir_offset"] = cfg.dirOffset; c["slow_below_v"] = cfg.slowBelowV; c["slow_factor"] = cfg.slowFactor; c["critical_v"] = cfg.criticalV;
     c["charge_above_v"] = cfg.chargeAboveV; c["charge_interval_min"] = cfg.chargeIntervalMin; c["bench_min"] = cfg.benchMin;
     c["send_every"] = cfg.sendEvery; c["continuous_wind"] = cfg.continuousWind; c["urgent_gust_kmh"] = cfg.urgentGustKmh;
-    c["wifi_tx_save"] = cfg.wifiTxSave; c["env_sensor"] = cfg.envSensor; c["has_wind"] = cfg.hasWind; c["has_rain"] = cfg.hasRain; c["pin_sda"] = cfg.pinSda; c["pin_scl"] = cfg.pinScl;
+    c["wifi_tx_save"] = cfg.wifiTxSave; c["env_sensor"] = cfg.envSensor; c["has_wind"] = cfg.hasWind; c["has_vane"] = cfg.hasVane; c["has_rain"] = cfg.hasRain; c["pin_sda"] = cfg.pinSda; c["pin_scl"] = cfg.pinScl;
     c["pin_wind"] = cfg.pinWind; c["pin_rain"] = cfg.pinRain; c["pin_vbat"] = cfg.pinVbat; c["version"] = cfg.version;
     diagFill(d["state"].to<JsonObject>());
     d["vbat"] = batteryVolts();

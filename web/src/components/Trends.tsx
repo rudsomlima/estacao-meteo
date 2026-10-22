@@ -6,7 +6,7 @@ import { fetchLayout, fetchReadingsRange } from '../lib/api'
 import { dewPoint } from '../lib/derive'
 import { useIsAdmin } from '../lib/session'
 import { useFmt } from '../lib/units'
-import type { Reading } from '../types'
+import type { Reading, StationConfig } from '../types'
 import Chart, { type Pt } from './Chart'
 import Reveal, { SectionHead } from './Reveal'
 import WindRose from './WindRose'
@@ -81,11 +81,18 @@ function useDay(stationId: string | undefined, day: string | null, fallback: Rea
   return data
 }
 
-export default function Trends({ readings, stationId }: { readings: Reading[]; stationId?: string }) {
+export default function Trends({ readings, stationId, config }: { readings: Reading[]; stationId?: string; config: StationConfig }) {
   const [hours, setHours] = useState(24)
   const [day, setDay] = useState<string | null>(null) // dia escolhido do histórico; null = últimas `hours`
   const dayData = useDay(stationId, day, readings)
   const [order, setOrder] = useCardOrder()
+  const hasWind = (config.has_wind ?? 1) === 1
+  const hasVane = (config.has_vane ?? 1) === 1
+  const hasRain = (config.has_rain ?? 1) === 1
+  const visibleOrder = useMemo(
+    () => order.filter((k) => (k === 'wind' ? hasWind : k === 'rain' ? hasRain : k === 'windrose' ? hasWind && hasVane : true)),
+    [order, hasWind, hasVane, hasRain],
+  )
   const [dragging, setDragging] = useState<CardKey | null>(null)
   const isAdmin = useIsAdmin()
   const f = useFmt()
@@ -185,7 +192,7 @@ export default function Trends({ readings, stationId }: { readings: Reading[]; s
       {day && !dayData && <p className="mt-6 text-sm text-ink-3">Carregando o dia…</p>}
 
       <div className="mt-8 grid gap-4 lg:grid-cols-2">
-        {order.map((key) => (
+        {visibleOrder.map((key) => (
           <div
             key={key}
             className={`relative ${dragging === key ? 'opacity-40' : ''}`}

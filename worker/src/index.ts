@@ -156,7 +156,8 @@ async function ingest(req: Request, env: Env, ctx: ExecutionContext) {
   // a estação diz quais sensores tem instalados (placa, sensores e pinos); o servidor obriga isso mesmo que o firmware
   // ainda não saiba (por exemplo, pino do anemômetro boiando e captando ruído como se fosse vento)
   const forcedNull = new Set<string>([
-    ...(cfg.has_wind ? [] : ['wind', 'gust', 'dir']),
+    ...(cfg.has_wind ? [] : ['wind', 'gust']),
+    ...(cfg.has_vane ? [] : ['dir']),
     ...(cfg.has_rain ? [] : ['rain']),
   ])
   const ins = env.DB.prepare('INSERT OR REPLACE INTO readings (station_id,ts,temp,hum,pres,wind,gust,dir,rain,vbat,rssi) VALUES (?,?,?,?,?,?,?,?,?,?,?)')

@@ -27,10 +27,11 @@ function sensorsOf(c: StationConfig, r: Reading) {
         pin: `${i2c} · ${env === 2 ? '0x77' : env === 3 ? '0x76 + 0x77' : '0x76'}`,
       }
   const hasWind = (c.has_wind ?? 1) === 1
+  const hasVane = (c.has_vane ?? 1) === 1
   const hasRain = (c.has_rain ?? 1) === 1
   return [
     envRow,
-    hasWind
+    hasVane
       ? { name: 'QMC5883L · direção da biruta', state: (Number.isFinite(r.dir) ? 'ok' : 'bad') as 'ok' | 'bad', pin: `${i2c} · 0x0D` }
       : { name: 'QMC5883L · direção da biruta: não instalada', state: 'off' as const, pin: '—' },
     hasWind
