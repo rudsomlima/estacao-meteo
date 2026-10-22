@@ -27,9 +27,9 @@ export const GROUPS = {
     F('wifi_timeout_s', 'Tempo para conectar ao Wi-Fi', 'Quanto a estação insiste antes de desistir e guardar as leituras para o próximo envio. Pouco demais falha em redes lentas; muito gasta bateria quando a rede some.', 4, 30, 1, 's'),
   ],
   bateria: [
-    F('slow_below_v', 'Economizar abaixo de', 'Abaixo dessa tensão a estação espaça as leituras.', 1.8, 4.2, 0.01, 'V', 2),
+    F('slow_below_v', 'Economizar abaixo de', 'Abaixo dessa tensão a estação espaça as leituras. 0 desativa (estação sem bateria).', 0, 4.2, 0.01, 'V', 2),
     F('slow_factor', 'Espaçar as leituras por', 'Multiplica o intervalo quando a bateria está baixa.', 1, 12, 1, '×'),
-    F('critical_v', 'Hibernar abaixo de', 'Abaixo dessa tensão a estação só dorme por 1 h, para proteger a bateria.', 1.5, 4, 0.01, 'V', 2),
+    F('critical_v', 'Hibernar abaixo de', 'Abaixo dessa tensão a estação só dorme por 1 h, para proteger a bateria. 0 desativa (estação sem bateria: o pino solto lê tensão aleatória).', 0, 4, 0.01, 'V', 2),
     F('charge_above_v', 'Considerar "carregando" acima de', 'Com o painel solar dando carga (tensão alta), a estação usa o intervalo curto abaixo. Zero desliga.', 0, 5, 0.05, 'V', 2),
     F('charge_interval_min', 'Intervalo enquanto carrega', 'Sobra energia: pode medir mais vezes.', 1, 60, 1, 'min'),
   ],

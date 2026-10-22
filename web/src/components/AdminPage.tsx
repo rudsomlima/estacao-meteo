@@ -8,6 +8,7 @@ import { store } from '../lib/api'
 import { useSession } from '../lib/session'
 import AdminConfig from './admin/AdminConfig'
 import AdminFirmware from './admin/AdminFirmware'
+import AdminServer from './admin/AdminServer'
 import AdminSite from './admin/AdminSite'
 import type { Source, Station } from '../types'
 import { AdminSecurity, AdminUsers } from './admin/AdminUsersSecurity'
@@ -21,6 +22,7 @@ const TABS = [
   ['firmware', 'Firmware'],
   ['site', 'Site e placas'],
   ['usuarios', 'Usuários'],
+  ['servidor', 'Servidor'],
   ['seguranca', 'Segurança'],
 ] as const
 type Tab = (typeof TABS)[number][0]
@@ -102,6 +104,7 @@ export default function AdminPage({ stations, source }: { stations: Station[]; s
           : tab === 'config' ? <AdminConfig stations={data.stations} />
           : tab === 'firmware' ? <AdminFirmware stations={data.stations} />
           : tab === 'site' ? <AdminSite stations={stations} source={source} />
+          : tab === 'servidor' ? <AdminServer />
           : tab === 'usuarios' ? <AdminUsers stations={data.stations} onChanged={reload} />
           : <AdminSecurity />}
       </div>

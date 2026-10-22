@@ -46,7 +46,7 @@ export const MAX_AGE_S = 7 * 86400 // leitura mais velha que isso é descartada 
 export const LIMITS: Record<string, [Num, Num]> = {
   interval_min: [1, 60], wind_window_s: [2, 30], gust_window_s: [1, 10], samples: [1, 32], wifi_timeout_s: [4, 30],
   mm_per_tip: [0.01, 2], k_wind: [0.05, 3], dir_offset: [0, 359.99],
-  slow_below_v: [1.8, 4.2], slow_factor: [1, 12], critical_v: [1.5, 4.0], battery_mah: [100, 100000],
+  slow_below_v: [0, 4.2], slow_factor: [1, 12], critical_v: [0, 4.0], battery_mah: [100, 100000],
   charge_above_v: [0, 5], charge_interval_min: [1, 60],
   send_every: [1, 12], continuous_wind: [0, 1], urgent_gust_kmh: [0, 200], bench_min: [0, 30], wifi_tx_save: [0, 1],
   idle_every: [1, 12], env_sensor: [0, 3], pin_sda: [0, 21], pin_scl: [0, 21], pin_wind: [0, 21], pin_rain: [0, 21], pin_vbat: [0, 21],

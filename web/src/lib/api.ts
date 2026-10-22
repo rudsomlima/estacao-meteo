@@ -76,6 +76,8 @@ export const fetchStations = () => request<Station[]>('/api/stations').then((l) 
 export const fetchReadings = (id: string, hours: number) => request<Reading[]>(`/api/stations/${id}/readings?hours=${hours}`).then((l) => l.map(fixNulls))
 /** Só as leituras depois de `since` (unix): o que chegou desde a última vez. */
 export const fetchReadingsSince = (id: string, since: number) => request<Reading[]>(`/api/stations/${id}/readings?since=${since}`).then((l) => l.map(fixNulls))
+/** Um trecho do histórico (unix, até 48 h), leitura a leitura: o dia escolhido em Tendências. */
+export const fetchReadingsRange = (id: string, from: number, to: number) => request<Reading[]>(`/api/stations/${id}/readings?from=${from}&to=${to}`).then((l) => l.map(fixNulls))
 /** Leitura a leitura, sem resumo por hora (exportação). Até 30 dias. */
 export const fetchReadingsRaw = (id: string, hours: number) => request<Reading[]>(`/api/stations/${id}/readings?hours=${hours}&res=raw`).then((l) => l.map(fixNulls))
 export const fetchDaily = (id: string, days: number, tz: number) => request<DailyRow[]>(`/api/stations/${id}/daily?days=${days}&tz=${tz}`)

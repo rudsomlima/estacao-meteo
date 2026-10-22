@@ -14,6 +14,7 @@
  *   firmware: POST /api/admin/releases (publica uma versão) e /releases/:id/assign (atribui a estações) — veja admin.ts
  *   GET|PUT /api/settings/telegram, POST /api/telegram/*, GET /api/usage, GET /api/admin/*
  */
+import { count, flushMetrics, noteRequest } from './server'
 import {
   userKey, detectChat, DEFAULT_TEMPLATES, evaluateAfterIngest, evaluateOffline, loadTelegram, publicTelegram, render, saveTelegram, sendTelegram,
 } from './alerts'
@@ -213,6 +214,7 @@ async function ingest(req: Request, env: Env, ctx: ExecutionContext) {
   }
   // a leitura mais recente fica na própria estação: a lista de estações não precisa varrer as leituras
   if (latest) writes.push(env.DB.prepare("UPDATE stations SET latest = ? WHERE id = ? AND (latest IS NULL OR json_extract(latest, '$.ts') <= ?)").bind(JSON.stringify(latest), st.id, latest.ts))
+  count('rows', items.length); count('d1w', writes.length + 4) // gravações estimadas: as de cima + o resumo por hora
   await env.DB.batch(writes)
   if (stamps.length) await rebuildTouched(env, st.id, stamps) // resumo por hora das horas que este lote tocou
   if (Math.random() < 0.01) {
@@ -299,6 +301,7 @@ async function getStation(env: Env, id: string, user: User | null) {
  *  - `since=<unix>`: só as leituras depois desse instante (o site pede só o que falta a cada aviso), no máximo 2000;
  *  - `hours=<n>` (padrão 24): até 48 h vêm leitura a leitura; acima disso, as últimas 24 h leitura a leitura e o resto resumido
  *    por hora (com `agg: "h"`), para a semana não custar milhares de linhas;
+ *  - `from=<unix>&to=<unix>`: um trecho (até 48 h) leitura a leitura, para escolher um dia do histórico;
  *  - `res=raw`: tudo leitura a leitura (exportação), até 30 dias.
  */
 async function readings(url: URL, env: Env, id: string) {
@@ -307,6 +310,15 @@ async function readings(url: URL, env: Env, id: string) {
     .bind(id, from, limit).all()
   const since = Number(url.searchParams.get('since'))
   if (Number.isFinite(since) && since > 0) return json((await raw(Math.floor(since), 2000)).results)
+  // `from` e `to` (unix): um trecho do histórico, leitura a leitura (até 48 h), para o site mostrar um dia escolhido
+  const from = Number(url.searchParams.get('from')), to = Number(url.searchParams.get('to'))
+  if (Number.isFinite(from) && Number.isFinite(to) && from > 0 && to > from) {
+    const end = Math.min(to, Math.floor(from) + 48 * 3600)
+    const { results } = await env.DB
+      .prepare('SELECT ts,temp,hum,pres,wind,gust,dir,rain,vbat,rssi FROM readings WHERE station_id = ? AND ts >= ? AND ts < ? ORDER BY ts ASC LIMIT 50000')
+      .bind(id, Math.floor(from), Math.floor(end)).all()
+    return json(results)
+  }
   const hours = Math.min(24 * 30, Math.max(1, Number(url.searchParams.get('hours')) || 24))
   const now = Math.floor(Date.now() / 1000)
   const start = now - hours * 3600
@@ -513,6 +525,7 @@ async function authRoute(req: Request, env: Env, raw: Uint8Array): Promise<Respo
     try {
       const user = await upsertUser(env, await verifyGoogleToken(env, body.credential))
       await audit(env, { email: user.email, role: user.role, via: 'session' }, 'login')
+      count('login')
       return json({ user }, 200, { 'set-cookie': sessionCookie(req, await newSession(env, user.email)) })
     } catch (e) {
       return json({ error: e instanceof Error ? e.message : 'não foi possível entrar' }, 401)
@@ -636,6 +649,8 @@ export default {
     try {
       const r = await route(req, env, ctx)
       if (r) {
+        const path = new URL(req.url).pathname
+        if (path.startsWith('/api/')) { ctx.waitUntil(noteRequest(req, path, r.status).then(() => flushMetrics(env, ctx))) }
         // criar, editar, remover ou trocar a chave de uma estação: os navegadores conectados atualizam na hora
         const changed = req.method !== 'GET' && r.ok && new URL(req.url).pathname.match(/^\/api\/stations(?:\/([a-z0-9-]+))?/)
         if (changed) ctx.waitUntil(notifyLive(env, changed[1] ?? null))

@@ -2,7 +2,7 @@ import { GripVertical } from 'lucide-react'
 import { motion } from 'motion/react'
 import { useEffect, useMemo, useState } from 'react'
 import { putLayout } from '../lib/admin'
-import { fetchLayout } from '../lib/api'
+import { fetchLayout, fetchReadingsRange } from '../lib/api'
 import { dewPoint } from '../lib/derive'
 import { useIsAdmin } from '../lib/session'
 import { useFmt } from '../lib/units'
@@ -62,16 +62,40 @@ function useCardOrder() {
   return [order, setOrder] as const
 }
 
-export default function Trends({ readings }: { readings: Reading[] }) {
+const dayStr = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+
+/** As leituras de um dia local (AAAA-MM-DD) do histórico; null enquanto carrega. Sem API (demonstração), recorta das que já temos. */
+function useDay(stationId: string | undefined, day: string | null, fallback: Reading[]) {
+  const [data, setData] = useState<Reading[] | null>(null)
+  useEffect(() => {
+    if (!day) { setData(null); return }
+    const [y, m, d] = day.split('-').map(Number)
+    const from = new Date(y, m - 1, d).getTime() / 1000
+    const to = new Date(y, m - 1, d + 1).getTime() / 1000 // meia-noite local seguinte (o dia pode ter 23 ou 25 h)
+    if (!stationId) { setData(fallback.filter((r) => r.ts >= from && r.ts < to)); return }
+    let alive = true
+    setData(null)
+    fetchReadingsRange(stationId, from, to).then((l) => { if (alive) setData(l) }).catch(() => { if (alive) setData([]) })
+    return () => { alive = false }
+  }, [stationId, day]) // eslint-disable-line react-hooks/exhaustive-deps
+  return data
+}
+
+export default function Trends({ readings, stationId }: { readings: Reading[]; stationId?: string }) {
   const [hours, setHours] = useState(24)
+  const [day, setDay] = useState<string | null>(null) // dia escolhido do histórico; null = últimas `hours`
+  const dayData = useDay(stationId, day, readings)
   const [order, setOrder] = useCardOrder()
   const [dragging, setDragging] = useState<CardKey | null>(null)
   const isAdmin = useIsAdmin()
   const f = useFmt()
   const rs = useMemo(() => {
+    if (day) return dayData ?? []
     const end = readings[readings.length - 1].ts
     return readings.filter((r) => r.ts >= end - hours * 3600)
-  }, [readings, hours])
+  }, [readings, hours, day, dayData])
+  const span = day ? 24 : hours
+  const zoomKey = `${day ?? hours}`
   const rainTotal = rs.reduce((s, r) => s + r.rain, 0)
 
   const move = (from: CardKey, to: CardKey) => {
@@ -85,7 +109,7 @@ export default function Trends({ readings }: { readings: Reading[] }) {
   const cards: Record<CardKey, React.ReactNode> = {
     temp: (
       <Card title="Temperatura" sub={f.tempUnit}>
-        <Chart unit={f.tempUnit} series={[
+        <Chart zoomKey={zoomKey} unit={f.tempUnit} series={[
           { label: 'ar', color: '#fb923c', points: pts(rs, (r) => f.tempNum(r.temp)), fill: true },
           { label: 'orvalho', color: '#38bdf8', points: pts(rs, (r) => f.tempNum(dewPoint(r.temp, r.hum))) },
         ]} />
@@ -93,12 +117,12 @@ export default function Trends({ readings }: { readings: Reading[] }) {
     ),
     hum: (
       <Card title="Umidade" sub="%">
-        <Chart unit="%" decimals={0} series={[{ label: 'umidade', color: '#38bdf8', points: pts(rs, (r) => r.hum), fill: true }]} />
+        <Chart zoomKey={zoomKey} unit="%" decimals={0} series={[{ label: 'umidade', color: '#38bdf8', points: pts(rs, (r) => r.hum), fill: true }]} />
       </Card>
     ),
     wind: (
       <Card title="Vento" sub={`${f.windUnit} · média e rajada`}>
-        <Chart unit={f.windUnit} decimals={f.windUnit === 'm/s' ? 1 : 0} zeroBase series={[
+        <Chart zoomKey={zoomKey} unit={f.windUnit} decimals={f.windUnit === 'm/s' ? 1 : 0} zeroBase series={[
           { label: 'rajada', color: '#f87171', points: pts(rs, (r) => f.windNum(r.gust)) },
           { label: 'média', color: '#60a5fa', points: pts(rs, (r) => f.windNum(r.wind)), fill: true },
         ]} />
@@ -106,12 +130,12 @@ export default function Trends({ readings }: { readings: Reading[] }) {
     ),
     pres: (
       <Card title="Pressão" sub={`${f.presUnit} · queda rápida indica mau tempo`}>
-        <Chart unit={f.presUnit} decimals={f.presUnit === 'inHg' ? 2 : 1} series={[{ label: 'pressão', color: '#a78bfa', points: pts(rs, (r) => f.presNum(r.pres)), fill: true }]} />
+        <Chart zoomKey={zoomKey} unit={f.presUnit} decimals={f.presUnit === 'inHg' ? 2 : 1} series={[{ label: 'pressão', color: '#a78bfa', points: pts(rs, (r) => f.presNum(r.pres)), fill: true }]} />
       </Card>
     ),
     rain: (
       <Card title="Chuva" sub={`${f.rain(rainTotal)} no período`}>
-        <Chart unit={f.rainUnit} decimals={f.rainUnit === 'pol' ? 2 : 1} zeroBase series={[{ label: 'chuva', color: '#38bdf8', bar: true, points: bucketRain(rs, hours).map((p) => ({ t: p.t, v: f.rainNum(p.v) })) }]} />
+        <Chart zoomKey={zoomKey} unit={f.rainUnit} decimals={f.rainUnit === 'pol' ? 2 : 1} zeroBase series={[{ label: 'chuva', color: '#38bdf8', bar: true, points: bucketRain(rs, span).map((p) => ({ t: p.t, v: f.rainNum(p.v) })) }]} />
       </Card>
     ),
     windrose: (
@@ -125,24 +149,40 @@ export default function Trends({ readings }: { readings: Reading[] }) {
     <section className="mx-auto max-w-7xl px-4 py-24 sm:px-6">
       <div className="flex flex-wrap items-end justify-between gap-4">
         <SectionHead id="tendencias" kicker="Tendências" title="O que mudou no período">
-          Passe o dedo ou o mouse sobre um gráfico para ver o valor de cada leitura.
+          Passe o dedo ou o mouse sobre um gráfico para ver o valor de cada leitura. Arraste sobre uma área para ampliar; clique duas vezes para voltar.
           {isAdmin && ' Arraste um cartão pela alça para reordenar — a ordem fica salva para todo mundo.'}
         </SectionHead>
+        <div className="flex flex-wrap items-center gap-2">
+        <label className="flex items-center gap-2 text-sm text-ink-3">
+          Dia
+          <input
+            type="date"
+            value={day ?? ''}
+            max={dayStr(new Date())}
+            onChange={(e) => setDay(e.target.value || null)}
+            aria-label="Escolher um dia do histórico"
+            className={`num rounded-xl border bg-card px-3 py-1.5 text-sm [color-scheme:dark] ${day ? 'border-line-hover text-ink' : 'border-line text-ink-3'}`}
+          />
+        </label>
         <div role="tablist" aria-label="Período" className="relative flex rounded-xl border border-line bg-card p-1">
           {RANGES.map((r) => (
             <button
               key={r.h}
               role="tab"
-              aria-selected={hours === r.h}
-              onClick={() => setHours(r.h)}
-              className={`num relative z-10 rounded-lg px-4 py-1.5 text-sm transition-colors ${hours === r.h ? 'text-ink' : 'text-ink-3 hover:text-ink-2'}`}
+              aria-selected={!day && hours === r.h}
+              onClick={() => { setDay(null); setHours(r.h) }}
+              className={`num relative z-10 rounded-lg px-4 py-1.5 text-sm transition-colors ${!day && hours === r.h ? 'text-ink' : 'text-ink-3 hover:text-ink-2'}`}
             >
-              {hours === r.h && <motion.span layoutId="range" className="absolute inset-0 -z-10 rounded-lg bg-card-hover ring-1 ring-line-hover" transition={{ type: 'spring', duration: 0.4 }} />}
+              {!day && hours === r.h && <motion.span layoutId="range" className="absolute inset-0 -z-10 rounded-lg bg-card-hover ring-1 ring-line-hover" transition={{ type: 'spring', duration: 0.4 }} />}
               {r.label}
             </button>
           ))}
         </div>
+        </div>
       </div>
+
+      {day && dayData && !dayData.length && <p className="mt-6 text-sm text-ink-3">Sem leituras neste dia.</p>}
+      {day && !dayData && <p className="mt-6 text-sm text-ink-3">Carregando o dia…</p>}
 
       <div className="mt-8 grid gap-4 lg:grid-cols-2">
         {order.map((key) => (

@@ -2,6 +2,7 @@
  * Rotas do administrador (/api/admin/*): visão geral, configuração em massa e padrão para estações novas, firmware com
  * acompanhamento por estação, usuários, token de administrador e registro de auditoria. Tudo exige papel "admin".
  */
+import { backupChunk, serverStats } from './server'
 import { audit, type Actor, getSetting, putSetting, revokeSessions, rotateAdminToken } from './auth'
 import { sha256Hex, toBase64 } from './crypto'
 import { notifyLive } from './hub'
@@ -265,6 +266,8 @@ export async function adminRoute(req: Request, env: Env, actor: Actor, raw: Uint
   const m = req.method
 
   if (p === '/overview' && m === 'GET') return overview(env)
+  if (p === '/server' && m === 'GET') return json(await serverStats(env))
+  if (p === '/backup' && m === 'GET') { await audit(env, actor, 'backup', url.searchParams.get('table') ?? 'esquema'); return backupChunk(url, env) }
   if (p === '/config' && m === 'POST') return bulkConfig(env, actor, raw)
   if (p === '/defaults' && m === 'GET') return getDefaults(env)
   if (p === '/defaults' && m === 'PUT') return putDefaults(env, actor, raw)

@@ -48,3 +48,16 @@ export const putScene = (scene: 'animada' | 'foto' | 'diorama') => call<{ ok: bo
 export const restartStation = (id: string) => call<{ ok: boolean }>('POST', `/api/admin/stations/${id}/restart`, {})
 export const cancelStationCommand = (id: string) => call<{ ok: boolean }>('DELETE', `/api/admin/stations/${id}/command`)
 export const clearStationEvents = (id: string) => call<{ ok: boolean; removed: number }>('DELETE', `/api/admin/stations/${id}/events`)
+
+// ---------------- servidor: ocupação, uso e backup ----------------
+export interface ServerStats {
+  now: number
+  db: { size: number | null; tables: { name: string; rows: number; bytes: number; exact: boolean }[]; exact: boolean; oldest: number | null }
+  perStation: { id: string; name: string; rows: number; oldest: number | null; n24: number; expected24: number; events: number; last_seen: number | null; bytes: number }[]
+  days: Record<string, Record<string, number>>
+  users: { total: number; admins: number; lastLogin: number | null }
+  retention: { readingsDays: number; hourlyDays: number; eventsDays: number }
+}
+export const getServer = () => call<ServerStats>('GET', '/api/admin/server', undefined, 30000)
+/** Um pedaço do backup: `schema=1` ou `table=<nome>&after=<cursor>`. */
+export const backupPart = (query: string) => call<{ sql: string; next: string | null; rows: number }>('GET', `/api/admin/backup?${query}`, undefined, 60000)

@@ -39,6 +39,8 @@ interface Props {
   height?: number
   decimals?: number
   zeroBase?: boolean
+  /** Muda quando os dados passam a ser outros (período, dia): o zoom volta ao total. */
+  zoomKey?: string | number
 }
 
 /** Separa os pontos em trechos sem falha (NaN): quem não tem o sensor, ou perdeu uma leitura, fica com um buraco no traço em vez de quebrar o gráfico todo. */
@@ -53,9 +55,14 @@ function segments(points: Pt[]): Pt[][] {
   return out
 }
 
-export default function Chart({ series, unit, height = 200, decimals = 1, zeroBase = false }: Props) {
+export default function Chart({ series: full, unit, height = 200, decimals = 1, zeroBase = false, zoomKey }: Props) {
   const [ref, W] = useWidth()
   const [hover, setHover] = useState<number | null>(null)
+  const [zoom, setZoom] = useState<[number, number] | null>(null)
+  const [drag, setDrag] = useState<[number, number] | null>(null) // seleção em andamento (instantes)
+  useEffect(() => { setZoom(null); setDrag(null) }, [zoomKey])
+  // com zoom, só os pontos da janela escolhida; a escala vertical se ajusta a eles
+  const series = zoom ? full.map((s) => ({ ...s, points: s.points.filter((p) => p.t >= zoom[0] && p.t <= zoom[1]) })) : full
   const all = series.flatMap((s) => s.points)
   const finite = all.filter((p) => Number.isFinite(p.v))
   if (!all.length) return <div ref={ref} style={{ height }} />
@@ -70,15 +77,33 @@ export default function Chart({ series, unit, height = 200, decimals = 1, zeroBa
   const y = (v: number) => m.t + (1 - (v - yMin) / (yMax - yMin)) * (height - m.t - m.b)
   const base = y(Math.max(yMin, 0))
 
-  const ref0 = series[0].points
+  const ref0 = series[0].points.length ? series[0].points : full[0].points
   const idx = hover == null ? null : Math.min(ref0.length - 1, Math.max(0, hover))
   const nTicks = Math.max(2, Math.floor(W / 120))
   const xTicks = Array.from({ length: nTicks }, (_, i) => t0 + ((t1 - t0) * i) / (nTicks - 1))
 
-  const onMove = (e: React.PointerEvent<SVGSVGElement>) => {
+  const timeAt = (e: React.PointerEvent<SVGSVGElement>) => {
     const r = e.currentTarget.getBoundingClientRect()
     const px = ((e.clientX - r.left) * W) / (r.width || W) // o desenho acompanha a largura da tela
-    const t = t0 + ((px - m.l) / (W - m.l - m.r)) * (t1 - t0)
+    return t0 + ((px - m.l) / (W - m.l - m.r)) * (t1 - t0)
+  }
+  const onDown = (e: React.PointerEvent<SVGSVGElement>) => {
+    if (e.button !== 0 && e.pointerType === 'mouse') return
+    e.currentTarget.setPointerCapture(e.pointerId)
+    const t = timeAt(e)
+    setDrag([t, t])
+  }
+  const onUp = () => {
+    if (!drag) return
+    const [a, b] = drag[0] < drag[1] ? drag : [drag[1], drag[0]]
+    setDrag(null)
+    // seleção pequena demais é só um toque; a janela precisa ter ao menos 3 leituras
+    if ((b - a) / Math.max(1, t1 - t0) < 0.03) return
+    if (series[0].points.filter((p) => p.t >= a && p.t <= b).length >= 3) setZoom([a, b])
+  }
+  const onMove = (e: React.PointerEvent<SVGSVGElement>) => {
+    const t = timeAt(e)
+    if (drag) setDrag([drag[0], t])
     let best = 0, bd = Infinity
     ref0.forEach((p, i) => { const d = Math.abs(p.t - t); if (d < bd) { bd = d; best = i } })
     setHover(best)
@@ -86,7 +111,7 @@ export default function Chart({ series, unit, height = 200, decimals = 1, zeroBa
 
   return (
     <div ref={ref} className="relative w-full" style={{ height }}>
-      <svg width="100%" height={height} viewBox={`0 0 ${W} ${height}`} preserveAspectRatio="none" onPointerMove={onMove} onPointerLeave={() => setHover(null)} className="block touch-pan-y select-none">
+      <svg width="100%" height={height} viewBox={`0 0 ${W} ${height}`} preserveAspectRatio="none" onPointerDown={onDown} onPointerMove={onMove} onPointerUp={onUp} onPointerCancel={() => setDrag(null)} onPointerLeave={() => setHover(null)} onDoubleClick={() => setZoom(null)} className={`block touch-pan-y select-none ${drag ? 'cursor-col-resize' : 'cursor-crosshair'}`}>
         {ticks.map((v) => (
           <g key={v}>
             <line x1={m.l} x2={W - m.r} y1={y(v)} y2={y(v)} stroke="#1d2529" />
@@ -126,9 +151,15 @@ export default function Chart({ series, unit, height = 200, decimals = 1, zeroBa
             </g>
           )
         })}
+        {drag && <rect x={x(Math.min(drag[0], drag[1]))} y={m.t} width={Math.abs(x(drag[1]) - x(drag[0]))} height={height - m.t - m.b} fill="#60a5fa" opacity="0.18" />}
         {idx != null && <line x1={x(ref0[idx].t)} x2={x(ref0[idx].t)} y1={m.t} y2={height - m.b} stroke="#9ca9b0" strokeDasharray="3 3" />}
       </svg>
-      {idx != null && (
+      {zoom && (
+        <button onClick={() => setZoom(null)} className="absolute right-1 top-0 z-10 rounded-md border border-line bg-card px-2 py-0.5 text-[11px] text-ink-2 hover:text-ink">
+          Redefinir zoom
+        </button>
+      )}
+      {idx != null && !drag && (
         <div
           className="glass pointer-events-none absolute top-1 z-10 rounded-lg px-2.5 py-1.5 text-xs"
           style={{ left: Math.min(W - 150, Math.max(m.l, x(ref0[idx].t) + 10)) }}
