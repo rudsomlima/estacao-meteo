@@ -3,6 +3,7 @@ import { motion } from 'motion/react'
 import { useMemo } from 'react'
 import { batteryPct, CHEMS } from '../lib/battery'
 import { beaufort, compass16, dayStats, dewPoint, feelsLike, trend } from '../lib/derive'
+import { currentCondition } from '../lib/outlook'
 import { useScene } from '../lib/scene'
 import { useFmt } from '../lib/units'
 import type { Reading, Station } from '../types'
@@ -29,17 +30,14 @@ export default function Hero({ readings, station }: { readings: Reading[]; stati
   const f = useFmt()
   const now = readings[readings.length - 1]
   const day = useMemo(() => dayStats(readings), [readings])
-  const dPres = trend(readings, (r) => r.pres, 3)
+  const hasWind = (config.has_wind ?? 1) === 1
+  const hasRain = (config.has_rain ?? 1) === 1
   const bf = beaufort(now.wind)
   const dew = dewPoint(now.temp, now.hum)
   const feels = feelsLike(now.temp, now.hum, now.wind)
   const pct = batteryPct(now.vbat, config.battery_chem)
-
-  const outlook =
-    dPres < -1.5 ? 'Pressão caindo rápido: chuva ou piora do tempo provável nas próximas horas.'
-    : dPres < -0.6 ? 'Pressão em queda leve: o tempo tende a mudar.'
-    : dPres > 1 ? 'Pressão subindo: o tempo tende a firmar.'
-    : 'Pressão estável.'
+  const dPres = useMemo(() => trend(readings, (r) => r.pres, 3), [readings])
+  const outlook = useMemo(() => currentCondition(now, readings, day, config), [now, readings, day, config])
 
   return (
     <section id="agora" className="mx-auto max-w-6xl px-4 pb-16 pt-24 sm:px-6">
@@ -53,7 +51,9 @@ export default function Hero({ readings, station }: { readings: Reading[]; stati
             {f.tempV(now.temp)}<span className="align-top text-[0.34em] font-medium text-ink-2">{f.tempUnit}</span>
           </h1>
           <p className="max-w-md pb-2 text-base text-ink-2 sm:text-lg">
-            Vento{Number.isFinite(now.dir) ? <> de <b className="text-ink">{compass16(now.dir)}</b></> : ''} a <b className="num text-ink">{f.wind(now.wind)}</b> ({bf.name.toLowerCase()}).{' '}
+            {hasWind && (
+              <>Vento{Number.isFinite(now.dir) ? <> de <b className="text-ink">{compass16(now.dir)}</b></> : ''} a <b className="num text-ink">{f.wind(now.wind)}</b> ({bf.name.toLowerCase()}).{' '}</>
+            )}
             {outlook}
           </p>
         </div>
@@ -66,12 +66,12 @@ export default function Hero({ readings, station }: { readings: Reading[]; stati
       <div className="mt-4 grid grid-cols-2 gap-2.5 sm:grid-cols-4 lg:grid-cols-8">
         <Tile icon={Thermometer} label="Mín / Máx" value={`${f.tempShort(day.tMin)} / ${f.tempShort(day.tMax)}`} sub={`sensação ${f.tempShort(feels)}`} />
         <Tile icon={Droplets} label="Umidade" value={Number.isFinite(now.hum) ? `${now.hum.toFixed(0)}%` : '—'} sub={Number.isFinite(now.hum) ? `orvalho ${f.tempShort(dew)}` : 'sensor sem umidade'} />
-        <Tile icon={Gauge} label="Pressão" value={Number.isFinite(now.pres) ? f.pres(now.pres) : '—'} sub={Number.isFinite(now.pres) && Number.isFinite(dPres) ? `${dPres >= 0 ? '↑' : '↓'} ${Math.abs(f.presNum(dPres)).toFixed(f.presUnit === 'inHg' ? 2 : 1)} em 3 h` : 'sensor sem pressão'} />
-        <Tile icon={Wind} label="Rajada" value={f.wind(now.gust)} sub={`máx hoje ${f.windV(day.gustMax)}`} />
-        <Tile icon={Waves} label="Beaufort" value={`${bf.n}`} sub={bf.name} />
-        <Tile icon={Droplets} label="Chuva hoje" value={f.rain(day.rainDay)} sub={`${f.rain(day.rainHour)} na última hora`} />
+        <Tile icon={Gauge} label="Pressão" value={Number.isFinite(now.pres) ? f.pres(now.pres) : '—'} sub={Number.isFinite(now.pres) ? `${dPres >= 0 ? '↑' : '↓'} ${Math.abs(f.presNum(dPres)).toFixed(f.presUnit === 'inHg' ? 2 : 1)} em 3 h` : 'sensor sem pressão'} />
+        {hasWind && <Tile icon={Wind} label="Rajada" value={f.wind(now.gust)} sub={`máx hoje ${f.windV(day.gustMax)}`} />}
+        {hasWind && <Tile icon={Waves} label="Beaufort" value={`${bf.n}`} sub={bf.name} />}
+        {hasRain && <Tile icon={Droplets} label="Chuva hoje" value={f.rain(day.rainDay)} sub={`${f.rain(day.rainHour)} na última hora`} />}
         <Tile icon={Battery} label="Bateria" value={`${now.vbat.toFixed(2)} V`} sub={`${pct}% · ${CHEMS[config.battery_chem].label}`} />
-        <Tile icon={Wind} label="Média hoje" value={f.wind(day.windAvg)} sub="vento" />
+        {hasWind && <Tile icon={Wind} label="Média hoje" value={f.wind(day.windAvg)} sub="vento" />}
       </div>
     </section>
   )

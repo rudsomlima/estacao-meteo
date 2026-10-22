@@ -30,7 +30,7 @@ constexpr uint32_t PORTAL_TIMEOUT_S = 180;
 // ---------------- versão ----------------
 // Mude a cada firmware que publicar pelo site: a estação só atualiza quando a versão publicada é DIFERENTE desta.
 #ifndef FW_VERSION
-#define FW_VERSION "0.5.0"
+#define FW_VERSION "0.5.1"
 #endif
 
 // ---------------- limites ----------------
@@ -57,6 +57,8 @@ struct Settings {
   uint8_t  continuousWind = 0;      // 1 = conta o vento o ciclo todo em light sleep (exige Hall de baixa corrente)
   uint8_t  urgentGustKmh = 0;       // 0 = desligado; acima disso envia na hora
   uint8_t  envSensor     = 1;       // 0 nenhum, 1 BME280, 2 MS5611 (GY-63), 3 BME280 (temperatura e umidade) + MS5611 (pressão)
+  uint8_t  hasWind       = 1;       // 0 = sem anemômetro/biruta instalados: não mede (evita ruído de pino solto virar "vento")
+  uint8_t  hasRain       = 1;       // 0 = sem pluviômetro instalado: não mede
   uint8_t  pinSda = DEF_PIN_SDA, pinScl = DEF_PIN_SCL, pinWind = DEF_PIN_WIND, pinRain = DEF_PIN_RAIN, pinVbat = DEF_PIN_VBAT;
   uint8_t  wifiTxSave    = 0;       // 1 = reduz sozinha a potência de transmissão do Wi-Fi quando o sinal é bom
   uint8_t  idleEvery     = 1;       // sem leitura de sensor: manda o sinal de vida a cada N ciclos (1 = todo ciclo)

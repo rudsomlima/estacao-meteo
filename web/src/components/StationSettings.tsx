@@ -26,11 +26,19 @@ function sensorsOf(c: StationConfig, r: Reading) {
         state: (Number.isFinite(r.temp) && Number.isFinite(r.pres) && (env === 2 || Number.isFinite(r.hum)) ? 'ok' : 'bad') as 'ok' | 'bad',
         pin: `${i2c} · ${env === 2 ? '0x77' : env === 3 ? '0x76 + 0x77' : '0x76'}`,
       }
+  const hasWind = (c.has_wind ?? 1) === 1
+  const hasRain = (c.has_rain ?? 1) === 1
   return [
     envRow,
-    { name: 'QMC5883L · direção da biruta', state: (Number.isFinite(r.dir) ? 'ok' : 'bad') as 'ok' | 'bad', pin: `${i2c} · 0x0D` },
-    { name: 'Hall · giro do anemômetro', state: (Number.isFinite(r.wind) ? 'ok' : 'bad') as 'ok' | 'bad', pin: pin('pin_wind') },
-    { name: 'Hall · tanque de chuva', state: (Number.isFinite(r.rain) ? 'ok' : 'bad') as 'ok' | 'bad', pin: `${pin('pin_rain')} (acorda)` },
+    hasWind
+      ? { name: 'QMC5883L · direção da biruta', state: (Number.isFinite(r.dir) ? 'ok' : 'bad') as 'ok' | 'bad', pin: `${i2c} · 0x0D` }
+      : { name: 'QMC5883L · direção da biruta: não instalada', state: 'off' as const, pin: '—' },
+    hasWind
+      ? { name: 'Hall · giro do anemômetro', state: (Number.isFinite(r.wind) ? 'ok' : 'bad') as 'ok' | 'bad', pin: pin('pin_wind') }
+      : { name: 'Hall · giro do anemômetro: não instalado', state: 'off' as const, pin: '—' },
+    hasRain
+      ? { name: 'Hall · tanque de chuva', state: (Number.isFinite(r.rain) ? 'ok' : 'bad') as 'ok' | 'bad', pin: `${pin('pin_rain')} (acorda)` }
+      : { name: 'Hall · tanque de chuva: não instalado', state: 'off' as const, pin: '—' },
     { name: 'Divisor da bateria', state: (hasBattery(r.vbat) && r.vbat < 4.5 ? 'ok' : 'off') as 'ok' | 'off', pin: `${pin('pin_vbat')} (ADC)` },
   ]
 }

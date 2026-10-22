@@ -171,14 +171,20 @@ static void pushSample(const Sample &s) {
 /** Mede o vento, lê o ambiente e guarda a leitura. Devolve true se a rajada passou do limite de urgência. */
 static bool measureAndStore(float vbat, uint16_t windSeconds) {
   setCpuFrequencyMhz(80);  // a janela só espera pulsos
-  const WindResult w = windMeasure(windSeconds);
+  // sem anemômetro/pluviômetro instalados, não mede: pino solto vira ruído, não "vento" ou "chuva" de verdade
+  const WindResult w = cfg.hasWind ? windMeasure(windSeconds) : WindResult{};
   const Env e = readEnv(cfg.samples);
   LOG("T=%.1f H=%.0f P=%.1f | vento %.1f m/s, rajada %.1f, dir %.0f%s (%u pulsos em %u s)\n", e.t, e.h, e.p, w.avg, w.gust,
       w.dir, w.dirOk ? "" : " (sem biruta)", (unsigned)w.pulses, w.seconds);
   if (!e.ok) { rtcSkipped = min<uint8_t>(rtcSkipped + 1, 250); LOG(cfg.envSensor ? "sensor de ambiente nao respondeu: leitura descartada\n" : "sem sensor de ambiente configurado: so o sinal de vida\n"); return false; }
 
   // sem leitura da biruta a direção vai vazia (o site mostra "—"), e não a última conhecida como se fosse nova
-  Sample s{(uint32_t)time(nullptr), e.t, e.h, e.p, w.avg, w.gust, w.dirOk ? w.dir : NAN, takeRainTips() * cfg.mmPerTip, vbat};
+  const uint32_t rainTips = takeRainTips(); // sempre lê (zera o contador), mas só conta como chuva se o sensor existir
+  Sample s{
+    (uint32_t)time(nullptr), e.t, e.h, e.p,
+    cfg.hasWind ? w.avg : NAN, cfg.hasWind ? w.gust : NAN, (cfg.hasWind && w.dirOk) ? w.dir : NAN,
+    cfg.hasRain ? rainTips * cfg.mmPerTip : NAN, vbat,
+  };
   pushSample(s);
   return cfg.urgentGustKmh > 0 && w.gust * 3.6f >= cfg.urgentGustKmh;
 }

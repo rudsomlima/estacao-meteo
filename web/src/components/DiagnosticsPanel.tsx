@@ -2,7 +2,7 @@ import { AlertTriangle, CircleCheck, Cpu, Download, ExternalLink, Power, Wrench 
 import { useMemo, useState } from 'react'
 import { useNow } from '../hooks/useNow'
 import { ago } from '../lib/derive'
-import { cancelStationCommand, clearStationEvents, restartStation } from '../lib/admin'
+import { cancelStationCommand, clearStationData, clearStationEvents, restartStation } from '../lib/admin'
 import { commandStatus } from '../lib/command'
 import { useIsAdmin } from '../lib/session'
 import { ApiError } from '../lib/api'
@@ -65,6 +65,8 @@ export default function DiagnosticsPanel({ station, readings, events }: { statio
             )}
             <button disabled={busy || events.length === 0} className="rounded-lg border border-line px-3 py-1.5 text-xs hover:bg-card-hover disabled:opacity-50"
               onClick={() => { if (window.confirm('Apagar todos os eventos (reinícios, atualizações, modo bancada) desta estação? Não dá para desfazer.')) void act(async () => { const r = await clearStationEvents(station.id); return `${r.removed} evento(s) apagado(s).` }) }}>Limpar eventos</button>
+            <button disabled={busy} className="rounded-lg border border-bad/40 px-3 py-1.5 text-xs text-bad hover:bg-bad/10 disabled:opacity-50"
+              onClick={() => { if (window.confirm(`Apagar TODAS as leituras de ${station.name} (histórico, gráficos e resumo por hora)? A estação continua, com o mesmo nome, chave e configuração — só o histórico some. Não dá para desfazer.`)) void act(async () => { const r = await clearStationData(station.id); return `${r.removed} leitura(s) apagada(s). A página atualiza sozinha.` }) }}>Apagar todas as leituras</button>
           </div>
           {cmd.text && <p role="status" className={cmd.tone === 'ok' ? 'text-ok' : 'text-warn'}>{cmd.text}</p>}
           {msg && <p role="status" className={msg.ok ? 'text-ok' : 'text-bad'}>{msg.text}</p>}

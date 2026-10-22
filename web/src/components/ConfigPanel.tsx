@@ -124,6 +124,14 @@ export function ConfigSection({ section, station, source, onChange }: { section:
                 <span className="text-xs font-normal text-ink-3">{sensor.hint}</span>
               </label>
               <div className="grid gap-3 sm:grid-cols-2">
+                <Toggle checked={(cfg.has_wind ?? 1) === 1} onChange={(v) => set({ has_wind: v ? 1 : 0 })} title="Tem anemômetro">
+                  Desligue se não há biruta/rotor instalados: vento, rajada e direção somem da página (em vez de mostrar ruído do pino solto).
+                </Toggle>
+                <Toggle checked={(cfg.has_rain ?? 1) === 1} onChange={(v) => set({ has_rain: v ? 1 : 0 })} title="Tem pluviômetro">
+                  Desligue se não há tanque basculante instalado: chuva some da página.
+                </Toggle>
+              </div>
+              <div className="grid gap-3 sm:grid-cols-2">
                 {PINS.map((p) => {
                   const v = pinValue(cfg, p.key)
                   const taken = new Set(PINS.filter((o) => o.key !== p.key).map((o) => pinValue(cfg, o.key)))

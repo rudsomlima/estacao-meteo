@@ -152,6 +152,13 @@ async function ingest(req: Request, env: Env, ctx: ExecutionContext) {
   if ((items.length < 1 && !heartbeat) || items.length > MAX_BATCH) return json({ error: `o lote precisa ter de 1 a ${MAX_BATCH} leituras` }, 422)
 
   const nowTs = Math.floor(Date.now() / 1000)
+  const cfg = JSON.parse(st.config) as Config
+  // a estação diz quais sensores tem instalados (placa, sensores e pinos); o servidor obriga isso mesmo que o firmware
+  // ainda não saiba (por exemplo, pino do anemômetro boiando e captando ruído como se fosse vento)
+  const forcedNull = new Set<string>([
+    ...(cfg.has_wind ? [] : ['wind', 'gust', 'dir']),
+    ...(cfg.has_rain ? [] : ['rain']),
+  ])
   const ins = env.DB.prepare('INSERT OR REPLACE INTO readings (station_id,ts,temp,hum,pres,wind,gust,dir,rain,vbat,rssi) VALUES (?,?,?,?,?,?,?,?,?,?,?)')
   const writes: D1PreparedStatement[] = []
   let latest: ({ ts: number } & Record<string, number | null>) | null = null
@@ -161,6 +168,7 @@ async function ingest(req: Request, env: Env, ctx: ExecutionContext) {
     const v: Record<string, number> = {}
     for (const [k, [lo, hi]] of Object.entries(READING_RANGES)) {
       const n = item[k]
+      if (forcedNull.has(k)) { v[k] = null as unknown as number; continue } // sensor marcado como não instalado: ignora o que a placa mandar
       if (OPTIONAL_READINGS.includes(k) && n == null) { v[k] = null as unknown as number; continue } // umidade sem o sensor, direção sem a biruta
       if (typeof n !== 'number' || !Number.isFinite(n) || n < lo || n > hi) {
         console.warn(`ingest recusado (${st.id}): campo ${k} = ${JSON.stringify(n)} fora de ${lo}..${hi}`) // aparece no log do wrangler
@@ -194,7 +202,6 @@ async function ingest(req: Request, env: Env, ctx: ExecutionContext) {
   const stV = inRange(body.vbat, READING_RANGES.vbat) ?? latest?.vbat ?? null
   const stR = inRange(body.rssi, READING_RANGES.rssi) ?? latest?.rssi ?? null
   const fw = typeof body.fw === 'string' ? body.fw.slice(0, 40) : null
-  const cfg = JSON.parse(st.config) as Config
   const reported = Number(body.cfg)
   const nonce = auth.signed ? randomHex(8) : st.nonce
   writes.push(

@@ -23,7 +23,7 @@ export interface Config {
   slow_below_v: Num; slow_factor: Num; critical_v: Num
   charge_above_v: Num; charge_interval_min: Num
   send_every: Num; continuous_wind: Num; urgent_gust_kmh: Num; bench_min: Num; wifi_tx_save: Num
-  idle_every: Num; env_sensor: Num; pin_sda: Num; pin_scl: Num; pin_wind: Num; pin_rain: Num; pin_vbat: Num
+  idle_every: Num; env_sensor: Num; has_wind: Num; has_rain: Num; pin_sda: Num; pin_scl: Num; pin_wind: Num; pin_rain: Num; pin_vbat: Num
   battery_chem: 'li' | 'lfp' | 'lipo' | 'aa'; battery_mah: Num
   version: Num
 }
@@ -34,7 +34,7 @@ export const DEFAULT_CONFIG: Config = {
   slow_below_v: 3.55, slow_factor: 3, critical_v: 3.2,
   charge_above_v: 0, charge_interval_min: 5,
   send_every: 3, continuous_wind: 0, urgent_gust_kmh: 0, bench_min: 2, wifi_tx_save: 0,
-  idle_every: 1, env_sensor: 1, pin_sda: 6, pin_scl: 7, pin_wind: 4, pin_rain: 3, pin_vbat: 0,
+  idle_every: 1, env_sensor: 1, has_wind: 1, has_rain: 1, pin_sda: 6, pin_scl: 7, pin_wind: 4, pin_rain: 3, pin_vbat: 0,
   battery_chem: 'li', battery_mah: 3000, version: 1,
 }
 
@@ -49,12 +49,12 @@ export const LIMITS: Record<string, [Num, Num]> = {
   slow_below_v: [0, 4.2], slow_factor: [1, 12], critical_v: [0, 4.0], battery_mah: [100, 100000],
   charge_above_v: [0, 5], charge_interval_min: [1, 60],
   send_every: [1, 12], continuous_wind: [0, 1], urgent_gust_kmh: [0, 200], bench_min: [0, 30], wifi_tx_save: [0, 1],
-  idle_every: [1, 12], env_sensor: [0, 3], pin_sda: [0, 21], pin_scl: [0, 21], pin_wind: [0, 21], pin_rain: [0, 21], pin_vbat: [0, 21],
+  idle_every: [1, 12], env_sensor: [0, 3], has_wind: [0, 1], has_rain: [0, 1], pin_sda: [0, 21], pin_scl: [0, 21], pin_wind: [0, 21], pin_rain: [0, 21], pin_vbat: [0, 21],
 }
-export const INTEGER_FIELDS = ['send_every', 'continuous_wind', 'wifi_tx_save', 'urgent_gust_kmh', 'bench_min', 'charge_interval_min', 'idle_every', 'env_sensor', 'pin_sda', 'pin_scl', 'pin_wind', 'pin_rain', 'pin_vbat']
+export const INTEGER_FIELDS = ['send_every', 'continuous_wind', 'wifi_tx_save', 'urgent_gust_kmh', 'bench_min', 'charge_interval_min', 'idle_every', 'env_sensor', 'has_wind', 'has_rain', 'pin_sda', 'pin_scl', 'pin_wind', 'pin_rain', 'pin_vbat']
 
 /** Medidas que podem faltar numa leitura: umidade (MS5611) e direção (sem biruta). As outras são obrigatórias. */
-export const OPTIONAL_READINGS = ['hum', 'dir']
+export const OPTIONAL_READINGS = ['hum', 'dir', 'wind', 'gust', 'rain']
 
 export const READING_RANGES: Record<string, [Num, Num]> = {
   temp: [-60, 90], hum: [0, 100], pres: [300, 1100], wind: [0, 120], gust: [0, 150],

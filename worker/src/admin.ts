@@ -253,6 +253,20 @@ async function clearEvents(env: Env, actor: Actor, id: string) {
   return json({ ok: true, removed: r.meta.changes })
 }
 
+/** Apaga todas as leituras de uma estação (histórico, resumo por hora e estado de alerta), mantendo a estação, a chave e a
+ * configuração. Para quando entraram dados errados (sensor com defeito, ruído de pino) e não há o que aproveitar do histórico. */
+async function clearStationData(env: Env, actor: Actor, id: string) {
+  const r = await env.DB.prepare('DELETE FROM readings WHERE station_id = ?').bind(id).run()
+  await env.DB.batch([
+    env.DB.prepare('DELETE FROM readings_hourly WHERE station_id = ?').bind(id),
+    env.DB.prepare('DELETE FROM alert_state WHERE station_id = ?').bind(id),
+    env.DB.prepare('UPDATE stations SET latest = NULL WHERE id = ?').bind(id),
+  ])
+  await audit(env, actor, 'estacao.dados.apagados', id, `${r.meta.changes} leituras`)
+  await notifyLive(env, id)
+  return json({ ok: true, removed: r.meta.changes })
+}
+
 // ---------------- segurança e auditoria ----------------
 async function auditLog(url: URL, env: Env) {
   const limit = Math.min(500, Math.max(1, Number(url.searchParams.get('limit')) || 100))
@@ -291,11 +305,12 @@ export async function adminRoute(req: Request, env: Env, actor: Actor, raw: Uint
     if (m === 'PUT') return updateUser(env, actor, email, raw)
     if (m === 'DELETE') return deleteUser(env, actor, email)
   }
-  const cmd = p.match(/^\/stations\/([a-z0-9-]+)\/(restart|command|events)$/)
+  const cmd = p.match(/^\/stations\/([a-z0-9-]+)\/(restart|command|events|data)$/)
   if (cmd) {
     if (cmd[2] === 'restart' && m === 'POST') return restartStation(env, actor, cmd[1])
     if (cmd[2] === 'command' && m === 'DELETE') return cancelCommand(env, actor, cmd[1])
     if (cmd[2] === 'events' && m === 'DELETE') return clearEvents(env, actor, cmd[1])
+    if (cmd[2] === 'data' && m === 'DELETE') return clearStationData(env, actor, cmd[1])
   }
   const own = p.match(/^\/stations\/([a-z0-9-]+)\/owner$/)
   if (own && m === 'PUT') return setOwner(env, actor, own[1], raw)

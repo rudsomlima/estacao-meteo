@@ -48,6 +48,7 @@ export const putScene = (scene: 'animada' | 'foto' | 'diorama') => call<{ ok: bo
 export const restartStation = (id: string) => call<{ ok: boolean }>('POST', `/api/admin/stations/${id}/restart`, {})
 export const cancelStationCommand = (id: string) => call<{ ok: boolean }>('DELETE', `/api/admin/stations/${id}/command`)
 export const clearStationEvents = (id: string) => call<{ ok: boolean; removed: number }>('DELETE', `/api/admin/stations/${id}/events`)
+export const clearStationData = (id: string) => call<{ ok: boolean; removed: number }>('DELETE', `/api/admin/stations/${id}/data`)
 
 // ---------------- servidor: ocupação, uso e backup ----------------
 export interface ServerStats {
