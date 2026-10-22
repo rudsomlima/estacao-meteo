@@ -30,8 +30,10 @@ export default function Hero({ readings, station }: { readings: Reading[]; stati
   const f = useFmt()
   const now = readings[readings.length - 1]
   const day = useMemo(() => dayStats(readings), [readings])
-  const hasWind = (config.has_wind ?? 1) === 1
-  const hasRain = (config.has_rain ?? 1) === 1
+  // a config pode dizer que o sensor existe, mas a leitura em si pode faltar (estação antiga, config desatualizada):
+  // sem isso bastasse, "NaN km/h" apareceria em vez de simplesmente esconder o que não há de verdade.
+  const hasWind = (config.has_wind ?? 1) === 1 && Number.isFinite(now.wind)
+  const hasRain = (config.has_rain ?? 1) === 1 && Number.isFinite(now.rain)
   const bf = beaufort(now.wind)
   const dew = dewPoint(now.temp, now.hum)
   const feels = feelsLike(now.temp, now.hum, now.wind)
@@ -64,7 +66,7 @@ export default function Hero({ readings, station }: { readings: Reading[]; stati
       </motion.div>
 
       <div className="mt-4 grid grid-cols-2 gap-2.5 sm:grid-cols-4 lg:grid-cols-8">
-        <Tile icon={Thermometer} label="Mín / Máx" value={`${f.tempShort(day.tMin)} / ${f.tempShort(day.tMax)}`} sub={`sensação ${f.tempShort(feels)}`} />
+        <Tile icon={Thermometer} label="Mín / Máx" value={`${f.tempShort(day.tMin)} / ${f.tempShort(day.tMax)}`} sub={Number.isFinite(feels) ? `sensação ${f.tempShort(feels)}` : undefined} />
         <Tile icon={Droplets} label="Umidade" value={Number.isFinite(now.hum) ? `${now.hum.toFixed(0)}%` : '—'} sub={Number.isFinite(now.hum) ? `orvalho ${f.tempShort(dew)}` : 'sensor sem umidade'} />
         <Tile icon={Gauge} label="Pressão" value={Number.isFinite(now.pres) ? f.pres(now.pres) : '—'} sub={Number.isFinite(now.pres) ? `${dPres >= 0 ? '↑' : '↓'} ${Math.abs(f.presNum(dPres)).toFixed(f.presUnit === 'inHg' ? 2 : 1)} em 3 h` : 'sensor sem pressão'} />
         {hasWind && <Tile icon={Wind} label="Rajada" value={f.wind(now.gust)} sub={`máx hoje ${f.windV(day.gustMax)}`} />}

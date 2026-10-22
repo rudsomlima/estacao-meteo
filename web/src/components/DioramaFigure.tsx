@@ -40,10 +40,14 @@ export default function DioramaFigure({ station, readings }: { station: Station;
   const dew = dewPoint(now.temp, now.hum)
   const feels = feelsLike(now.temp, now.hum, now.wind)
   const hasDir = Number.isFinite(L.wd)
+  const hasWind = (station.config.has_wind ?? 1) === 1 && Number.isFinite(now.wind)
+  const hasRain = (station.config.has_rain ?? 1) === 1 && Number.isFinite(now.rain)
   const hum = Number.isFinite(now.hum), pres = Number.isFinite(now.pres)
   const hr = new Date().getHours()
   const left = Math.max(0, Math.round(L.ts + L.intervalS - Date.now() / 1000))
-  const rev = L.ws < 1 ? 0 : Math.max(0.25, 14 / L.ws)
+  // sensor desligado manda NaN (fixNulls em lib/api.ts): sem isto, a animação (duração/gauge CSS) herdaria o NaN
+  const ws = Number.isFinite(L.ws) ? L.ws : 0, dayRain = Number.isFinite(L.dayRain) ? L.dayRain : 0, rainMm = Number.isFinite(L.rain) ? L.rain : 0
+  const rev = ws < 1 ? 0 : Math.max(0.25, 14 / ws)
   const hw = (y: number) => 7 - ((y + 9) / 50) * 4
 
   return (
@@ -71,11 +75,11 @@ export default function DioramaFigure({ station, readings }: { station: Station;
         </figure>
 
         <figure>
-          <div className="scene"><div className="anemo"><div className="mast mastx" /><div className="rotor" style={{ animationDuration: `${rev || 2}s`, animationPlayState: rev ? 'running' : 'paused' }}>
+          <div className="scene"><div className="anemo"><div className="mast mastx" /><div className="rotor" style={{ animationDuration: `${(hasWind && rev) || 2}s`, animationPlayState: hasWind && rev ? 'running' : 'paused' }}>
             <div className="hub" />
             {[0, 120, 240].map((a) => <div key={a} className="arm" style={{ transform: `rotateY(${a}deg)` }}><div className="cup" /></div>)}
           </div></div></div>
-          <figcaption><i>Anemômetro</i><b>{f.wind(now.wind)}</b>rajada {f.wind(now.gust)} · Beaufort {bf.n}</figcaption>
+          <figcaption><i>Anemômetro</i><b>{hasWind ? f.wind(now.wind) : '—'}</b>{hasWind ? <>rajada {f.wind(now.gust)} · Beaufort {bf.n}</> : 'não instalado'}</figcaption>
         </figure>
 
         <figure>
@@ -98,8 +102,8 @@ export default function DioramaFigure({ station, readings }: { station: Station;
         </figure>
 
         <figure>
-          <div className="scene"><div className={`gauge${L.rain > 0.05 ? ' rain' : ''}`} style={{ '--lvl': `${clamp((L.dayRain / 25) * 95, 4, 95)}%` } as React.CSSProperties}><div className="tube"><div className="water" /></div><div className="funnel" /><div className="drop" /></div></div>
-          <figcaption><i>Pluviômetro</i><b>{f.rain(L.dayRain)}</b>hoje · {f.rain(L.rain)} na última hora</figcaption>
+          <div className="scene"><div className={`gauge${hasRain && rainMm > 0.05 ? ' rain' : ''}`} style={{ '--lvl': `${clamp((dayRain / 25) * 95, 4, 95)}%` } as React.CSSProperties}><div className="tube"><div className="water" /></div><div className="funnel" /><div className="drop" /></div></div>
+          <figcaption><i>Pluviômetro</i><b>{hasRain ? f.rain(L.dayRain) : '—'}</b>{hasRain ? <>hoje · {f.rain(L.rain)} na última hora</> : 'não instalado'}</figcaption>
         </figure>
 
         <figure>
@@ -114,11 +118,11 @@ export default function DioramaFigure({ station, readings }: { station: Station;
       </div>
 
       <div className="dock">
-        <div><span>Sensação</span><b>{f.tempShort(feels)}</b></div>
+        <div><span>Sensação</span><b>{Number.isFinite(feels) ? f.tempShort(feels) : '—'}</b></div>
         <div><span>Ponto de orvalho</span><b>{hum ? f.tempShort(dew) : '—'}</b></div>
-        <div><span>Média hoje</span><b>{f.wind(day.windAvg)}</b></div>
-        <div><span>Rajada máx hoje</span><b>{f.wind(day.gustMax)}</b></div>
-        <div><span>Chuva na hora</span><b>{f.rain(day.rainHour)}</b></div>
+        <div><span>Média hoje</span><b>{hasWind ? f.wind(day.windAvg) : '—'}</b></div>
+        <div><span>Rajada máx hoje</span><b>{hasWind ? f.wind(day.gustMax) : '—'}</b></div>
+        <div><span>Chuva na hora</span><b>{hasRain ? f.rain(day.rainHour) : '—'}</b></div>
         <div><span>Bateria</span><b>{L.pct}%</b></div>
       </div>
     </div>

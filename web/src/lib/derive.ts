@@ -25,10 +25,11 @@ export function dewPoint(t: number, rh: number) {
   return (b * g) / (a - g)
 }
 
-/** Temperatura aparente (Steadman, com vento). */
+/** Temperatura aparente (Steadman, com vento). Sem vento (estação sem anemômetro) considera calmaria; sem umidade, não dá para calcular. */
 export function feelsLike(t: number, rh: number, windMs: number) {
+  if (!Number.isFinite(rh)) return NaN
   const e = (rh / 100) * 6.105 * Math.exp((17.27 * t) / (237.7 + t))
-  return t + 0.33 * e - 0.7 * windMs - 4
+  return t + 0.33 * e - 0.7 * (Number.isFinite(windMs) ? windMs : 0) - 4
 }
 
 export function trend(readings: Reading[], pick: (r: Reading) => number, hours = 3) {
@@ -43,6 +44,9 @@ export function trend(readings: Reading[], pick: (r: Reading) => number, hours =
 export interface DayStats {
   tMin: number; tMax: number; gustMax: number; rainDay: number; rainHour: number; windAvg: number
 }
+const finite = (a: number[]) => a.filter((v) => Number.isFinite(v))
+const sum = (a: number[]) => a.reduce((s, v) => s + v, 0)
+/** Sensor desligado (vento, rajada, chuva) manda NaN (veja fixNulls em lib/api.ts): soma e média ignoram, sem virar NaN. */
 export function dayStats(readings: Reading[]): DayStats {
   const now = readings[readings.length - 1]
   const mid = new Date(now.ts * 1000)
@@ -50,13 +54,14 @@ export function dayStats(readings: Reading[]): DayStats {
   const today = readings.filter((r) => r.ts >= mid.getTime() / 1000)
   const set = today.length ? today : [now]
   const hour = readings.filter((r) => r.ts > now.ts - 3600)
+  const gusts = finite(set.map((r) => r.gust)), winds = finite(set.map((r) => r.wind))
   return {
     tMin: Math.min(...set.map((r) => r.temp)),
     tMax: Math.max(...set.map((r) => r.temp)),
-    gustMax: Math.max(...set.map((r) => r.gust)),
-    rainDay: set.reduce((s, r) => s + r.rain, 0),
-    rainHour: hour.reduce((s, r) => s + r.rain, 0),
-    windAvg: set.reduce((s, r) => s + r.wind, 0) / set.length,
+    gustMax: gusts.length ? Math.max(...gusts) : 0,
+    rainDay: sum(finite(set.map((r) => r.rain))),
+    rainHour: sum(finite(hour.map((r) => r.rain))),
+    windAvg: winds.length ? sum(winds) / winds.length : 0,
   }
 }
 
@@ -64,7 +69,7 @@ export function dayStats(readings: Reading[]): DayStats {
 export function windRose(readings: Reading[]) {
   const bins = Array.from({ length: 16 }, () => ({ n: 0, sum: 0 }))
   for (const r of readings) {
-    if (r.wind < 0.3 || !Number.isFinite(r.dir)) continue
+    if (!Number.isFinite(r.wind) || r.wind < 0.3 || !Number.isFinite(r.dir)) continue
     const i = Math.round((((r.dir % 360) + 360) % 360) / 22.5) % 16
     bins[i].n++
     bins[i].sum += r.wind

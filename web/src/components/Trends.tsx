@@ -30,7 +30,7 @@ function bucketRain(rs: Reading[], hours: number): Pt[] {
   const out: Pt[] = Array.from({ length: 24 }, (_, i) => ({ t: end - (23 - i) * size, v: 0 }))
   for (const r of rs) {
     const i = 23 - Math.floor((end - r.ts) / size)
-    if (i >= 0 && i < 24) out[i].v += r.rain
+    if (i >= 0 && i < 24 && Number.isFinite(r.rain)) out[i].v += r.rain
   }
   return out.map((p) => ({ t: p.t, v: Number(p.v.toFixed(2)) }))
 }
@@ -103,7 +103,8 @@ export default function Trends({ readings, stationId, config }: { readings: Read
   }, [readings, hours, day, dayData])
   const span = day ? 24 : hours
   const zoomKey = `${day ?? hours}`
-  const rainTotal = rs.reduce((s, r) => s + r.rain, 0)
+  // sensor desligado manda NaN (fixNulls em lib/api.ts): soma só o que é número de verdade
+  const rainTotal = rs.reduce((s, r) => (Number.isFinite(r.rain) ? s + r.rain : s), 0)
 
   const move = (from: CardKey, to: CardKey) => {
     if (from === to) return

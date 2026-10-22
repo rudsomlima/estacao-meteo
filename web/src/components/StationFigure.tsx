@@ -27,10 +27,10 @@ const LAY = {
 
 // pontos de ligação em coordenadas locais da estação (y negativo = para cima)
 export const CO = [
-  { id: 'anemo', a: [-85, -446], t: 'Anemômetro', s: 'Velocidade do vento', v: (L: Live) => L.f.wind(L.ws / 3.6), x: (L: Live) => `rajada ${L.f.wind(L.gust / 3.6)}` },
+  { id: 'anemo', a: [-85, -446], t: 'Anemômetro', s: 'Velocidade do vento', v: (L: Live) => (Number.isFinite(L.ws) ? L.f.wind(L.ws / 3.6) : '—'), x: (L: Live) => (Number.isFinite(L.gust) ? `rajada ${L.f.wind(L.gust / 3.6)}` : 'não instalado') },
   { id: 'vane', a: [85, -450], t: 'Veleta', s: 'Direção do vento (°)', v: (L: Live) => (Number.isFinite(L.wd) ? `${compass16(L.wd)} ${Math.round(L.wd)}°` : '—'), x: (L: Live) => (Number.isFinite(L.wd) ? 'de onde o vento vem' : 'sem leitura da biruta') },
   { id: 'shield', a: [-84, -300], t: 'Sensor de temperatura e umidade do ar', s: 'Temperatura, umidade e pressão', v: (L: Live) => `${L.f.temp(L.temp)}${Number.isFinite(L.hum) ? ` · ${Math.round(L.hum)}%` : ''}`, x: (L: Live) => [Number.isFinite(L.pres) ? L.f.pres(L.pres) : '', Number.isFinite(L.hum) ? `orvalho ${L.f.temp(dewPoint(L.temp, L.hum))}` : 'sem umidade neste sensor'].filter(Boolean).join(' · ') },
-  { id: 'rain', a: [84, -292], t: 'Pluviômetro', s: 'Precipitação', v: (L: Live) => L.f.rainRate(L.rain), x: (L: Live) => `hoje ${L.f.rain(L.dayRain)}` },
+  { id: 'rain', a: [84, -292], t: 'Pluviômetro', s: 'Precipitação', v: (L: Live) => (Number.isFinite(L.rain) ? L.f.rainRate(L.rain) : '—'), x: (L: Live) => (Number.isFinite(L.dayRain) ? `hoje ${L.f.rain(L.dayRain)}` : 'não instalado') },
   { id: 'solar', a: [-88, -158], t: 'Painel solar', s: 'Alimentação do sistema',
     v: (L: Live) => (L.dv > 0.02 ? 'carregando' : L.dv < -0.02 ? 'descarregando' : 'estável'),
     x: (L: Live) => `${L.dv >= 0 ? '+' : ''}${L.dv.toFixed(2)} V em 3 h` },
@@ -228,6 +228,9 @@ export default function StationFigure({ station, readings }: { station: Station;
       last = nowMs
       const t = nowMs / 1000, Lv = live.current, hr = hourNow()
       const { W, H, gy } = lay, dl = dayL(hr), n = 1 - dl
+      // sensor desligado manda NaN (fixNulls em lib/api.ts): a animação usa 0 em vez de propagar NaN pro SVG; os rótulos
+      // (função v()/x() de CO) continuam mostrando "—" direto do NaN, sem passar por aqui.
+      const ws = Number.isFinite(Lv.ws) ? Lv.ws : 0, rainMm = Number.isFinite(Lv.rain) ? Lv.rain : 0, dayRain = Number.isFinite(Lv.dayRain) ? Lv.dayRain : 0
       const A = (el: SVGElement, k: string, v: string | number) => el.setAttribute(k, String(v))
 
       A(R.sk0, 'stop-color', mix('#3b82c4', '#050a1c', n)); A(R.sk1, 'stop-color', mix('#cfeaf7', '#1a2748', n))
@@ -241,7 +244,7 @@ export default function StationFigure({ station, readings }: { station: Station;
       A(R.sun, 'cx', bx); A(R.sun, 'cy', by); A(R.sun, 'fill', day ? '#ffd66b' : '#e8eefc')
       A(R.sunG, 'cx', bx); A(R.sunG, 'cy', by); A(R.sunG, 'fill', day ? '#ffd66b' : '#9fb4ff')
 
-      const spd = Lv.ws / 3.6, east = Math.sin(rad((Number.isFinite(Lv.wd) ? Lv.wd : 0) + 180)) >= 0 ? 1 : -1, rainy = Lv.rain > 0.1
+      const spd = ws / 3.6, east = Math.sin(rad((Number.isFinite(Lv.wd) ? Lv.wd : 0) + 180)) >= 0 ? 1 : -1, rainy = rainMm > 0.1
       Array.from(R.clouds.children).forEach((g, i) => {
         const c = clouds[i]
         c.x += east * (spd * 0.004 + 0.002) * dt * (0.5 + c.s * 0.5)
@@ -251,10 +254,10 @@ export default function StationFigure({ station, readings }: { station: Station;
         A(g as SVGElement, 'fill', rainy ? mix('#8794a3', '#2b3544', n) : mix('#ffffff', '#3a4560', n))
         A(g as SVGElement, 'opacity', '.9')
       })
-      const sway = east * clamp(Lv.ws / 45, 0.04, 0.55) + Math.sin(t * 2) * 0.05 * clamp(Lv.ws / 20, 0.2, 1)
+      const sway = east * clamp(ws / 45, 0.04, 0.55) + Math.sin(t * 2) * 0.05 * clamp(ws / 20, 0.2, 1)
       Array.from(R.grass.children).forEach((g, i) => {
         const b = blades[i], x = b.x * W, y = gy + 8 + (i % 5) * ((H - gy - 12) / 5)
-        const lean = sway * b.h * 0.9 + Math.sin(t * 3 + b.ph) * clamp(Lv.ws / 30, 0.1, 1) * 2.5
+        const lean = sway * b.h * 0.9 + Math.sin(t * 3 + b.ph) * clamp(ws / 30, 0.1, 1) * 2.5
         A(g as SVGElement, 'd', `M${x - 1.6},${y} Q${x},${y - b.h * 0.6} ${x + lean},${y - b.h} Q${x + 1},${y - b.h * 0.5} ${x + 1.6},${y}Z`)
         A(g as SVGElement, 'fill', mix('#3f8d58', '#0b1f1a', n))
       })
@@ -274,14 +277,14 @@ export default function StationFigure({ station, readings }: { station: Station;
       const th = clamp((Lv.temp + 5) / 45, 0, 1)
       A(R.sensor, 'fill', th < 0.5 ? mix('#60a5fa', '#4ade80', th * 2) : mix('#fbbf24', '#ef4444', (th - 0.5) * 2))
 
-      const lvl = clamp(Lv.dayRain / 25, 0.04, 0.95)
+      const lvl = clamp(dayRain / 25, 0.04, 0.95)
       A(R.water, 'y', 36 - lvl * 52); A(R.water, 'height', lvl * 52)
-      const rate = Lv.rain > 0.05 ? clamp(0.8 + Lv.rain * 0.4, 0.8, 6) : 0, dph = rate ? (t * rate) % 1 : -1
+      const rate = rainMm > 0.05 ? clamp(0.8 + rainMm * 0.4, 0.8, 6) : 0, dph = rate ? (t * rate) % 1 : -1
       A(R.drip, 'opacity', rate ? (dph < 0.7 ? 1 : 0) : 0); A(R.drip, 'cy', -26 + dph * 50)
       const tip = !!rate && dph > 0.7 && dph < 0.86
       A(R.hallLed, 'opacity', tip ? 1 : 0.2); A(R.hall, 'fill', tip ? '#14532d' : '#27323a')
 
-      const slant = east * clamp(Lv.ws / 40, 0, 1) * 10, nd = rainy ? Math.min(drops.length, Math.round(Lv.rain * 7 + 12)) : 0
+      const slant = east * clamp(ws / 40, 0, 1) * 10, nd = rainy ? Math.min(drops.length, Math.round(rainMm * 7 + 12)) : 0
       Array.from(R.rainfx.children).forEach((l, i) => {
         const el = l as SVGElement
         if (i >= nd) { A(el, 'x2', el.getAttribute('x1') ?? 0); A(el, 'y2', el.getAttribute('y1') ?? 0); return }
