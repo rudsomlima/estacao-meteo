@@ -55,7 +55,7 @@ Padrão do projeto (o site muda qualquer um deles na página da estação, em *C
 | Vento | **GPIO4** | OUT do Hall do anemômetro, com pull-up para 3V3 |
 | Chuva | **GPIO3** | OUT do Hall do pluviômetro, com pull-up para 3V3. Acorda do deep sleep. |
 | Bateria | **GPIO0** (ADC) | Meio do divisor 1 MΩ + 1 MΩ, com 100 nF para o GND |
-| Portal | GPIO9 (BOOT) | Botão da placa. Segurar ao ligar abre o portal Wi-Fi |
+| Portal | GPIO9 (BOOT) | Botão da placa. Depois de ligar, aperte por meio segundo nos primeiros 6 s para abrir o portal Wi-Fi. Não segure BOOT durante o reset: isso coloca o ESP32-C3 no modo de gravação. |
 
 Por que esses pinos: só GPIO0 a GPIO5 acordam o ESP32-C3 do deep sleep, GPIO0 a GPIO4 são ADC1 (a leitura da bateria precisa de um deles), e GPIO2, GPIO8 e GPIO9 são pinos de boot. Os módulos I²C já trazem pull-up de 10 kΩ.
 

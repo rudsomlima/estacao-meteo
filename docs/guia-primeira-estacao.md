@@ -74,7 +74,7 @@ Os quatro lugares que você vai usar:
 |---|---|---|
 | **Adicionar estação** (botão no mapa) | administrador | Cria a estação e gera um código de pareamento. |
 | **Preferências** (no topo do mapa) | todos | Unidades, mapa, estações favoritas e alertas no Telegram. |
-| **Administração** (menu da conta → *Painel do administrador*) | administrador | Visão geral, configuração em massa, firmware, **Site e placas** (placa USB, gravar firmware, atualização dos dados, exportar e backup), usuários e segurança. |
+| **Administração** (menu da conta → *Painel do administrador*) | administrador | Visão geral, configuração em massa, firmware, **Site e placas** (preparação USB, gravação avançada, atualização dos dados, exportação e backup), usuários e segurança. |
 | **Configurações** (página de cada estação) | dono e administrador | Placa, sensores e pinos, bateria, energia, intervalo de envio, calibração. |
 
 ---
@@ -93,7 +93,7 @@ Há três jeitos de configurar a placa. Use o **Caminho A** se for a primeira ve
 
 ## 3. Caminho A: pela USB (recomendado, só administrador)
 
-Entre como administrador (veja acima) e abra **Administração → Site e placas → Placa USB**. O painel reúne a autorização da placa e a gravação:
+Entre como administrador (veja acima) e abra **Administração → Site e placas → Preparar placa (USB)**. O painel reúne a autorização, a preparação completa e a gravação avançada:
 
 ![Administração: Placa USB](img/guia/04-ajustes-placa-usb.png)
 
@@ -101,7 +101,7 @@ Entre como administrador (veja acima) e abra **Administração → Site e placas
 
 1. Plugue a placa e clique em **Escolher a placa** (o navegador pede a porta serial uma vez).
 2. Escolha a **estação** (ou *Nova estação…*, com nome, local e, se quiser, o e-mail do dono) e informe a **rede Wi-Fi de 2,4 GHz** e a senha. O site pode lembrar a rede para as próximas placas.
-3. Clique em **Gravar e deixar a placa pronta**. O site grava o firmware, configura Wi-Fi, endereço do site e chave pela USB e avisa quando a primeira leitura chegar. Não há código para digitar: quem confirma é o seu login de administrador.
+3. Clique em **Gravar e deixar a placa pronta**. O site grava o firmware completo, configura Wi-Fi, endereço do site e chave pela USB e avisa quando a primeira leitura chegar. Não há código para digitar: quem confirma é o seu login de administrador.
 
    Se selecionar uma estação que já existe, o site gera uma chave nova para ela. A chave anterior deixa de valer, inclusive em outras placas vinculadas à mesma estação. Para atualizar somente o aplicativo de uma placa existente sem trocar o vínculo, use a seção avançada com o `.bin` do aplicativo em `0x10000`. Gravar a imagem completa pode redefinir os dados salvos mesmo sem marcar **Apagar toda a flash**.
 
@@ -231,7 +231,7 @@ Em **Avançado → Endereço do site**, corrija e configure a placa de novo (o a
 
 ### Perdi a chave / quero recomeçar a placa
 
-Configure de novo pelo aviso (3.3): isso **gera uma chave nova** e invalida a anterior. Para limpar tudo na placa, marque **Apagar toda a flash antes** ao gravar (remove Wi-Fi, chave e calibração).
+Para trocar a chave, configure de novo pelo aviso USB ou gere um código de pareamento para instalar pelo portal. Reconfigurar uma estação existente **gera uma chave nova** e invalida a anterior para todas as placas vinculadas a ela. Para apenas atualizar o firmware de uma placa já configurada, grave o `.bin` do aplicativo em `0x10000` na seção avançada; a imagem completa pode redefinir os dados salvos. Marque **Apagar toda a flash antes** só para remover Wi-Fi, chave, calibração e configuração locais.
 
 ---
 

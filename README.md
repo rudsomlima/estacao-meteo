@@ -26,7 +26,7 @@ Estação meteorológica **de baixo consumo com ESP32-C3**, feita para rodar a b
 - **Preferências do site:** unidades (km/h, m/s, nós, mph; °C/°F; mm/pol; hPa/inHg/mmHg), camadas e mapa de fundo padrão, estações favoritas e Telegram. Exportar CSV, backup e atualização dos dados ficam no painel do administrador.
 - **Login com Google e papéis:** visitante só vê; usuário altera as estações das quais é dono; administrador cadastra estações e placas.
 - **Painel do administrador:** visão geral da rede, configuração em massa, firmware com acompanhamento por estação, placas USB, usuários, sessões e registro de atividades.
-- **Gravação do firmware pelo navegador:** o site grava a placa pelo cabo USB (Web Serial), sem PlatformIO nem driver.
+- **Preparação da placa pelo navegador:** para uma placa nova, o assistente grava o firmware, configura Wi-Fi e vínculo com a estação e confirma a primeira leitura. A gravação avançada atualiza ou recupera somente o firmware; atualizar apenas o aplicativo em `0x10000` preserva os dados salvos. Reconfigurar uma estação existente gera uma chave nova e invalida a anterior. Veja o [guia de firmware](docs/firmware.md#gravar-o-firmware-pelo-navegador).
 - **Instalação remota por código:** o site gera um código de pareamento; quem instala só escolhe o Wi-Fi no celular e digita o código, sem copiar chave nem usar computador.
 - **Reconhecimento por USB:** ao plugar o ESP32, o site (Chrome/Edge) o reconhece, diz qual estação é e grava Wi-Fi, endereço e chave sem digitar no portal. Com a placa no cabo, salvar a configuração a aplica na hora.
 - **Atualização de firmware pelo ar (OTA)** publicada pelo site, com conferência de SHA-256.

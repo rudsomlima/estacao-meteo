@@ -5,6 +5,7 @@
 | Sintoma | O que verificar |
 |---|---|
 | Nunca enviou leitura | Chave do dispositivo errada ou digitada com espaço. Gere outra em *Configurações → Configuração → Gerar chave nova* e refaça o portal (aperte BOOT nos primeiros 6 s depois de ligar). |
+| Reconfigurei uma placa e outra parou de enviar (`POST 401`) | Reconfigurar uma estação existente gera uma chave nova e invalida a anterior para todas as placas dessa estação. Atualize o vínculo das outras placas pelo aviso USB ou pelo portal com um novo código de pareamento. |
 | O portal `EstacaoMeteo-XXXX` não aparece | A estação já tem Wi-Fi salvo. Ligue a placa e, nos primeiros 6 s, aperte **BOOT** por meio segundo para forçar o portal. Segurar o BOOT *ao ligar* não funciona: o ESP32-C3 entra em modo de gravação. Com a placa no computador, use o comando USB `portal`. |
 | Conecta ao Wi-Fi mas não envia | Endereço do site errado (precisa de `https://` e sem barra no final) ou o Worker fora do ar. Veja o log serial: `POST 401` é chave errada, `POST 422` é campo fora da faixa, `POST -1` é falha de conexão ou de TLS. |
 | Aparece como "atrasada" | Já passou de 2,5 intervalos sem leitura. Com envio em lote, o intervalo efetivo é `intervalo × enviar a cada`. Ajuste ou aguarde o próximo envio. |
@@ -61,6 +62,7 @@
 | `pio run` falha ao baixar pacotes | Primeira compilação baixa ~500 MB de toolchain. Tente de novo com boa conexão. |
 | A placa envia ao servidor mas a porta USB (COM) fica muda depois de ela reiniciar | Aconteceu no Windows quando um programa estava com a porta aberta durante o reinício da placa (a USB se reconecta e o driver fica com uma porta morta). Feche o programa que usa a porta, ou tire e recoloque o cabo, ou aperte RESET. Em scripts, solte a porta antes do reinício e reabra depois que ela reaparecer. |
 | A gravação pelo site falha ao conectar | Troque o cabo (precisa ser de dados), feche o monitor serial, a IDE e outras abas do site, e aperte RESET na placa (a gravação recomeça sozinha). Com ponte CH340/CP210x: segure BOOT, aperte RESET, solte o RESET e depois o BOOT. Só Chrome, Edge e Opera têm Web Serial. |
+| Gravei o firmware, mas a placa não aparece no site | Gravar firmware na área avançada não configura Wi-Fi nem vincula estação. Use **Preparar placa (USB)** para concluir esses passos. Ao atualizar só o aplicativo de uma placa existente, grave o `.bin` de aplicativo em `0x10000`; a imagem completa em `0x0` pode redefinir dados salvos. |
 | Gravou pelo site e a placa não liga | Aperte RESET uma vez. As versões antigas do site não reiniciavam a placa ao terminar. |
 | Mudei o modo de vento no site e nada mudou | A estação só aplica a configuração quando envia. Com envio em lote isso pode levar `intervalo × enviar a cada` minutos. Para testar, ponha *Enviar a cada* em 1. |
 

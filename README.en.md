@@ -23,7 +23,7 @@ A **low-power ESP32-C3 weather station** designed for battery and solar operatio
 - **Site settings:** units (km/h, m/s, kn, mph; °C/°F; mm/in; hPa/inHg/mmHg), default map layers and basemap, favorite stations and Telegram. CSV export, backup and data refresh live in the admin panel.
 - **Google sign-in and roles:** visitors read, users edit the stations they own, admins register stations and boards.
 - **Admin panel:** network overview, bulk configuration, firmware rollout tracking per station, USB boards, users, sessions and an activity log.
-- **Flashing from the browser:** the site flashes the board over USB (Web Serial) and provisions Wi-Fi, server address and key, with no PlatformIO or driver; with the board on the cable, saving the configuration applies it immediately.
+- **Board setup from the browser:** for a new board, the wizard flashes the firmware, configures Wi-Fi and station credentials, and confirms the first reading. Advanced flashing updates or recovers firmware only; flashing just the app at `0x10000` preserves saved board data. Reconfiguring an existing station rotates its key and invalidates the previous key. See the [firmware guide](docs/firmware.md#gravar-o-firmware-pelo-navegador).
 - **Over-the-air firmware updates** published from the site, verified with SHA-256 (no automatic rollback).
 - **Bench mode:** at power-on the station opens a local page for a configurable number of minutes to view sensors and calibrate the vane without a serial cable.
 - **Signed requests:** the admin token (for scripts) never travels (HMAC with a 2-minute window), and stations can upload over HTTP with signatures instead of HTTPS (forgery protection, not eavesdropping protection).
