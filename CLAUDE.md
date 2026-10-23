@@ -23,7 +23,8 @@ Projeto de estação meteorológica ESP32-C3 de baixo consumo. O repositório co
 ## Placas e firmware
 
 - O alvo atual é o **ESP32-C3** e o ambiente PlatformIO é `esp32c3`; confirme compatibilidade antes de introduzir outro modelo de placa.
-- Para placa nova/em branco, use no site o assistente **Administração → Site e placas → Preparar placa (USB)**. Ele grava a imagem completa, cria ou seleciona uma estação, configura Wi-Fi/vínculo e espera a primeira leitura.
+- Para placa nova/em branco, use no site o assistente assistente da placa (plugue a placa; ou **Administração → Site e placas → Abrir o assistente da placa**). Ele grava a imagem completa, cria ou seleciona uma estação, configura Wi-Fi/vínculo e espera a primeira leitura.
+- Limites, padrões e pinos dos campos de configuração vivem em `shared/board-schema.json`. Depois de editá-lo, rode `python tools/gen_schema.py` (gera `web/src/lib/schema.ts`, `worker/src/schema.ts` e `firmware/src/schema_gen.h`); o CI confere com `--check`. Sensores e pinos só se editam no assistente da placa (`web/src/board/`).
 - A gravação avançada de firmware não configura Wi-Fi nem vincula a estação. Para atualizar uma placa existente sem trocar o vínculo, grave somente o `.bin` do aplicativo em `0x10000`. Gravar uma imagem completa em `0x0` pode redefinir os dados locais; apagar toda a flash também remove Wi-Fi, chave, calibração e configuração.
 - Reconfigurar uma estação existente gera uma chave nova e invalida a anterior para todas as placas que a compartilhavam. Avise disso na interface e nos manuais sempre que alterar esse fluxo.
 - Sensores, pinos, intervalos e parâmetros operacionais são configuração da estação, independentes da versão do firmware. Preserve a validação equivalente entre firmware, site e Worker.

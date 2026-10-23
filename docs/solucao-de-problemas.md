@@ -21,9 +21,9 @@
 |---|---|
 | Temperatura 5 °C acima do real | Sensor perto da caixa ou no sol. Mova para o abrigo. |
 | Umidade sempre 0% ou sem BME280 | O módulo é BMP280 (sem umidade) ou o endereço não é 0x76/0x77. |
-| Umidade aparece como "—" | O sensor escolhido é o MS5611, que não mede umidade. Escolha "BME280" ou "BME280 + MS5611" em *Configurações da estação → Placa e sensores*. |
-| MS5611 não responde ("sensor de ambiente não respondeu") | Confira em *Configurações da estação → Placa e sensores* se a opção é MS5611 (ou BME280 + MS5611); PS do GY-63 em 3V3 e CSB em GND (0x77); SDA e SCL nos pinos configurados; VCC em 3,3 V. Com os dois módulos, confira que estão em 0x76 e 0x77. |
-| Mudei os pinos e a estação parou de medir | A fiação precisa estar igual ao que o site mostra. Volte aos pinos padrão (botão em *Configurações da estação → Placa e sensores*) ou corrija os fios. O servidor e a placa recusam pino repetido, de boot, da USB ou da flash. |
+| Umidade aparece como "—" | O sensor escolhido é o MS5611, que não mede umidade. Escolha "BME280" ou "BME280 + MS5611" em o assistente da placa (*Sensores e pinos*). |
+| MS5611 não responde ("sensor de ambiente não respondeu") | Confira em o assistente da placa (*Sensores e pinos*) se a opção é MS5611 (ou BME280 + MS5611); PS do GY-63 em 3V3 e CSB em GND (0x77); SDA e SCL nos pinos configurados; VCC em 3,3 V. Com os dois módulos, confira que estão em 0x76 e 0x77. |
+| Mudei os pinos e a estação parou de medir | A fiação precisa estar igual ao que o site mostra. Volte aos pinos padrão (botão em o assistente da placa (*Sensores e pinos*)) ou corrija os fios. O servidor e a placa recusam pino repetido, de boot, da USB ou da flash. |
 | Direção sempre igual | O QMC5883L não respondeu: o firmware repete a última direção. Confira SDA/SCL e se o módulo é QMC (0x0D) e não HMC. |
 | Direção espelhada | `DIR_SIGN` precisa ser `-1`. |
 | Direção errada em 90° | Falta o ajuste do norte. Veja [calibracao.md](calibracao.md). |

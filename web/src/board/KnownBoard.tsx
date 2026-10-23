@@ -41,7 +41,7 @@ export default function KnownBoard({ link, info, station, source, onFlash, onLos
       <p className="text-ok">Reconhecida: estação {station.name}.</p>
       <button className={btn} onClick={onFlash} disabled={!image}>
         <b className="font-medium">Atualizar o firmware</b>
-        <span className="block text-xs text-ink-3">{!image ? 'Este site não tem imagem de firmware.' : upToDate ? `A placa já está na versão ${info.fw}. Regravar mantém Wi-Fi, chave e configuração.` : `Placa ${info.fw}, disponível ${image.fw ?? 'outra versão'}. Mantém Wi-Fi, chave e configuração.`}</span>
+        <span className="block text-xs text-ink-3">{!image ? 'Este site não tem imagem de firmware.' : upToDate ? `A placa já está na versão ${info.fw}. Regravar a imagem completa pode apagar o Wi-Fi e a chave guardados na placa.` : `Placa ${info.fw}, disponível ${image.fw ?? 'outra versão'}. A imagem completa pode apagar o Wi-Fi e a chave guardados na placa; se isso acontecer, use Wi-Fi e servidor em seguida.`}</span>
       </button>
       <button className={btn} onClick={() => setAction('wifi')}>
         <b className="font-medium">Wi-Fi e servidor</b>

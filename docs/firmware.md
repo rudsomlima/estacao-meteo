@@ -74,7 +74,7 @@ O RSSI é o que a estação ouve do roteador; o caminho de volta tende a ser par
 
 ## Sensores e pinos (`env_sensor`, `pin_*`)
 
-Na página da estação, em *Configurações da estação → Placa e sensores*, escolhe-se o sensor de ambiente e os GPIOs. Tudo chega à placa pela configuração remota.
+Escolhem-se o sensor de ambiente e os GPIOs no **assistente da placa**, com a placa no cabo ([placa-existente.md](placa-existente.md#sensores-e-pinos)); a página da estação só mostra o que está configurado. O assistente salva no servidor e aplica pelo cabo; o servidor também a entrega pela configuração remota.
 
 | `env_sensor` | Sensor | Observação |
 |---|---|---|
@@ -131,8 +131,8 @@ Sem PlatformIO e sem instalar nada: o site grava o firmware numa placa pelo cabo
 
 | Situação | Caminho recomendado | O que muda |
 |---|---|---|
-| **Placa nova ou em branco** | Administração → Site e placas → assistente **Preparar placa (USB)** | Grava o firmware completo, cria ou escolhe uma estação, configura Wi-Fi e vínculo e confirma a primeira leitura. |
-| **Placa já responde e está vinculada** | Aviso **Placa USB detectada** ou configuração da estação | Atualiza Wi-Fi/vínculo ou aplica os ajustes da estação pela USB. Reconfigurar uma estação existente gera uma chave nova e invalida a anterior para todas as placas que a compartilhavam. |
+| **Placa nova ou em branco** | assistente da placa ([placa-nova.md](placa-nova.md)) | Grava o firmware completo, cria ou escolhe uma estação, configura Wi-Fi e vínculo e confirma a primeira leitura. |
+| **Placa já responde e está vinculada** | Assistente da placa ([placa-existente.md](placa-existente.md)) | Atualiza Wi-Fi/vínculo ou aplica os ajustes da estação pela USB. Reconfigurar uma estação existente gera uma chave nova e invalida a anterior para todas as placas que a compartilhavam. |
 | **Atualizar somente o aplicativo** | Seção avançada **Atualizar ou recuperar o firmware sem configurar a estação** | Escolha um `.bin` somente do aplicativo e grave em `0x10000` para preservar a configuração. Não escolhe estação nem configura Wi-Fi/chave. |
 | **Recuperar ou inicializar a placa** | Assistente para a imagem completa ou imagem completa na seção avançada | Grava bootloader, partições e aplicativo em `0x0`. Pode redefinir dados salvos mesmo sem marcar *Apagar toda a flash*. Use o assistente para também configurar a placa. |
 | **Atualização normal de placas em campo** | Atualização pelo ar (OTA), seção abaixo | Publica uma versão e a placa compatível baixa e verifica o firmware após enviar dados. Não precisa de USB. |
@@ -208,7 +208,12 @@ Se a direção girar ao contrário, troque `DIR_SIGN` para `-1` em [config.h](..
 
 | Arquivo | Função |
 |---|---|
-| [`main.cpp`](../firmware/src/main.cpp) | Ciclos (janela e contínuo), lote de leituras, decisão de enviar. |
+| [`main.cpp`](../firmware/src/main.cpp) | `setup()` e `loop()`: o que fazer ao acordar e a ordem das fases. |
+| [`cycle.cpp`](../firmware/src/cycle.cpp) | Os ciclos (janela e contínuo), medição e lote de leituras. |
+| [`power.cpp`](../firmware/src/power.cpp) | Sono (deep sleep, ou acordada com o cabo), nível de bateria com histerese, intervalo. |
+| [`uplink.cpp`](../firmware/src/uplink.cpp) | Decide se é hora de enviar, abre o portal ou conecta, envia e confirma a configuração. |
+| [`state.cpp`](../firmware/src/state.cpp) | O estado do ciclo na memória RTC (sobrevive ao deep sleep). |
+| [`diag.cpp`](../firmware/src/diag.cpp) | Estado do ciclo para os comandos USB `diag` e `body`. |
 | [`wind.cpp`](../firmware/src/wind.cpp) | Contagem de pulsos em light sleep, rajada, direção vetorial, chuva. |
 | [`sensors.cpp`](../firmware/src/sensors.cpp) | BME280, QMC5883L, bateria, calibração serial. |
 | [`net.cpp`](../firmware/src/net.cpp) | Wi-Fi rápido, portal cativo, envio do lote em colunas, HTTPS validado com as raízes de `roots.h`. |
@@ -218,7 +223,8 @@ Se a direção girar ao contrário, troque `DIR_SIGN` para `-1` em [config.h](..
 | [`bench.cpp`](../firmware/src/bench.cpp) | Página local do modo bancada. |
 | [`events.cpp`](../firmware/src/events.cpp) | Registro de reinícios e atualizações na RTC, enviado com o lote. |
 | [`settings.cpp`](../firmware/src/settings.cpp) | Configuração e rede guardadas na flash. |
-| [`config.h`](../firmware/src/config.h) | Pinos, limites e padrões. |
+| [`config.h`](../firmware/src/config.h) | Constantes de hardware, versão e limites. A estrutura `Settings` está em `settings.h`. |
+| [`schema_gen.h`](../firmware/src/schema_gen.h) | Limites e padrões dos campos de configuração (gerado de `shared/board-schema.json` por `tools/gen_schema.py`; não edite). |
 | [`roots.h`](../firmware/src/roots.h) | Autoridades raiz para validar o HTTPS (gerado por `tools/make_roots.py`). |
 
 ## Envio dos dados

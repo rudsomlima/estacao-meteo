@@ -93,19 +93,16 @@ Há três jeitos de configurar a placa. Use o **Caminho A** se for a primeira ve
 
 ## 3. Caminho A: pela USB (recomendado, só administrador)
 
-Entre como administrador (veja acima) e abra **Administração → Site e placas → Preparar placa (USB)**. O painel reúne a autorização, a preparação completa e a gravação avançada:
+Entre como administrador (veja acima) e plugue a placa. O **assistente da placa** aparece no canto da tela, em qualquer página. Na primeira vez com essa placa, autorize-a em **Administração → Site e placas → Abrir o assistente da placa** (o navegador pede a porta serial uma vez):
 
 ![Administração: Placa USB](img/guia/04-ajustes-placa-usb.png)
 
-**Autorizar uma placa** (uma vez por navegador): depois disso o site reconhece a placa sempre que você plugar o cabo.
+O passo a passo, com as ações para uma placa que já existe, está em dois guias curtos:
 
-1. Plugue a placa e clique em **Escolher a placa** (o navegador pede a porta serial uma vez).
-2. Escolha a **estação** (ou *Nova estação…*, com nome, local e, se quiser, o e-mail do dono) e informe a **rede Wi-Fi de 2,4 GHz** e a senha. O site pode lembrar a rede para as próximas placas.
-3. Clique em **Gravar e deixar a placa pronta**. O site grava o firmware completo, configura Wi-Fi, endereço do site e chave pela USB e avisa quando a primeira leitura chegar. Não há código para digitar: quem confirma é o seu login de administrador.
+- [Placa nova](placa-nova.md): grava o firmware, cria ou escolhe a estação, define sensores e pinos, configura o Wi-Fi e confirma a primeira leitura.
+- [Placa já cadastrada](placa-existente.md): atualizar o firmware, trocar a rede, mudar sensores e pinos.
 
-   Se selecionar uma estação que já existe, o site gera uma chave nova para ela. A chave anterior deixa de valer, inclusive em outras placas vinculadas à mesma estação. Para atualizar somente o aplicativo de uma placa existente sem trocar o vínculo, use a seção avançada com o `.bin` do aplicativo em `0x10000`. Gravar a imagem completa pode redefinir os dados salvos mesmo sem marcar **Apagar toda a flash**.
-
-Se a placa estiver dormindo, o site pede para apertar RESET e continua sozinho. Usuários comuns não veem este painel nem o aviso de placa USB.
+Reconfigurar uma estação que já existe gera uma chave nova. A anterior deixa de valer, inclusive em outras placas vinculadas à mesma estação. Se a placa estiver dormindo, o site pede para apertar RESET e continua sozinho. Usuários comuns não veem o assistente.
 
 O que você vê durante o processo (aviso no canto da tela, em qualquer página do site):
 
@@ -162,7 +159,7 @@ O botão **Configurações** (no topo; no celular, o ícone de engrenagem) abre 
 | Aba | O que tem |
 |---|---|
 | **Visão geral** | Se a última configuração já chegou à estação (com o progresso), sensores, tensão, sinal e gráficos de bateria e Wi-Fi. |
-| **Placa e sensores** | Sensor de ambiente, pinos e calibração (chuva por basculada, fator do anemômetro, norte da biruta). |
+| **Placa e sensores** | Mostra o sensor e os pinos em uso (para mudá-los, use o assistente da placa) e a calibração (chuva por basculada, fator do anemômetro, norte da biruta). |
 | **Medição, envio e energia** | Intervalo, janelas, lote de envio, Wi-Fi, bateria e economia, com a estimativa de autonomia mudando enquanto você edita. |
 | **Diagnóstico e firmware** | Reinícios e eventos, firmware instalado e o que está publicado. |
 | **Instalação** | Nome e local, modo bancada, portal Wi-Fi, chave e código de pareamento. |
@@ -208,7 +205,7 @@ Se um token errado ficou guardado no navegador, abra **Avançado → trocar o to
 
 - O navegador é Chrome, Edge ou Opera? Em Firefox/Safari não funciona.
 - O site está em `https://` ou `localhost`? A Web Serial não funciona em `http://` com IP. Para o teste local, abra o site por `http://localhost:5173`.
-- A placa foi autorizada em **Administração → Site e placas → Placa USB**?
+- A placa foi autorizada pelo assistente da placa (**Administração → Site e placas**)?
 - Você entrou como **administrador**? Usuário comum não vê o aviso.
 - O cabo é de dados? Tente outro.
 - Outro programa está usando a porta (monitor serial do PlatformIO, Arduino IDE)? Feche.

@@ -3,6 +3,8 @@
 | Guia | Para quê |
 |---|---|
 | [guia-primeira-estacao.md](guia-primeira-estacao.md) | **Comece aqui:** passo a passo com telas para colocar uma estação nova no ar |
+| [placa-nova.md](placa-nova.md) | Do cabo ao primeiro dado: o assistente da placa para uma placa nova |
+| [placa-existente.md](placa-existente.md) | Atualizar o firmware, trocar a rede ou mudar sensores e pinos de uma placa cadastrada |
 | [arquitetura.md](arquitetura.md) | Como as partes se falam e por que foi feito assim |
 | [hardware.md](hardware.md) | Lista de materiais, ligações, alimentação e instalação |
 | [firmware.md](firmware.md) | Gravar, primeiro acesso, ciclo de medição, configuração |

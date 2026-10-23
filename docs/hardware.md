@@ -44,7 +44,7 @@ Se o sensor não disparar, inverta o ímã. O A3144 liga só com polo sul na fac
 
 ![Pinagem do ESP32-C3 SuperMini](img/pinagem.svg)
 
-Padrão do projeto (o site muda qualquer um deles na página da estação, em *Configurações da estação → Placa e sensores*):
+Padrão do projeto (o site muda qualquer um deles na página da estação, em o assistente da placa (*Sensores e pinos*)):
 
 | Sinal | Pino do ESP32-C3 | Vai para |
 |---|---|---|
@@ -101,7 +101,7 @@ Os três módulos usam os mesmos quatro fios (3V3, GND, SDA, SCL) e se distingue
 2. **GND** ao GND.
 3. **SCL** ao pino SCL do ESP32 (GPIO7 no padrão) e **SDA** ao pino SDA (GPIO6).
 4. Confira os jumpers do módulo: **PS** em nível alto (3V3) para o modo I²C (a maioria dos GY-63 já vem assim) e **CSB** em GND para o endereço 0x77. Deixe **SDO** sem ligar.
-5. No site, em *Configurações da estação → Placa e sensores*, escolha **MS5611 (GY-63)** (ou **BME280 + MS5611**, se os dois estiverem ligados) e salve.
+5. No site, em o assistente da placa (*Sensores e pinos*), escolha **MS5611 (GY-63)** (ou **BME280 + MS5611**, se os dois estiverem ligados) e salve.
 6. Na próxima conexão, a placa recebe a configuração. Na página da estação a pressão e a temperatura aparecem no envio seguinte. Se não aparecer, veja a [solução de problemas](solucao-de-problemas.md#leituras-estranhas).
 
 ### Os dois juntos (BME280 + MS5611)
