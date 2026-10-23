@@ -225,6 +225,7 @@ static void sendIfDue(bool urgent) {
     netOff();
     return;
   }
+  ensureTimeSynced();  // antes do primeiro HTTPS: sem isto o certificado nunca valida (relógio em 1970)
   if (!claimKey()) {  // ainda sem chave: o código não foi trocado
     rtcFails = min<uint8_t>(rtcFails + 1, 250);
     netOff();

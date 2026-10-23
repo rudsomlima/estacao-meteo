@@ -5,6 +5,13 @@
 
 /** Conecta ao Wi-Fi salvo. Usa canal, BSSID e IP guardados na memória RTC para ser rápido. */
 bool wifiConnect(uint32_t timeoutMs);
+/**
+ * Ajusta o relógio por NTP, uma vez por queda de energia (o RTC do ESP32-C3 segue contando certo através do deep sleep).
+ * Sem isto a validação do certificado HTTPS falha sempre: o relógio começa em 1970 (a estação não tem RTC de fábrica; as
+ * leituras viajam com a idade em segundos, não a hora, por isso ninguém tinha notado) e nenhum certificado real "ainda não
+ * existe" naquela data. Chame depois de conectar ao Wi-Fi e antes do primeiro pedido HTTPS.
+ */
+void ensureTimeSynced();
 /** Portal cativo "EstacaoMeteo-XXXX": rede, endereço do site, ID e chave da estação, e minutos do modo bancada. */
 bool runPortal();
 /**

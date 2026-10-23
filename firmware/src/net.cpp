@@ -82,6 +82,19 @@ bool wifiConnect(uint32_t timeoutMs) {
   return ok;
 }
 
+RTC_DATA_ATTR static bool rtcTimeSynced = false;  // sobrevive ao deep sleep; zera só numa queda de energia
+
+void ensureTimeSynced() {
+  if (rtcTimeSynced) return;
+  configTime(0, 0, "pool.ntp.org", "time.google.com");
+  const uint32_t t0 = millis();
+  while (millis() - t0 < 4000) {
+    if (time(nullptr) > 1700000000) { rtcTimeSynced = true; return; }  // depois de 2023: o NTP respondeu
+    delay(100);
+  }
+  LOG("NTP: relogio nao ajustou a tempo (rede sem Internet ou bloqueando UDP/123); o certificado HTTPS nao vai validar\n");
+}
+
 bool runPortal() {
   WiFiManager wm;
   char benchBuf[6];

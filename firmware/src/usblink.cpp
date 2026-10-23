@@ -173,6 +173,7 @@ bool usbHandleLine(const String &line) {
     d["wifi_ms"] = millis() - t0;
     if (wifi) {
       d["rssi"] = WiFi.RSSI();
+      ensureTimeSynced();
       HTTPClient http;
       WiFiClientSecure tls;
       WiFiClient plain;
