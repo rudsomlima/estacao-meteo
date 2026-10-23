@@ -226,7 +226,7 @@ export default function MapPage({ stations, source, onCreate, onSave, onRemove }
                     <td className="px-4 py-3"><b className="font-sans font-semibold">{s.name}</b><div className="text-xs text-ink-3">{s.city}</div></td>
                     <td className="px-4 py-3">{l ? f.temp(l.temp) : '—'}</td>
                     <td className="px-4 py-3">{l && Number.isFinite(l.pres) ? f.pres(l.pres) : '—'}</td>
-                    <td className="px-4 py-3">{l ? <span style={{ color: windColor(kmh(l.wind)) }}>{f.wind(l.wind)} {compass16(l.dir)}</span> : '—'}</td>
+                    <td className="px-4 py-3">{l && Number.isFinite(l.wind) ? <span style={{ color: windColor(kmh(l.wind)) }}>{f.wind(l.wind)} {compass16(l.dir)}</span> : '—'}</td>
                     <td className="px-4 py-3">{s.day ? f.rain(s.day.rain) : '—'}</td>
                     <td className="px-4 py-3">
                       {hasBattery(vb) ? (
