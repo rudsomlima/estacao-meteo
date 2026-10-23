@@ -18,6 +18,11 @@ jobs:
           cache-dependency-path: |
             web/package-lock.json
             worker/package-lock.json
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Esquema de configuração em dia
+        run: python tools/gen_schema.py --check
       - name: Compilar o site
         run: |
           cd web

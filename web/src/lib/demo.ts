@@ -1,34 +1,12 @@
 import type { BatteryChem, Reading, Station, StationConfig } from '../types'
 import { CHEMS } from './battery'
+import { SCHEMA_DEFAULTS } from './schema'
 
 export const DEFAULT_CONFIG: StationConfig = {
-  interval_min: 10,
-  wind_window_s: 8,
-  gust_window_s: 3,
-  samples: 8,
-  wifi_timeout_s: 10,
-  mm_per_tip: 0.2,
-  k_wind: 0.42,
-  dir_offset: 0,
+  ...SCHEMA_DEFAULTS, // padrões de shared/board-schema.json
   slow_below_v: CHEMS.li.slow_below_v,
-  slow_factor: 3,
   critical_v: CHEMS.li.critical_v,
-  charge_above_v: 0,
-  charge_interval_min: 5,
-  send_every: 3,
-  continuous_wind: 0,
-  urgent_gust_kmh: 0,
-  wifi_tx_save: 0,
-  idle_every: 1,
-  env_sensor: 1,
-  pin_sda: 6,
-  pin_scl: 7,
-  pin_wind: 4,
-  pin_rain: 3,
-  pin_vbat: 0,
-  bench_min: 2,
   battery_chem: 'li',
-  battery_mah: 3000,
   version: 1,
 }
 

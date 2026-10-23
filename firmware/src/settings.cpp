@@ -97,29 +97,10 @@ void saveCalibration(float cx, float cy, float sx, float sy) {
 
 bool applyRemoteConfig(JsonObjectConst c) {
   const uint8_t oldMode = cfg.continuousWind;
-  cfg.intervalMin = c["interval_min"] | cfg.intervalMin;
-  cfg.windWindowS = c["wind_window_s"] | cfg.windWindowS;
-  cfg.gustWindowS = c["gust_window_s"] | cfg.gustWindowS;
-  cfg.samples = c["samples"] | cfg.samples;
-  cfg.wifiTimeoutS = c["wifi_timeout_s"] | cfg.wifiTimeoutS;
-  cfg.mmPerTip = c["mm_per_tip"] | cfg.mmPerTip;
-  cfg.kWind = c["k_wind"] | cfg.kWind;
-  cfg.dirOffset = c["dir_offset"] | cfg.dirOffset;
-  cfg.slowBelowV = c["slow_below_v"] | cfg.slowBelowV;
-  cfg.slowFactor = c["slow_factor"] | cfg.slowFactor;
-  cfg.criticalV = c["critical_v"] | cfg.criticalV;
-  cfg.chargeAboveV = c["charge_above_v"] | cfg.chargeAboveV;
-  cfg.chargeIntervalMin = constrain((int)(c["charge_interval_min"] | cfg.chargeIntervalMin), 1, 60);
-  cfg.benchMin = constrain((int)(c["bench_min"] | cfg.benchMin), 0, 30);
-  cfg.sendEvery = constrain((int)(c["send_every"] | cfg.sendEvery), 1, (int)MAX_BATCH);
-  cfg.continuousWind = c["continuous_wind"] | cfg.continuousWind;
-  cfg.urgentGustKmh = c["urgent_gust_kmh"] | cfg.urgentGustKmh;
-  cfg.wifiTxSave = c["wifi_tx_save"] | cfg.wifiTxSave;
-  cfg.idleEvery = constrain((int)(c["idle_every"] | cfg.idleEvery), 1, 12);
-  cfg.envSensor = constrain((int)(c["env_sensor"] | cfg.envSensor), 0, 3);
-  cfg.hasWind = constrain((int)(c["has_wind"] | cfg.hasWind), 0, 1);
-  cfg.hasVane = constrain((int)(c["has_vane"] | cfg.hasVane), 0, 1);
-  cfg.hasRain = constrain((int)(c["has_rain"] | cfg.hasRain), 0, 1);
+  // limites iguais aos do servidor e do site (schema_gen.h)
+#define APPLY(json, m, lo, hi) cfg.m = (decltype(cfg.m))constrain((float)(c[json] | (float)cfg.m), lo, hi);
+  SCHEMA_FIELDS(APPLY)
+#undef APPLY
   // pinos: só aceita um conjunto válido; qualquer mudança reinicia a placa para religar interrupções e I2C nos pinos novos
   const int sda = c["pin_sda"] | cfg.pinSda, scl = c["pin_scl"] | cfg.pinScl, wind = c["pin_wind"] | cfg.pinWind;
   const int rain = c["pin_rain"] | cfg.pinRain, vbat = c["pin_vbat"] | cfg.pinVbat;

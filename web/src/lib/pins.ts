@@ -1,4 +1,5 @@
 import type { StationConfig } from '../types'
+import { PIN_MAX, SCHEMA_DEFAULTS, USABLE_PINS as SCHEMA_PINS } from './schema'
 
 /** Sensores de ambiente que a estação sabe ler. */
 export const ENV_SENSORS = [
@@ -10,7 +11,7 @@ export const ENV_SENSORS = [
 
 export type PinKey = 'pin_sda' | 'pin_scl' | 'pin_wind' | 'pin_rain' | 'pin_vbat'
 
-export const PIN_DEFAULTS: Record<PinKey, number> = { pin_sda: 6, pin_scl: 7, pin_wind: 4, pin_rain: 3, pin_vbat: 0 }
+export const PIN_DEFAULTS: Record<PinKey, number> = { pin_sda: SCHEMA_DEFAULTS.pin_sda, pin_scl: SCHEMA_DEFAULTS.pin_scl, pin_wind: SCHEMA_DEFAULTS.pin_wind, pin_rain: SCHEMA_DEFAULTS.pin_rain, pin_vbat: SCHEMA_DEFAULTS.pin_vbat }
 
 export const PINS: { key: PinKey; label: string; hint: string }[] = [
   { key: 'pin_sda', label: 'SDA (I²C)', hint: 'Dados dos sensores BME280, MS5611 e da bússola.' },
@@ -21,7 +22,7 @@ export const PINS: { key: PinKey; label: string; hint: string }[] = [
 ]
 
 /** GPIOs do ESP32-C3 oferecidos nas listas: 8 e 9 são de boot, 11 a 17 da flash, 18 e 19 da USB. */
-export const USABLE_PINS = [0, 1, 2, 3, 4, 5, 6, 7, 10, 20, 21]
+export const USABLE_PINS = SCHEMA_PINS
 
 export const pinValue = (c: StationConfig, k: PinKey) => c[k] ?? PIN_DEFAULTS[k]
 
@@ -33,7 +34,7 @@ export function pinProblem(c: StationConfig): string | null {
       if (used[i].v === used[j].v) return `GPIO${used[i].v} está em "${used[i].label}" e em "${used[j].label}": cada função precisa de um pino só dela.`
     }
   }
-  if (pinValue(c, 'pin_rain') > 5) return 'O pluviômetro precisa de um pino que acorde do deep sleep: GPIO0 a 5.'
-  if (pinValue(c, 'pin_vbat') > 4) return 'A bateria precisa de um pino ADC1: GPIO0 a 4.'
+  if (pinValue(c, 'pin_rain') > PIN_MAX.pin_rain) return `O pluviômetro precisa de um pino que acorde do deep sleep: GPIO0 a ${PIN_MAX.pin_rain}.`
+  if (pinValue(c, 'pin_vbat') > PIN_MAX.pin_vbat) return `A bateria precisa de um pino ADC1: GPIO0 a ${PIN_MAX.pin_vbat}.`
   return null
 }

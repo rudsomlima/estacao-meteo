@@ -1,0 +1,39 @@
+{
+  "_": "Fonte única dos campos de configuração da estação. Edite aqui e rode: python tools/gen_schema.py (gera o site, a API e o firmware). O CI falha se os gerados estiverem desatualizados.",
+  "fields": [
+    {"key": "interval_min",        "fw": "intervalMin",       "def": 10,   "min": 1,    "max": 60,     "int": true},
+    {"key": "wind_window_s",       "fw": "windWindowS",       "def": 8,    "min": 2,    "max": 30,     "int": true},
+    {"key": "gust_window_s",       "fw": "gustWindowS",       "def": 3,    "min": 1,    "max": 10,     "int": true},
+    {"key": "samples",             "fw": "samples",           "def": 8,    "min": 1,    "max": 32,     "int": true},
+    {"key": "wifi_timeout_s",      "fw": "wifiTimeoutS",      "def": 10,   "min": 4,    "max": 30,     "int": true},
+    {"key": "mm_per_tip",          "fw": "mmPerTip",          "def": 0.2,  "min": 0.01, "max": 2},
+    {"key": "k_wind",              "fw": "kWind",             "def": 0.42, "min": 0.05, "max": 3},
+    {"key": "dir_offset",          "fw": "dirOffset",         "def": 0,    "min": 0,    "max": 359.99},
+    {"key": "slow_below_v",        "fw": "slowBelowV",        "def": 3.55, "min": 0,    "max": 4.2},
+    {"key": "slow_factor",         "fw": "slowFactor",        "def": 3,    "min": 1,    "max": 12,     "int": true},
+    {"key": "critical_v",          "fw": "criticalV",         "def": 3.2,  "min": 0,    "max": 4.0},
+    {"key": "charge_above_v",      "fw": "chargeAboveV",      "def": 0,    "min": 0,    "max": 5},
+    {"key": "charge_interval_min", "fw": "chargeIntervalMin", "def": 5,    "min": 1,    "max": 60,     "int": true},
+    {"key": "send_every",          "fw": "sendEvery",         "def": 3,    "min": 1,    "max": 12,     "int": true},
+    {"key": "continuous_wind",     "fw": "continuousWind",    "def": 0,    "min": 0,    "max": 1,      "int": true},
+    {"key": "urgent_gust_kmh",     "fw": "urgentGustKmh",     "def": 0,    "min": 0,    "max": 200,    "int": true},
+    {"key": "bench_min",           "fw": "benchMin",          "def": 2,    "min": 0,    "max": 30,     "int": true},
+    {"key": "wifi_tx_save",        "fw": "wifiTxSave",        "def": 0,    "min": 0,    "max": 1,      "int": true},
+    {"key": "idle_every",          "fw": "idleEvery",         "def": 1,    "min": 1,    "max": 12,     "int": true},
+    {"key": "env_sensor",          "fw": "envSensor",         "def": 1,    "min": 0,    "max": 3,      "int": true},
+    {"key": "has_wind",            "fw": "hasWind",           "def": 1,    "min": 0,    "max": 1,      "int": true},
+    {"key": "has_vane",            "fw": "hasVane",           "def": 1,    "min": 0,    "max": 1,      "int": true},
+    {"key": "has_rain",            "fw": "hasRain",           "def": 1,    "min": 0,    "max": 1,      "int": true},
+    {"key": "battery_mah",                                     "def": 3000, "min": 100,  "max": 100000},
+    {"key": "pin_sda",             "fw": "pinSda",  "pin": true, "def": 6, "min": 0, "max": 21, "int": true},
+    {"key": "pin_scl",             "fw": "pinScl",  "pin": true, "def": 7, "min": 0, "max": 21, "int": true},
+    {"key": "pin_wind",            "fw": "pinWind", "pin": true, "def": 4, "min": 0, "max": 21, "int": true},
+    {"key": "pin_rain",            "fw": "pinRain", "pin": true, "def": 3, "min": 0, "max": 21, "int": true, "pinMax": 5},
+    {"key": "pin_vbat",            "fw": "pinVbat", "pin": true, "def": 0, "min": 0, "max": 21, "int": true, "pinMax": 4}
+  ],
+  "pins": {
+    "usable": [0, 1, 2, 3, 4, 5, 6, 7, 10, 20, 21],
+    "_": "8 e 9 são de boot, 11 a 17 da flash, 18 e 19 da USB. pinMax: chuva só 0-5 (acorda do deep sleep) e bateria só 0-4 (ADC1)."
+  },
+  "battery_chems": ["li", "lfp", "lipo", "aa"]
+}
