@@ -73,16 +73,18 @@ sequenceDiagram
 ```
 estacao-meteo/
 ├── firmware/            ESP32-C3 (PlatformIO)
-│   └── src/             main, wind, sensors, net, auth, ota, usblink, bench, events, settings, config
+│   └── src/             main (setup/loop), cycle, power, uplink, state, diag, wind, sensors, net, auth, ota, usblink, bench, events, settings, config, schema_gen.h (gerado)
 ├── worker/              Cloudflare Worker + D1
-│   ├── src/             index (API), admin, auth, alerts, hub (WebSocket), config, crypto
+│   ├── src/             index (API), admin, auth, alerts, hub (WebSocket), config, crypto, schema.ts (gerado)
 │   ├── schema.sql       tabelas (e migrations/ para bancos antigos)
 │   └── scripts/         seed.mjs (dados de exemplo) e smoke.mjs (testes)
 ├── web/                 Site (React)
 │   └── src/
-│       ├── components/  MapView, MapPage, StationFigure, StationSettings, ConfigPanel, AdminPage, FlashSetup...
+│       ├── board/       assistente da placa: BoardAssistant, NewBoard, KnownBoard, SensorsForm, steps, useBoardSession
+│       ├── components/  MapView, MapPage, StationFigure, StationSettings, ConfigPanel, AdminPage...
 │       ├── hooks/       useNetwork, useRoute, useLenis
-│       └── lib/         api, derive (cálculos), energy (modelo de consumo), battery, usb, flash, pins, prefs
+│       └── lib/         api, derive (cálculos), energy (modelo de consumo), battery, usb, flash, pins, prefs, schema (gerado)
+├── shared/              board-schema.json: fonte única dos campos de configuração (tools/gen_schema.py gera site, API e firmware)
 ├── adaptacao_sensores_v2/   CAD do anemômetro e da biruta
 └── docs/                documentação, figuras e as ferramentas que as geram
 ```

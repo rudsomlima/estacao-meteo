@@ -9,9 +9,8 @@ import { usbSupported } from '../../lib/usb'
 import type { Source, Station } from '../../types'
 import DataPanel from '../DataPanel'
 import FlashPanel from '../FlashPanel'
-import FlashSetup from '../FlashSetup'
 import Panel from '../Panel'
-import { requestUsb } from '../UsbDevice'
+import { requestUsb } from '../../board/events'
 
 function Choice({ label, value, options, onPick }: { label: string; value: string; options: [string, string][]; onPick: (v: string) => void }) {
   return (
@@ -95,15 +94,14 @@ export default function AdminSite({ stations, source }: { stations: Station[]; s
         {usbSupported() && (
           <>
             <p className="mb-3 text-xs text-ink-3">
-              <b>Placa nova:</b> use o assistente abaixo para gravar o firmware, escolher ou criar a estação, configurar o Wi-Fi e confirmar o primeiro envio. <b>Placa existente:</b> conecte o cabo e use o aviso USB que aparece para configurar a rede ou recuperar o vínculo; se precisar atualizar o firmware, abra a área avançada. Reconfigurar uma estação gera uma chave nova e invalida a anterior. Com o cabo conectado ao computador, a placa fica acordada; o site solta a porta quando você troca de janela.
+              Plugue a placa e use o assistente: ele lê a placa e escolhe o caminho. <b>Placa nova:</b> grava o firmware, cria ou escolhe a estação, define sensores e pinos, configura o Wi-Fi e confirma o primeiro envio. <b>Placa já cadastrada:</b> atualiza o firmware, troca Wi-Fi ou servidor, ou muda sensores e pinos. Reconfigurar o Wi-Fi gera uma chave nova e invalida a anterior. Com o cabo no computador a placa fica acordada; o site solta a porta quando você troca de janela.
             </p>
             <div className="mb-5 flex flex-wrap items-center gap-3 rounded-xl border border-line p-3 text-sm">
-              <button onClick={requestUsb} className="flex items-center gap-2 rounded-xl border border-line px-3 py-2 hover:bg-card-hover"><Usb className="h-4 w-4" aria-hidden /> Autorizar uma placa já plugada</button>
+              <button onClick={requestUsb} className="flex items-center gap-2 rounded-xl border border-line px-3 py-2 hover:bg-card-hover"><Usb className="h-4 w-4" aria-hidden /> Abrir o assistente da placa</button>
               <span className="min-w-0 flex-1 text-xs text-ink-3">Só na primeira vez com essa placa: o navegador pede para você escolhê-la numa lista.</span>
             </div>
           </>
         )}
-        <FlashSetup stations={stations} />
         <details className="mt-5 rounded-xl border border-line p-3 text-sm">
           <summary className="cursor-pointer text-ink-2">Avançado: atualizar ou recuperar o firmware sem configurar a estação</summary>
           <div className="mt-3"><FlashPanel /></div>

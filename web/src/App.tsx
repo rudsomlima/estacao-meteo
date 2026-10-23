@@ -7,7 +7,7 @@ import { NoReadings } from './components/StationPanel'
 import Hero from './components/Hero'
 import MapPage from './components/MapPage'
 import Navbar from './components/Navbar'
-import UsbDevice from './components/UsbDevice'
+import BoardAssistant from './board/BoardAssistant'
 import TechCard from './components/TechCard'
 import Trends from './components/Trends'
 import { useLenis } from './hooks/useLenis'
@@ -171,7 +171,7 @@ export default function App() {
   return (
     <>
       <Routes net={net} />
-      <UsbDevice stations={net.stations} source={net.source} onChanged={net.refresh} />
+      <BoardAssistant stations={net.stations} source={net.source} onChanged={net.refresh} />
     </>
   )
 }

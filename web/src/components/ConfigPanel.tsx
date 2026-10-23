@@ -1,11 +1,13 @@
 import { Check, Copy, KeyRound, RefreshCw, RotateCcw, Save, TriangleAlert } from 'lucide-react'
 import PairingCode from './PairingCode'
+import Toggle from './Toggle'
 import { useState, type ReactNode } from 'react'
 import type { SaveResult } from '../hooks/useNetwork'
 import { SESSION_TOKEN, useToken } from '../hooks/useToken'
 import { useCanEdit, useIsAdmin, useSession } from '../lib/session'
 import { CHEMS, CHEM_KEYS } from '../lib/battery'
-import { ENV_SENSORS, PIN_DEFAULTS, PINS, pinProblem, pinValue, USABLE_PINS, type PinKey } from '../lib/pins'
+import { requestUsb } from '../board/events'
+import { ENV_SENSORS, pinProblem, pinValue } from '../lib/pins'
 import type { BatteryChem, Source, Station, StationConfig } from '../types'
 
 export interface Field { key: keyof StationConfig; label: string; hint: string; min: number; max: number; step: number; unit: string; digits?: number }
@@ -81,15 +83,6 @@ function Group({ id, title, children, hint }: { id: string; title: string; hint?
   )
 }
 
-function Toggle({ checked, onChange, title, children }: { checked: boolean; onChange: (v: boolean) => void; title: string; children: ReactNode }) {
-  return (
-    <label className="flex items-start gap-3 rounded-xl border border-line bg-bg p-3 text-sm">
-      <input type="checkbox" className="mt-1 h-4 w-4" checked={checked} onChange={(e) => onChange(e.target.checked)} />
-      <span><b className="font-medium">{title}</b><span className="mt-0.5 block text-xs text-ink-3">{children}</span></span>
-    </label>
-  )
-}
-
 /** Uma parte da configuração da estação (as abas da página de configurações). A edição vai para o rascunho; salvar é na barra de baixo. */
 export function ConfigSection({ section, station, source, onChange }: { section: Section; station: Station; source: Source; onChange: (s: Station) => void }) {
   const editable = useCanEdit(station, source)
@@ -98,7 +91,7 @@ export function ConfigSection({ section, station, source, onChange }: { section:
   const set = (patch: Partial<StationConfig>) => onChange({ ...station, config: { ...cfg, ...patch } })
   const setMeta = (patch: Partial<Station>) => onChange({ ...station, ...patch })
   const pickChem = (c: BatteryChem) => set({ battery_chem: c, slow_below_v: CHEMS[c].slow_below_v, critical_v: CHEMS[c].critical_v })
-  const pinErr = pinProblem(cfg)
+  const admin = useIsAdmin()
   const sensor = ENV_SENSORS.find((x) => x.id === (cfg.env_sensor ?? 1)) ?? ENV_SENSORS[1]
 
   return (
@@ -115,47 +108,12 @@ export function ConfigSection({ section, station, source, onChange }: { section:
               <div className="rounded-xl border border-line bg-bg p-3 text-sm">
                 <div className="text-xs text-ink-3">Placa</div>
                 <b className="font-medium">ESP32-C3 (SuperMini ou módulo nu)</b>
-                <span className="ml-2 text-xs text-ink-3">firmware {station.fw_version ?? '—'} · é a placa que este firmware suporta; o modelo muda só a fiação, que se define pelos pinos abaixo.</span>
+                <span className="ml-2 text-xs text-ink-3">firmware {station.fw_version ?? '—'}</span>
               </div>
-              <label className="grid gap-1 text-sm font-medium">Sensor de ambiente
-                <select className={input} value={cfg.env_sensor ?? 1} onChange={(e) => set({ env_sensor: Number(e.target.value) })}>
-                  {ENV_SENSORS.map((x) => <option key={x.id} value={x.id}>{x.label}</option>)}
-                </select>
-                <span className="text-xs font-normal text-ink-3">{sensor.hint}</span>
-              </label>
-              <div className="grid gap-3 sm:grid-cols-3">
-                <Toggle checked={(cfg.has_wind ?? 1) === 1} onChange={(v) => set({ has_wind: v ? 1 : 0 })} title="Tem anemômetro">
-                  Desligue se não há rotor instalado: velocidade e rajada somem da página (em vez de mostrar ruído do pino solto).
-                </Toggle>
-                <Toggle checked={(cfg.has_vane ?? 1) === 1} onChange={(v) => set({ has_vane: v ? 1 : 0 })} title="Tem biruta">
-                  Desligue se não há biruta (bússola QMC5883L) instalada: direção do vento some da página.
-                </Toggle>
-                <Toggle checked={(cfg.has_rain ?? 1) === 1} onChange={(v) => set({ has_rain: v ? 1 : 0 })} title="Tem pluviômetro">
-                  Desligue se não há tanque basculante instalado: chuva some da página.
-                </Toggle>
-              </div>
-              <div className="grid gap-3 sm:grid-cols-2">
-                {PINS.map((p) => {
-                  const v = pinValue(cfg, p.key)
-                  const taken = new Set(PINS.filter((o) => o.key !== p.key).map((o) => pinValue(cfg, o.key)))
-                  const limit = p.key === 'pin_rain' ? 5 : p.key === 'pin_vbat' ? 4 : 99
-                  return (
-                    <label key={p.key} className="grid gap-1 text-sm font-medium">{p.label}
-                      <select className={input} value={v} onChange={(e) => set({ [p.key]: Number(e.target.value) } as Partial<StationConfig>)}>
-                        {USABLE_PINS.filter((n) => n <= limit || n === v).map((n) => (
-                          <option key={n} value={n} disabled={taken.has(n)}>GPIO{n}{n === PIN_DEFAULTS[p.key as PinKey] ? ' (padrão)' : ''}{taken.has(n) ? ' · em uso' : ''}</option>
-                        ))}
-                      </select>
-                      <span className="text-xs font-normal text-ink-3">{p.hint}</span>
-                    </label>
-                  )
-                })}
-              </div>
-              <div>
-                {pinErr && <p role="alert" className="mb-2 flex items-center gap-1.5 text-sm text-bad"><TriangleAlert className="h-4 w-4 shrink-0" aria-hidden /> {pinErr}</p>}
-                <button type="button" onClick={() => set({ ...PIN_DEFAULTS })} className="rounded-lg border border-line px-3 py-1.5 text-xs hover:bg-card-hover">Voltar aos pinos padrão</button>
-                <p className="mt-2 text-xs text-ink-3">Mudar um pino reinicia a placa quando ela recebe a configuração, e a fiação precisa estar igual ao que está aqui. Ficam de fora os pinos de boot (8 e 9), da USB (18 e 19) e da memória flash (11 a 17).</p>
-              </div>
+              <p className="text-sm text-ink-2">
+                Sensores e pinos mudam com a placa no cabo USB, no assistente da placa: plugue a placa, abra o assistente e escolha <b>Sensores e pinos</b>. Ele salva no servidor e aplica na placa. Hoje: {sensor.label.toLowerCase()}, GPIO {pinValue(cfg, 'pin_sda')}/{pinValue(cfg, 'pin_scl')} (I²C), {pinValue(cfg, 'pin_wind')} (vento), {pinValue(cfg, 'pin_rain')} (chuva), {pinValue(cfg, 'pin_vbat')} (bateria).
+              </p>
+              {admin && <button type="button" onClick={requestUsb} className="w-fit rounded-lg border border-line px-3 py-1.5 text-xs hover:bg-card-hover">Abrir o assistente da placa</button>}
             </Group>
             <Group id="cfg-calibracao" title="Calibração" hint="Ajustes finos dos sensores, depois de montada a estação.">
               <Sliders fields={GROUPS.calibracao} cfg={cfg} set={set} />

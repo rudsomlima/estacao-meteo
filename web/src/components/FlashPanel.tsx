@@ -1,13 +1,12 @@
 import { Cpu, TriangleAlert } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
 import { ADDRESS_APP, ADDRESS_FULL, explainFlashError, flash } from '../lib/flash'
+import { loadManifest, type FirmwareImage } from '../board/manifest'
 import { askForPort, describePort, usbSupported, waitForPlug, type Port } from '../lib/usb'
-
-interface Item { file: string; title: string; note: string; size: number; server: string | null; fw?: string; built?: number }
 
 /** Ferramenta avançada para gravar apenas o firmware por USB. */
 export default function FlashPanel() {
-  const [items, setItems] = useState<Item[]>([])
+  const [items, setItems] = useState<FirmwareImage[]>([])
   const [pick, setPick] = useState('')
   const [custom, setCustom] = useState<{ name: string; data: Uint8Array } | null>(null)
   const [kind, setKind] = useState<'full' | 'app'>('full')
@@ -21,10 +20,7 @@ export default function FlashPanel() {
   const fileRef = useRef<HTMLInputElement>(null)
 
   useEffect(() => {
-    fetch('/firmware/manifest.json')
-      .then((r) => (r.ok ? (r.json() as Promise<Item[]>) : []))
-      .then((m) => { if (Array.isArray(m)) { setItems(m); setPick(m[0]?.file ?? '') } })
-      .catch(() => undefined)
+    void loadManifest().then((m) => { setItems(m); setPick(m[0]?.file ?? '') })
   }, [])
 
   if (!usbSupported()) return <p className="text-sm text-ink-2">Este navegador não tem Web Serial. Use o Chrome, o Edge ou o Opera.</p>
