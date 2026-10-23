@@ -127,6 +127,18 @@ Depois de baixar uma configuração nova, a estação a aplica e, no envio segui
 
 Sem PlatformIO e sem instalar nada: o site grava o firmware numa placa pelo cabo USB (Chrome, Edge ou Opera, via Web Serial e [esptool-js](https://github.com/espressif/esptool-js)).
 
+### Qual operação usar?
+
+| Situação | Caminho recomendado | O que muda |
+|---|---|---|
+| **Placa nova ou em branco** | Administração → Site e placas → assistente **Preparar placa (USB)** | Grava o firmware completo, cria ou escolhe uma estação, configura Wi-Fi e vínculo e confirma a primeira leitura. |
+| **Placa já responde e está vinculada** | Aviso **Placa USB detectada** ou configuração da estação | Atualiza Wi-Fi/vínculo ou aplica os ajustes da estação pela USB. Reconfigurar uma estação existente gera uma chave nova e invalida a anterior para todas as placas que a compartilhavam. |
+| **Atualizar somente o aplicativo** | Seção avançada **Atualizar ou recuperar o firmware sem configurar a estação** | Escolha um `.bin` somente do aplicativo e grave em `0x10000` para preservar a configuração. Não escolhe estação nem configura Wi-Fi/chave. |
+| **Recuperar ou inicializar a placa** | Assistente para a imagem completa ou imagem completa na seção avançada | Grava bootloader, partições e aplicativo em `0x0`. Pode redefinir dados salvos mesmo sem marcar *Apagar toda a flash*. Use o assistente para também configurar a placa. |
+| **Atualização normal de placas em campo** | Atualização pelo ar (OTA), seção abaixo | Publica uma versão e a placa compatível baixa e verifica o firmware após enviar dados. Não precisa de USB. |
+
+Use **Apagar toda a flash** somente quando quiser uma redefinição completa: isso remove Wi-Fi, chave, calibração e configuração local. Para atualizar uma placa existente preservando a configuração, grave apenas o aplicativo em `0x10000`; regravar a imagem completa substitui também bootloader e partições, então não conte com os dados locais. Configuração da estação (sensores, pinos, intervalos e energia) é independente do firmware e fica na página da estação.
+
 1. Gere a imagem de fábrica (precisa do PlatformIO, uma vez; repita quando mudar o firmware):
 
    ```bash
@@ -136,7 +148,7 @@ Sem PlatformIO e sem instalar nada: o site grava o firmware numa placa pelo cabo
    ```
 
    Isso compila o firmware e escreve `estacao-c3.bin` e `manifest.json` em `web/public/firmware/` (fora do git). O site mostra a versão e a hora em que a imagem foi gerada, para você ver se está desatualizada. Em desenvolvimento (`npm run dev`) a pasta já é servida; para publicar, rode `npm run build`.
-2. No site, entre como administrador e abra **Administração → Site e placas → Placa USB: gravar firmware e deixar a placa pronta**: escolha a placa e a estação e toque em *Gravar e deixar a placa pronta* (o botão *Avançado* grava só o firmware). Também dá para usar um `.bin` seu (imagem completa em 0x0, ou só o aplicativo em 0x10000).
+2. No site, entre como administrador e abra **Administração → Site e placas → Preparar placa (USB)**. Para uma placa nova, escolha *Nova estação…* ou uma estação cadastrada e informe Wi-Fi, depois toque em *Gravar e deixar a placa pronta*. Para atualizar/reparar apenas o firmware, abra a área avançada e escolha a imagem. Também dá para usar um `.bin` seu (imagem completa em 0x0, ou só o aplicativo em 0x10000).
 3. Terminada a gravação, a placa reinicia sozinha e o site a reconhece (veja abaixo).
 
 Se a placa estiver dormindo (a porta não aparece), o site avisa para apertar RESET e recomeça a gravação sozinho quando ela surgir. A USB nativa do ESP32-C3 entra em modo de gravação sozinha; com uma ponte CH340 ou CP210x pode ser preciso segurar BOOT, apertar RESET, soltar o RESET e depois o BOOT. *Apagar toda a flash* remove Wi-Fi, chave e calibração salvos.

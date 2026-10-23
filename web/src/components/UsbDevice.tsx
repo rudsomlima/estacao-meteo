@@ -349,6 +349,7 @@ function Ready({ state, stations, source, onPickMap, onLost, onCreated, onDone }
       <p className={known ? 'text-ok' : 'text-ink-2'}>
         {known ? `Reconhecida: estação ${known.name}.` : info.id ? `Configurada como "${info.id}", que não existe neste site.` : info.provisioned ? 'Já tem rede e chave salvas.' : 'Placa nova, ainda sem configuração.'}
       </p>
+      {known && <p className="rounded-lg border border-line px-3 py-2 text-xs text-ink-2">Reconfigurar esta estação gera uma chave nova e invalida a anterior. Outras placas que compartilhem a chave antiga deixarão de enviar dados.</p>}
 
       {source === 'demo' ? (
         <p className="text-xs text-ink-3">Para configurar a placa, o site precisa estar ligado à API (não está na demonstração).</p>
@@ -409,7 +410,7 @@ function Ready({ state, stations, source, onPickMap, onLost, onCreated, onDone }
           <button onClick={run} disabled={busy || (sid === NEW ? !name.trim() : !sid) || !token || !server} className="rounded-xl bg-blue px-4 py-2.5 text-sm font-semibold text-white disabled:opacity-50">
             {busy ? 'Configurando…' : sid === NEW ? 'Criar a estação e configurar a placa' : known ? 'Reconfigurar esta placa' : 'Configurar esta placa'}
           </button>
-          <p className="text-xs text-ink-3">Gera uma chave nova e a grava direto na placa. Ninguém copia nada.</p>
+          <p className="text-xs text-ink-3">Ao concluir, gera uma chave nova para esta estação e grava Wi-Fi, endereço e chave nesta placa. A chave anterior deixa de valer.</p>
         </div>
       )}
       {err && <p role="alert" className="text-xs text-bad">{err}</p>}

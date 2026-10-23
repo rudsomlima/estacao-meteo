@@ -95,7 +95,7 @@ export default function AdminSite({ stations, source }: { stations: Station[]; s
         {usbSupported() && (
           <>
             <p className="mb-3 text-xs text-ink-3">
-              Duas formas de chegar ao mesmo lugar: plugue a placa com o cabo (de dados) e, se o navegador já a conhece, um aviso aparece sozinho no canto da tela para configurar ou reconfigurar. Placa nova, em branco, ou primeira vez? Use o formulário abaixo: ele grava o firmware que faltar e configura tudo num só passo. Com o cabo no computador a placa fica acordada, e o site solta a porta quando você troca de janela.
+              <b>Placa nova:</b> use o assistente abaixo para gravar o firmware, escolher ou criar a estação, configurar o Wi-Fi e confirmar o primeiro envio. <b>Placa existente:</b> conecte o cabo e use o aviso USB que aparece para configurar a rede ou recuperar o vínculo; se precisar atualizar o firmware, abra a área avançada. Reconfigurar uma estação gera uma chave nova e invalida a anterior. Com o cabo conectado ao computador, a placa fica acordada; o site solta a porta quando você troca de janela.
             </p>
             <div className="mb-5 flex flex-wrap items-center gap-3 rounded-xl border border-line p-3 text-sm">
               <button onClick={requestUsb} className="flex items-center gap-2 rounded-xl border border-line px-3 py-2 hover:bg-card-hover"><Usb className="h-4 w-4" aria-hidden /> Autorizar uma placa já plugada</button>
@@ -105,7 +105,7 @@ export default function AdminSite({ stations, source }: { stations: Station[]; s
         )}
         <FlashSetup stations={stations} />
         <details className="mt-5 rounded-xl border border-line p-3 text-sm">
-          <summary className="cursor-pointer text-ink-2">Avançado: gravar só o firmware, ou um arquivo .bin</summary>
+          <summary className="cursor-pointer text-ink-2">Avançado: atualizar ou recuperar o firmware sem configurar a estação</summary>
           <div className="mt-3"><FlashPanel /></div>
         </details>
       </Panel>

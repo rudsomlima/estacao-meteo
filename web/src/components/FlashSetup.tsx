@@ -34,6 +34,7 @@ export default function FlashSetup({ stations }: { stations: Station[] }) {
   const [remember, setRemember] = useState(!!saved.pass) // lembrar a SENHA é opcional: ela fica sem proteção no navegador
   const [step, setStep] = useState<Step>({ k: 'idle' })
   const [hasImage, setHasImage] = useState<boolean | null>(null)
+  const selectedExisting = stations.find((s) => s.id === sid)
 
   useEffect(() => { fetch('/firmware/manifest.json').then((r) => (r.ok ? r.json() : [])).then((m) => setHasImage(Array.isArray(m) && m.length > 0)).catch(() => setHasImage(false)) }, [])
   useEffect(() => { if (!stations.some((s) => s.id === sid) && sid !== NEW) setSid(stations[0]?.id ?? NEW) }, [stations, sid])
@@ -119,7 +120,7 @@ export default function FlashSetup({ stations }: { stations: Station[] }) {
 
   return (
     <div className="grid gap-4 text-sm">
-      <p className="text-ink-2">Escolha a estação e a rede Wi-Fi, escolha a placa (o navegador mostra as portas seriais, mesmo de uma placa em branco) e clique no botão abaixo. O site confirma quando a primeira leitura chegar.</p>
+      <p className="text-ink-2">Este assistente grava o firmware completo e configura a rede e o vínculo com a estação. Use para uma placa nova ou para preparar de novo uma placa existente. O site confirma quando a primeira leitura chegar.</p>
 
       <div className="flex flex-wrap items-center gap-3">
         <button onClick={() => void choose()} disabled={busy} className="flex items-center gap-2 rounded-xl border border-line px-4 py-2.5 hover:bg-card-hover disabled:opacity-50"><Cpu className="h-4 w-4" aria-hidden /> {port ? 'Trocar placa' : 'Escolher a placa'}</button>
@@ -129,8 +130,8 @@ export default function FlashSetup({ stations }: { stations: Station[] }) {
       <fieldset className="grid gap-3 sm:grid-cols-2" disabled={busy}>
         <label className="grid gap-1 text-xs text-ink-3 sm:col-span-2">Estação
           <select className={field} value={sid} onChange={(e) => setSid(e.target.value)}>
-            {stations.map((s) => <option key={s.id} value={s.id}>{s.name}{s.owner_email ? ` · ${s.owner_email}` : ''}</option>)}
             <option value={NEW}>Nova estação…</option>
+            {stations.map((s) => <option key={s.id} value={s.id}>{s.name}{s.owner_email ? ` · ${s.owner_email}` : ''}</option>)}
           </select>
         </label>
         {sid === NEW && (
@@ -143,6 +144,7 @@ export default function FlashSetup({ stations }: { stations: Station[] }) {
         )}
         <label className="grid gap-1 text-xs text-ink-3">Rede Wi-Fi (2,4 GHz)<input className={field} value={ssid} onChange={(e) => setSsid(e.target.value)} autoComplete="off" /></label>
         <label className="grid gap-1 text-xs text-ink-3">Senha do Wi-Fi<input className={field} type="password" value={pass} onChange={(e) => setPass(e.target.value)} autoComplete="off" /></label>
+        {selectedExisting && <p className="rounded-lg border border-line px-3 py-2 text-xs text-ink-2">Ao preparar de novo a estação <b className="text-ink">{selectedExisting.name}</b>, uma chave nova será gerada. A chave antiga deixa de funcionar, inclusive em outra placa que ainda a use. A gravação do firmware preserva os dados locais; esta configuração substitui a rede e o vínculo nesta placa.</p>}
         <label className="flex items-center gap-2 text-xs text-ink-2 sm:col-span-2"><input type="checkbox" checked={remember} onChange={(e) => setRemember(e.target.checked)} /> Lembrar também a senha neste navegador (fica guardada sem proteção; o nome da rede é sempre lembrado)</label>
         {!clientId && token !== SESSION_TOKEN && (
           <label className="grid gap-1 text-xs text-ink-3 sm:col-span-2">Token de administrador<input className={field} type="password" value={token} onChange={(e) => setToken(e.target.value)} autoComplete="off" /></label>

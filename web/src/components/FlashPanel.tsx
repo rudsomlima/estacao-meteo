@@ -5,7 +5,7 @@ import { askForPort, describePort, usbSupported, waitForPlug, type Port } from '
 
 interface Item { file: string; title: string; note: string; size: number; server: string | null; fw?: string; built?: number }
 
-/** Grava o firmware numa placa em branco pelo navegador, sem instalar nada. */
+/** Ferramenta avançada para gravar apenas o firmware por USB. */
 export default function FlashPanel() {
   const [items, setItems] = useState<Item[]>([])
   const [pick, setPick] = useState('')
@@ -53,7 +53,7 @@ export default function FlashPanel() {
         onProgress: setPct,
         onLog: (l) => setLog((cur) => [...cur.slice(-40), l]),
       })
-      setMsg({ ok: true, text: `Firmware gravado em ${chip}. A placa reiniciou${erase ? ' (flash apagada: ela volta sem Wi-Fi nem chave)' : ''}.` })
+      setMsg({ ok: true, text: `Firmware gravado em ${chip}. A placa reiniciou${erase ? ' (flash apagada: ela volta sem Wi-Fi, chave, calibração e configuração salva)' : address === ADDRESS_FULL ? ' (imagem completa: os dados salvos podem ser redefinidos)' : ' (somente o aplicativo: os dados salvos foram preservados)'}. Esta etapa não configura Wi-Fi nem vincula a placa a uma estação.` })
       setTimeout(() => window.dispatchEvent(new Event('meteo:usb-probe')), 3000)
     } catch (e) {
       const { text, waitForBoard } = explainFlashError(e)
@@ -77,7 +77,7 @@ export default function FlashPanel() {
 
   return (
     <div className="grid gap-4">
-      <p className="text-sm text-ink-2">Grava o firmware numa placa nova, ou atualiza por cabo. Tudo acontece no navegador. Depois de gravar, a placa reinicia e é reconhecida sozinha. Se a placa estiver dormindo (a porta some do computador), aperte RESET nela.</p>
+      <p className="text-sm text-ink-2">Use esta área avançada para atualizar o firmware de uma placa existente ou recuperar uma placa sem resposta. Ela não escolhe a estação nem configura Wi-Fi ou chave. Para atualizar somente o aplicativo sem mexer nos dados salvos, escolha o arquivo .bin do aplicativo e grave em 0x10000. A imagem completa em 0x0 pode redefinir dados salvos mesmo sem apagar toda a flash. Para preparar uma placa nova e deixá-la pronta para enviar dados, use o assistente acima. Se a placa estiver dormindo (a porta some do computador), aperte RESET nela.</p>
 
       <div className="flex flex-wrap items-center gap-3">
         <button onClick={choose} disabled={busy} className="flex items-center gap-2 rounded-xl border border-line px-4 py-2.5 text-sm hover:bg-card-hover disabled:opacity-50"><Cpu className="h-4 w-4" aria-hidden /> {port ? 'Trocar placa' : 'Escolher a placa'}</button>
@@ -113,7 +113,7 @@ export default function FlashPanel() {
           <button onClick={() => fileRef.current?.click()} className="rounded-lg border border-line px-3 py-1.5 text-xs hover:bg-card-hover">Escolher outro arquivo .bin</button>
           <input ref={fileRef} type="file" accept=".bin" className="hidden" onChange={async (e) => { const f = e.target.files?.[0]; if (f) setCustom({ name: f.name, data: new Uint8Array(await f.arrayBuffer()) }) }} />
         </div>
-        <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={erase} onChange={(e) => setErase(e.target.checked)} /> Apagar toda a flash antes (remove Wi-Fi, chave e calibração salvos)</label>
+        <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={erase} onChange={(e) => setErase(e.target.checked)} /> Apagar toda a flash antes (remove Wi-Fi, chave, calibração e configuração salvos)</label>
       </fieldset>
 
       <div className="flex flex-wrap items-center gap-3">

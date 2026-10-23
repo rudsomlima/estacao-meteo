@@ -103,6 +103,8 @@ Entre como administrador (veja acima) e abra **Administração → Site e placas
 2. Escolha a **estação** (ou *Nova estação…*, com nome, local e, se quiser, o e-mail do dono) e informe a **rede Wi-Fi de 2,4 GHz** e a senha. O site pode lembrar a rede para as próximas placas.
 3. Clique em **Gravar e deixar a placa pronta**. O site grava o firmware, configura Wi-Fi, endereço do site e chave pela USB e avisa quando a primeira leitura chegar. Não há código para digitar: quem confirma é o seu login de administrador.
 
+   Se selecionar uma estação que já existe, o site gera uma chave nova para ela. A chave anterior deixa de valer, inclusive em outras placas vinculadas à mesma estação. Para atualizar somente o aplicativo de uma placa existente sem trocar o vínculo, use a seção avançada com o `.bin` do aplicativo em `0x10000`. Gravar a imagem completa pode redefinir os dados salvos mesmo sem marcar **Apagar toda a flash**.
+
 Se a placa estiver dormindo, o site pede para apertar RESET e continua sozinho. Usuários comuns não veem este painel nem o aviso de placa USB.
 
 O que você vê durante o processo (aviso no canto da tela, em qualquer página do site):
