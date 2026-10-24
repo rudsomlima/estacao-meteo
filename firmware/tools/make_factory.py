@@ -7,8 +7,10 @@ Uso (na pasta firmware):
     python tools/make_factory.py                                          # sem endereço embutido (a USB configura)
 
 Compila o firmware (um só serve para a bancada e para o campo) e escreve em ../web/public/firmware/:
-    estacao-c3.bin   imagem completa, para gravar a partir do endereço 0x0
-    manifest.json    o que o site lista na tela de gravação
+    estacao-c3.bin       imagem completa, para gravar a partir do endereço 0x0 (placa nova ou recuperação). Os vazios da flash saem
+                         em 0xFF, o que APAGA Wi-Fi, chave e configuração guardados na placa.
+    estacao-c3-app.bin   só o aplicativo, para gravar a partir de 0x10000: atualiza o firmware e preserva os dados guardados.
+    manifest.json        o que o site lista na tela de gravação
 Depois rode "npm run build" e publique o site (em desenvolvimento o "npm run dev" já serve a pasta). A imagem fica fora do git.
 """
 import argparse
@@ -25,6 +27,7 @@ HERE = Path(__file__).resolve().parent.parent
 OUT = HERE.parent / "web" / "public" / "firmware"
 ENV = "esp32c3"
 IMAGE = "estacao-c3.bin"
+IMAGE_APP = "estacao-c3-app.bin"
 # endereços da flash do ESP32-C3 com o esquema de partições padrão do Arduino
 BOOT, PART, APP0, APP = 0x0, 0x8000, 0xE000, 0x10000
 
@@ -91,18 +94,26 @@ def main() -> None:
     for old in OUT.glob("*.bin"):  # imagens de versões anteriores deste script
         old.unlink()
     (OUT / IMAGE).write_bytes(img)
-    manifest = [{
-        "file": IMAGE,
-        "title": "Estação Meteo",
-        "note": "Serve para a bancada e para o campo. Com o cabo no computador, o site reconhece a placa e a configura; sem ele, a placa segue o ciclo de baixo consumo.",
-        "size": len(img),
-        "server": server or None,
-        "env": ENV,
-        "fw": fw_version(a.version),
-        "built": int(time.time()),
-    }]
+    app = parts[-1][1]
+    (OUT / IMAGE_APP).write_bytes(app)
+    common = {"server": server or None, "env": ENV, "fw": fw_version(a.version), "built": int(time.time())}
+    manifest = [
+        {
+            "file": IMAGE, "kind": "full", "address": BOOT,
+            "title": "Estação Meteo (imagem completa)",
+            "note": "Placa nova ou recuperação: grava bootloader, partições e aplicativo a partir de 0x0. Apaga Wi-Fi, chave e configuração guardados na placa.",
+            "size": len(img), **common,
+        },
+        {
+            "file": IMAGE_APP, "kind": "app", "address": APP,
+            "title": "Estação Meteo (só o aplicativo)",
+            "note": "Atualiza o firmware a partir de 0x10000 e preserva Wi-Fi, chave e configuração guardados na placa.",
+            "size": len(app), **common,
+        },
+    ]
     (OUT / "manifest.json").write_text(json.dumps(manifest, ensure_ascii=False, indent=2), encoding="utf-8")
     print(f"   {IMAGE}: {len(img) / 1024:.0f} KB, firmware {manifest[0]['fw']}")
+    print(f"   {IMAGE_APP}: {len(app) / 1024:.0f} KB")
     print(f"pronto em {OUT}")
 
 

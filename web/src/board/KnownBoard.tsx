@@ -5,7 +5,7 @@ import { pinProblem } from '../lib/pins'
 import { useCanEdit } from '../lib/session'
 import type { DeviceInfo, Link } from '../lib/usb'
 import type { Source, Station, StationConfig } from '../types'
-import { type FirmwareImage, loadManifest } from './manifest'
+import { type FirmwareImage, imageOf, loadManifest } from './manifest'
 import { NetworkFields, useNetworkForm } from './NetworkFields'
 import SensorsForm from './SensorsForm'
 import { errorText, provisionBoard, rotate } from './steps'
@@ -26,7 +26,7 @@ export default function KnownBoard({ link, info, station, source, onFlash, onLos
   const [action, setAction] = useState<Action>('menu')
   const [image, setImage] = useState<FirmwareImage | null>(null)
   const editable = useCanEdit(station, source)
-  useEffect(() => { void loadManifest().then((m) => setImage(m[0] ?? null)) }, [])
+  useEffect(() => { void loadManifest().then((m) => setImage(imageOf(m, 'app'))) }, [])
 
   // Só o menu deixa a placa seguir o ciclo normal; nas telas de edição ela fica escutando.
   useEffect(() => (action === 'menu' ? undefined : link.keepAlive(onLost)), [link, action, onLost])
@@ -41,7 +41,7 @@ export default function KnownBoard({ link, info, station, source, onFlash, onLos
       <p className="text-ok">Reconhecida: estação {station.name}.</p>
       <button className={btn} onClick={onFlash} disabled={!image}>
         <b className="font-medium">Atualizar o firmware</b>
-        <span className="block text-xs text-ink-3">{!image ? 'Este site não tem imagem de firmware.' : upToDate ? `A placa já está na versão ${info.fw}. Regravar a imagem completa pode apagar o Wi-Fi e a chave guardados na placa.` : `Placa ${info.fw}, disponível ${image.fw ?? 'outra versão'}. A imagem completa pode apagar o Wi-Fi e a chave guardados na placa; se isso acontecer, use Wi-Fi e servidor em seguida.`}</span>
+        <span className="block text-xs text-ink-3">{!image ? 'Este site não tem a imagem só do aplicativo (gere de novo com tools/make_factory.py).' : upToDate ? `A placa já está na versão ${info.fw}. Regravar mantém Wi-Fi, chave e configuração.` : `Placa ${info.fw}, disponível ${image.fw ?? 'outra versão'}. Grava só o aplicativo: mantém Wi-Fi, chave e configuração.`}</span>
       </button>
       <button className={btn} onClick={() => setAction('wifi')}>
         <b className="font-medium">Wi-Fi e servidor</b>

@@ -6,7 +6,7 @@ Plugue o cabo. O assistente da placa reconhece a estação ("Reconhecida: estaç
 
 | Ação | Para quê | O que muda | O que **não** muda |
 |---|---|---|---|
-| **Atualizar o firmware** | Pôr a versão que o site oferece, ou recuperar uma placa travada | Grava a imagem completa (bootloader, partições e aplicativo) | Pode apagar Wi-Fi, chave e configuração guardados na placa (não foi medido o que sobrevive); depois, use **Wi-Fi e servidor** se ela deixar de enviar |
+| **Atualizar o firmware** | Pôr a versão que o site oferece, ou recuperar uma placa travada | Grava só o aplicativo (a partir de `0x10000`) | Nada: Wi-Fi, chave e configuração ficam |
 | **Wi-Fi e servidor** | Mudou o roteador, a senha, ou o endereço do site | Rede e endereço; **gera uma chave nova** | Sensores, pinos e ajustes da estação |
 | **Sensores e pinos** | Trocou ou tirou um sensor, ou mudou a fiação | Salva no servidor e aplica na placa pelo cabo | Wi-Fi e chave |
 
@@ -14,11 +14,13 @@ O menu mostra a versão da placa e a que o site oferece. Se forem iguais, regrav
 
 ## Atualizar o firmware
 
-Escolha **Atualizar o firmware**. A imagem completa grava a partir de `0x0` e pode redefinir os dados locais. A gravação leva cerca de um minuto; a placa reinicia sozinha e o assistente a procura de novo. Se a placa dormir, aperte RESET.
+Escolha **Atualizar o firmware**. A gravação leva cerca de um minuto; a placa reinicia sozinha e o assistente a procura de novo. Se a placa dormir, aperte RESET.
 
 Em placas **em campo**, prefira a atualização pelo ar (OTA): publique a versão em *Administração → Firmware* e atribua às estações; a placa baixa e confere o SHA-256 no envio seguinte, sem cabo. Veja [firmware.md](firmware.md#atualização-pelo-ar-ota).
 
-Para gravar **só o aplicativo** (endereço `0x10000`, que preserva a configuração) ou um `.bin` seu, use *Administração → Site e placas → Avançado*.
+A **imagem completa** (`0x0`) só é usada em placa em branco ou para recuperar uma que não responde: ela **apaga** Wi-Fi, chave e configuração guardados na placa. Está em *Administração → Site e placas → Avançado*, junto com a gravação de um `.bin` seu.
+
+O site oferece as duas imagens porque `firmware/tools/make_factory.py` gera `estacao-c3.bin` (completa) e `estacao-c3-app.bin` (só o aplicativo). Depois de mudar o firmware, rode o script de novo, senão o site oferece uma versão velha.
 
 ## Wi-Fi e servidor
 

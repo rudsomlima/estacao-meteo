@@ -1,8 +1,8 @@
 import { ApiError, createStation, rotateKey } from '../lib/api'
-import { ADDRESS_FULL, explainFlashError, flash } from '../lib/flash'
+import { ADDRESS_APP, ADDRESS_FULL, explainFlashError, flash } from '../lib/flash'
 import { waitForPlug, type Link, type Port } from '../lib/usb'
 import type { StationConfig } from '../types'
-import { fetchImage, loadManifest } from './manifest'
+import { fetchImage, imageOf, loadManifest } from './manifest'
 
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms))
 
@@ -26,13 +26,15 @@ export async function rotate(id: string, token: string): Promise<string> {
   return (await rotateKey(id, token)).key
 }
 
-/** Grava a imagem completa na placa. Se ela não estiver em modo de gravação, espera o RESET e tenta de novo. Devolve a porta (pode ter mudado). */
-export async function flashFactory(port: Port, ev: { onPct: (pct: number) => void; onWait?: () => void }): Promise<Port> {
-  const img = (await loadManifest())[0]
-  if (!img) throw new Error('Não há imagem de firmware neste site (gere com tools/make_factory.py).')
+/**
+ * Grava o firmware. 'full' é a imagem completa (placa nova: apaga o que a placa guarda); 'app' é só o aplicativo (atualização: preserva
+ * Wi-Fi, chave e configuração). Se ela não estiver em modo de gravação, espera o RESET e tenta de novo. Devolve a porta (pode ter mudado). */
+export async function flashFactory(port: Port, ev: { onPct: (pct: number) => void; onWait?: () => void }, which: 'full' | 'app' = 'full'): Promise<Port> {
+  const img = imageOf(await loadManifest(), which)
+  if (!img) throw new Error(`Não há imagem de firmware ${which === 'app' ? '(só aplicativo) ' : ''}neste site (gere com tools/make_factory.py).`)
   const data = await fetchImage(img)
   let current = port
-  const run = () => flash(current, { name: img.file, data, address: ADDRESS_FULL }, { eraseAll: false, onProgress: ev.onPct, onLog: () => undefined })
+  const run = () => flash(current, { name: img.file, data, address: which === 'app' ? ADDRESS_APP : ADDRESS_FULL }, { eraseAll: false, onProgress: ev.onPct, onLog: () => undefined })
   try { await run() } catch (e) {
     if (!explainFlashError(e).waitForBoard) throw e
     ev.onWait?.()

@@ -41,7 +41,7 @@ export default function FlashPanel() {
         if (!it) throw new Error('Escolha uma imagem.')
         const r = await fetch(`/firmware/${it.file}`)
         if (!r.ok) throw new Error('Não foi possível baixar a imagem.')
-        name = it.file; data = new Uint8Array(await r.arrayBuffer()); address = ADDRESS_FULL
+        name = it.file; data = new Uint8Array(await r.arrayBuffer()); address = it.kind === 'app' ? ADDRESS_APP : ADDRESS_FULL
       }
       if (data[0] !== 0xe9) throw new Error('Este arquivo não parece uma imagem de ESP32 (não começa com 0xE9).')
       const chip = await flash(port, { name, data, address }, {

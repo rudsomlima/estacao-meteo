@@ -118,13 +118,13 @@ export function useBoardSession(onChanged: () => unknown) {
   }, [waiting]) // eslint-disable-line react-hooks/exhaustive-deps
 
   /** Grava o firmware completo e procura a placa de novo. Devolve false se falhar (o estado vira "silent" com o motivo). */
-  const flashNow = async (port: Port) => {
+  const flashNow = async (port: Port, which: 'full' | 'app' = 'full') => {
     setState({ s: 'flashing', port, pct: 0 })
     try {
       const current = await flashFactory(port, {
         onPct: (pct) => setState({ s: 'flashing', port, pct }),
         onWait: () => setState({ s: 'flashing', port, pct: 0, waitBoard: true }),
-      })
+      }, which)
       setTimeout(() => void probe(current, true), 3000) // a placa reinicia sozinha: procura de novo
       setState({ s: 'probing', port: current })
       return true

@@ -55,7 +55,7 @@ function Assistant({ stations, source, onChanged }: { stations: Station[]; sourc
         <Ready
           key={state.info.mac} state={state} stations={stations} source={source} onChanged={onChanged}
           onLost={() => b.lost(state.port, state.link)}
-          onFlash={() => { void state.link.close(); void b.flashNow(state.port) }}
+          onFlash={() => { void state.link.close(); void b.flashNow(state.port, 'app') }}
           onPickMap={() => { b.setPicking(true); go(''); window.setTimeout(() => window.dispatchEvent(new Event(PICK_EVENT)), 400) }}
           onDone={(id, name) => b.finish(state.link, id, name)}
         />
