@@ -1,12 +1,13 @@
-// Ambiente de desenvolvimento completo com um comando só:  npm run dev   (na raiz do projeto)
+﻿// Ambiente de desenvolvimento completo com um comando só:  npm run dev   (na raiz do projeto)
 //
 //   1. prepara o banco local (esquema e migrações) e as estações de exemplo (dados novos a cada subida);
-//   2. sobe a API/Worker em 0.0.0.0:8787 (a placa na mesma rede alcança) e o site com recarga automática em :5173;
+//   2. sobe a API/Worker em 0.0.0.0:8787 (a placa na mesma rede alcança) e o site com recarga automática na porta do site (:5173 por padrão, veja --site-port);
 //   3. mantém o site de :8787 atualizado (vite build --watch), para quem abre por lá;
 //   4. simula as estações de exemplo: elas enviam a cada 20 s, pegam a configuração nova e reiniciam quando o administrador pede.
 //
 // Opções:  --reseed   apaga e refaz só as estações de exemplo e os dados delas (a sua estação real não é tocada)
 //          --no-sim   não simula as estações de exemplo
+//          --site-port=N  porta do site com recarga automática (padrão 5173; também vale SITE_PORT=N). Se a porta estiver ocupada, o dev para em vez de trocar sozinho.
 import { spawn, spawnSync } from 'node:child_process'
 import { copyFileSync, existsSync, mkdirSync, writeFileSync } from 'node:fs'
 import { networkInterfaces } from 'node:os'
@@ -18,6 +19,7 @@ const WORKER = join(ROOT, 'worker')
 const WEB = join(ROOT, 'web')
 const API = 'http://127.0.0.1:8787'
 const args = new Set(process.argv.slice(2))
+const SITE_PORT = Number([...args].find((a) => a.startsWith('--site-port='))?.split('=')[1] ?? process.env.SITE_PORT ?? 5173)
 const DEMO = ['serra', 'costao', 'praia', 'capital', 'planalto'] // mantiqueira fica offline de propósito
 const ALL_DEMO = [...DEMO, 'mantiqueira']
 const log = (...a) => console.log('[dev]', ...a)
@@ -64,8 +66,8 @@ function prepareDb() {
 
 // ---------------------------------------------------------------- processos
 const kids = []
-function run(name, cmd, cmdArgs, cwd) {
-  const p = spawn(cmd, cmdArgs, { cwd, shell: true, stdio: ['ignore', 'pipe', 'pipe'], env: { ...process.env, FORCE_COLOR: '0' } })
+function run(name, cmd, cmdArgs, cwd, env = {}) {
+  const p = spawn(cmd, cmdArgs, { cwd, shell: true, stdio: ['ignore', 'pipe', 'pipe'], env: { ...process.env, FORCE_COLOR: '0', ...env } })
   const pipe = (s) => String(s).split(/\r?\n/).filter(Boolean).forEach((l) => console.log(`[${name}] ${l}`))
   p.stdout.on('data', pipe)
   p.stderr.on('data', pipe)
@@ -131,11 +133,11 @@ async function waitApi() {
 prepareDb()
 const ips = lanIps()
 mkdirSync(join(WEB, 'public'), { recursive: true })
-writeFileSync(join(WEB, 'public', '__lan'), JSON.stringify({ ips })) // o site (em :8787 ou :5173) diz à placa que endereço usar
+writeFileSync(join(WEB, 'public', '__lan'), JSON.stringify({ ips })) // o site (em :8787 ou na porta do site) diz à placa que endereço usar
 
-log('subindo a API (8787), o site (5173) e o build contínuo do site…')
+log(`subindo a API (8787), o site (${SITE_PORT}) e o build contínuo do site…`)
 run('api', 'npx', ['wrangler', 'dev', '--port', '8787', '--ip', '0.0.0.0', '--test-scheduled'], WORKER)
-run('site', 'npm', ['run', 'dev', '--', '--host'], WEB)
+run('site', 'npm', ['run', 'dev', '--', '--host', '--port', String(SITE_PORT), '--strictPort'], WEB)
 run('build', 'npx', ['vite', 'build', '--watch', '--logLevel', 'warn'], WEB)
 
 if (!(await waitApi())) { log('a API não subiu em 90 s'); stop() }
@@ -144,7 +146,7 @@ for (let i = 0; i < 4; i++) { try { await fetch(`${API}/__scheduled?cron=*/5+*+*
 const lan = ips[0]
 console.log(`
   ┌──────────────────────────────────────────────────────────────┐
-  │  Site (recarrega ao editar):  http://localhost:5173          │
+  │  Site (recarrega ao editar):  ${`http://localhost:${SITE_PORT}`.padEnd(31)}│
   │  API + site compilado:        http://localhost:8787          │${lan ? `
   │  Para a placa (mesma rede):   http://${lan}:8787${' '.repeat(Math.max(0, 22 - lan.length))}│` : ''}
   │  Entrar: "Entrar sem senha" (administrador ou usuário)       │
