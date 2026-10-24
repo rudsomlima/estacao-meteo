@@ -1,16 +1,19 @@
-﻿// Ambiente de desenvolvimento completo com um comando só:  npm run dev   (na raiz do projeto)
+// Ambiente de desenvolvimento completo com um comando só:  npm run dev   (na raiz do projeto)
 //
-//   1. prepara o banco local (esquema e migrações) e as estações de exemplo (dados novos a cada subida);
+//   1. prepara o banco local (esquema e migrações), copia do servidor publicado as estações reais que faltam e tira as de exemplo;
 //   2. sobe a API/Worker em 0.0.0.0:8787 (a placa na mesma rede alcança) e o site com recarga automática na porta do site (:5173 por padrão, veja --site-port);
 //   3. mantém o site de :8787 atualizado (vite build --watch), para quem abre por lá;
-//   4. simula as estações de exemplo: elas enviam a cada 20 s, pegam a configuração nova e reiniciam quando o administrador pede.
+//   4. com --demo, cria e simula as estações de exemplo: elas enviam a cada 20 s, pegam a configuração nova e reiniciam quando o administrador pede.
 //
-// Opções:  --reseed   apaga e refaz só as estações de exemplo e os dados delas (a sua estação real não é tocada)
-//          --no-sim   não simula as estações de exemplo
+// Opções:  --demo     usa estações de exemplo simuladas em vez de só as reais
+//          --db-only  só prepara o banco local e sai (sem subir nada)
+//          --reseed   (com --demo) apaga e refaz só as estações de exemplo e os dados delas (a sua estação real não é tocada)
+//          --no-sim   (com --demo) não simula as estações de exemplo
 //          --site-port=N  porta do site com recarga automática (padrão 5173; também vale SITE_PORT=N). Se a porta estiver ocupada, o dev para em vez de trocar sozinho.
 import { spawn, spawnSync } from 'node:child_process'
 import { copyFileSync, existsSync, mkdirSync, writeFileSync } from 'node:fs'
-import { networkInterfaces } from 'node:os'
+import { createHash, randomBytes } from 'node:crypto'
+import { networkInterfaces, tmpdir } from 'node:os'
 import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
@@ -52,16 +55,57 @@ function prepareDb() {
     }
   }
 
-  // estações de exemplo: refaz se faltam, se pediram, ou se os dados estão velhos (o gráfico não pode ter um buraco de dias)
-  const newest = query("SELECT MAX(ts) AS t FROM readings WHERE station_id = 'serra'")[0]?.t ?? 0
-  const have = query("SELECT COUNT(*) AS n FROM stations WHERE id IN ('serra','costao','praia','capital','planalto','mantiqueira')")[0]?.n ?? 0
-  const stale = Date.now() / 1000 - newest > 3 * 3600
-  if (args.has('--reseed') || have < ALL_DEMO.length || stale) {
-    log(stale && have ? 'dados de exemplo velhos: refazendo só as estações de exemplo…' : 'criando as estações de exemplo…')
-    const g = spawnSync('node', ['scripts/seed.mjs'], { cwd: WORKER, encoding: 'utf8' })
-    if (g.status !== 0) log('seed falhou:', g.stderr)
-    else if (!wrangler(['--file=seed.sql']).ok) log('não consegui aplicar o seed (as estações de exemplo podem faltar)')
+  if (args.has('--demo')) {
+    // estações de exemplo (simuladas): refaz se faltam, se pediram, ou se os dados estão velhos (o gráfico não pode ter um buraco de dias)
+    const newest = query("SELECT MAX(ts) AS t FROM readings WHERE station_id = 'serra'")[0]?.t ?? 0
+    const have = query("SELECT COUNT(*) AS n FROM stations WHERE id IN ('serra','costao','praia','capital','planalto','mantiqueira')")[0]?.n ?? 0
+    const stale = Date.now() / 1000 - newest > 3 * 3600
+    if (args.has('--reseed') || have < ALL_DEMO.length || stale) {
+      log(stale && have ? 'dados de exemplo velhos: refazendo só as estações de exemplo…' : 'criando as estações de exemplo…')
+      const g = spawnSync('node', ['scripts/seed.mjs'], { cwd: WORKER, encoding: 'utf8' })
+      if (g.status !== 0) log('seed falhou:', g.stderr)
+      else if (!wrangler(['--file=seed.sql']).ok) log('não consegui aplicar o seed (as estações de exemplo podem faltar)')
+    }
+  } else {
+    removeDemo()
   }
+}
+
+/** Apaga do banco local as estações de exemplo (as de chave "dev-key-<id>") e os dados delas. Estações reais não são tocadas. */
+function removeDemo() {
+  const ids = ALL_DEMO.filter((id) => {
+    const h = createHash('sha256').update(`dev-key-${id}`).digest('hex')
+    return (query(`SELECT COUNT(*) AS n FROM stations WHERE id = '${id}' AND key_hash = '${h}'`)[0]?.n ?? 0) > 0
+  })
+  if (!ids.length) return
+  const list = ids.map((i) => `'${i}'`).join(',')
+  const sql = [...['readings', 'readings_hourly', 'events', 'alert_state', 'firmware_chunks', 'firmware', 'fw_assign'].map((tb) => `DELETE FROM ${tb} WHERE station_id IN (${list});`), `DELETE FROM stations WHERE id IN (${list});`].join(' ')
+  const f = join(tmpdir(), 'estacao-dev-remove-demo.sql')
+  writeFileSync(f, sql)
+  log(`removendo as estações de exemplo do banco local: ${ids.join(', ')} (use --demo para tê-las de volta)`)
+  if (!wrangler([`--file=${f}`]).ok) log('não consegui remover as estações de exemplo')
+}
+
+/** Copia do servidor publicado as estações reais que faltam no banco local (só o cadastro: id, nome, local e configuração, sem chave nem leituras). */
+async function syncReal() {
+  const remote = (process.env.REMOTE_API ?? 'https://estacao-meteo.rudsomlima.workers.dev').replace(/\/$/, '')
+  let list
+  try {
+    const r = await fetch(`${remote}/api/stations`, { signal: AbortSignal.timeout(8000) })
+    if (!r.ok) throw new Error(String(r.status))
+    list = await r.json()
+  } catch (e) { log(`não consegui ler as estações de ${remote} (${e.message}); sigo com as que já estão no banco local`); return }
+  const have = new Set(query('SELECT id FROM stations').map((s) => s.id))
+  const q = (s) => `'${String(s).replace(/'/g, "''")}'`
+  const rows = list.filter((s) => !have.has(s.id))
+  if (!rows.length) return
+  const now = Math.floor(Date.now() / 1000)
+  // sem a chave do servidor: o hash é de um valor aleatório. Ao configurar a placa pelo assistente, a chave é gerada de novo.
+  const sql = rows.map((s) => `INSERT INTO stations (id,name,city,lat,lon,alt,key_hash,config,created_at) VALUES (${q(s.id)},${q(s.name)},${q(s.city ?? '')},${s.lat},${s.lon},${s.alt ?? 0},${q(randomBytes(32).toString('hex'))},${q(JSON.stringify(s.config ?? {}))},${now});`).join(' ')
+  const f = join(tmpdir(), 'estacao-dev-sync-real.sql')
+  writeFileSync(f, sql)
+  log(`copiando do servidor as estações reais que faltam: ${rows.map((s) => s.id).join(', ')}`)
+  if (!wrangler([`--file=${f}`]).ok) log('não consegui copiar as estações reais')
 }
 
 // ---------------------------------------------------------------- processos
@@ -131,6 +175,8 @@ async function waitApi() {
 
 // ---------------------------------------------------------------- main
 prepareDb()
+await syncReal()
+if (args.has('--db-only')) process.exit(0) // só prepara o banco local (estações reais, sem exemplos) e sai
 const ips = lanIps()
 mkdirSync(join(WEB, 'public'), { recursive: true })
 writeFileSync(join(WEB, 'public', '__lan'), JSON.stringify({ ips })) // o site (em :8787 ou na porta do site) diz à placa que endereço usar
@@ -150,11 +196,11 @@ console.log(`
   │  API + site compilado:        http://localhost:8787          │${lan ? `
   │  Para a placa (mesma rede):   http://${lan}:8787${' '.repeat(Math.max(0, 22 - lan.length))}│` : ''}
   │  Entrar: "Entrar sem senha" (administrador ou usuário)       │
-  │  Estações de exemplo enviam a cada 20 s (simuladas)          │
+  │  Só as estações reais do servidor (--demo: exemplos simuladas)│
   │  Ctrl+C encerra tudo                                         │
   └──────────────────────────────────────────────────────────────┘
 `)
-if (!args.has('--no-sim')) {
+if (args.has('--demo') && !args.has('--no-sim')) {
   const loop = async () => { await Promise.all(DEMO.map((id, i) => tick(id, i))) }
   await loop()
   setInterval(loop, 20_000)

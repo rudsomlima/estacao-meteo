@@ -69,7 +69,7 @@ Sem API o site entra em **modo demonstração** (a etiqueta no topo avisa) com 8
 npm run dev                                   # na raiz do projeto
 ```
 
-Prepara o banco local, cria 6 estações de exemplo e sobe tudo: o site com recarga automática em <http://localhost:5173>, a API com o site compilado em <http://localhost:8787> (aberta para a rede, para a placa alcançar) e **simula as estações de exemplo**, que enviam a cada 20 s, pegam configuração nova e reiniciam quando o administrador pede. Entre com **Entrar sem senha**. O terminal mostra o endereço `http://IP-do-computador:8787` que a placa usa. `npm run dev:reset` refaz as estações de exemplo (a sua estação real não é apagada). Ctrl+C encerra tudo.
+Prepara o banco local, copia do servidor publicado as estações reais que faltam (só o cadastro; `REMOTE_API` muda a origem), tira as estações de exemplo e sobe tudo: o site com recarga automática em <http://localhost:5173>, a API com o site compilado em <http://localhost:8787> (aberta para a rede, para a placa alcançar) e, com `--demo`, **simula as estações de exemplo**, que enviam a cada 20 s, pegam configuração nova e reiniciam quando o administrador pede. Entre com **Entrar sem senha**. O terminal mostra o endereço `http://IP-do-computador:8787` que a placa usa. `npm run dev:reset` refaz as estações de exemplo (a sua estação real não é apagada). Ctrl+C encerra tudo.
 
 Se a porta 5173 estiver ocupada por outro programa, use outra: `npm run dev -- --site-port=5180` (ou `SITE_PORT=5180`). O dev não troca de porta sozinho: se a escolhida estiver em uso, ele para com erro.
 
