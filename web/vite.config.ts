@@ -39,6 +39,8 @@ function lanIp(): Plugin {
 }
 
 export default defineConfig({
+  // vários servidores de desenvolvimento (portas diferentes) não podem dividir o cache de dependências: um apagava o do outro (erro 504 "Outdated Optimize Dep")
+  cacheDir: process.env.SITE_PORT ? `node_modules/.vite-${process.env.SITE_PORT}` : undefined,
   plugins: [react(), tailwindcss(), lanIp()],
   server: {
     // `npm run dev` na pasta worker/ sobe a API em 8787

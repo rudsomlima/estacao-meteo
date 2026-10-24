@@ -183,7 +183,7 @@ writeFileSync(join(WEB, 'public', '__lan'), JSON.stringify({ ips })) // o site (
 
 log(`subindo a API (8787), o site (${SITE_PORT}) e o build contínuo do site…`)
 run('api', 'npx', ['wrangler', 'dev', '--port', '8787', '--ip', '0.0.0.0', '--test-scheduled'], WORKER)
-run('site', 'npm', ['run', 'dev', '--', '--host', '--port', String(SITE_PORT), '--strictPort'], WEB)
+run('site', 'npm', ['run', 'dev', '--', '--host', '--port', String(SITE_PORT), '--strictPort'], WEB, { SITE_PORT: String(SITE_PORT) })
 run('build', 'npx', ['vite', 'build', '--watch', '--logLevel', 'warn'], WEB)
 
 if (!(await waitApi())) { log('a API não subiu em 90 s'); stop() }
