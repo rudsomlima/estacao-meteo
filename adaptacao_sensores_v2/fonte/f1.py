@@ -24,7 +24,7 @@ Q = lambda x, z: pr2((x, 0, z))
 fig = plt.figure(figsize=(20, 11.4), dpi=130)
 fig.patch.set_facecolor("white")
 fig.text(0.015, 0.955, "Windicator + GY-273 (direção) + A3144 (velocidade) — montagem completa", fontsize=23, weight="bold")
-fig.text(0.015, 0.922, "Base no mecanismo original do autor (.3mf): eixo fixo + 2 rolamentos 627ZZ. Em cima: perspectiva · embaixo: elevação com cotas (mm).", fontsize=13, color="#444")
+fig.text(0.015, 0.922, "Base no mecanismo original do autor (.3mf): eixo fixo + 2 rolamentos 608ZZ. Em cima: perspectiva · embaixo: elevação com cotas (mm).", fontsize=13, color="#444")
 ax1 = fig.add_axes([0.0, 0.33, 0.62, 0.58]); ax1.imshow(img1); ax1.axis("off")
 ax2 = fig.add_axes([0.0, 0.0, 0.75, 0.31]); ax2.imshow(img2); ax2.axis("off"); ax2.set_xlim(0, W2 * 1.0); ax2.set_ylim(H2, 0)
 

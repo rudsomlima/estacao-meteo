@@ -15,6 +15,18 @@
 | [api.md](api.md) | Endpoints, formatos e limites |
 | [solucao-de-problemas.md](solucao-de-problemas.md) | Sintomas comuns e o que verificar |
 
+## Montagem 3D
+
+Anemômetro e biruta (Windicator adaptado, rolamentos **608ZZ**). Leia na ordem.
+
+| Guia | Para quê |
+|---|---|
+| [montagem-3d-pecas-e-materiais.md](montagem-3d-pecas-e-materiais.md) | Peças impressas, itens de compra, ferramentas e o rolamento 608ZZ |
+| [montagem-3d-impressao.md](montagem-3d-impressao.md) | Material, orientação, parâmetros e o teste de encaixe do rolamento |
+| [montagem-3d-passo-a-passo.md](montagem-3d-passo-a-passo.md) | Montagem mecânica, da base ao rotor |
+| [montagem-3d-sensores-e-fiacao.md](montagem-3d-sensores-e-fiacao.md) | GY-273, A3144, ímãs, polaridade e fios pelo eixo |
+| [montagem-3d-testes-e-manutencao.md](montagem-3d-testes-e-manutencao.md) | Testes de bancada, falhas comuns e manutenção |
+
 ## Figuras
 
 | Figura | Onde está | Como se gera |

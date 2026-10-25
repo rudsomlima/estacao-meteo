@@ -16,9 +16,9 @@ A = [  # (lado, ponto, texto, cor)
     ("L", (0, 0, 4.3), "Passa-fios Ø3,6\n(bolso → furo do eixo)", "#333"),
     ("L", (-11.5, 0, 21.6), "Indicador N (original)", "#8a7a40"),
     ("L", (-17, 0, 29.8), "Anel da biruta\n(lábio original z29–30)", "#c9581f"),
-    ("L", (-9, 0, 33.5), "Rolamento 627ZZ nº1", "#555"),
+    ("L", (-9, 0, 33.5), "Rolamento 608ZZ nº1", "#555"),
     ("L", (-4.6, 0, 37.9), "Arruela espaçadora", "#8a7a40"),
-    ("L", (-9, 0, 42.4), "Rolamento 627ZZ nº2", "#555"),
+    ("L", (-9, 0, 42.4), "Rolamento 608ZZ nº2", "#555"),
     ("L", (-19, 0, 44), "Cubo do rotor\n(teto de 1 mm com furo p/ o eixo)", "#0f6b7d"),
     ("L", (-5, 0, 55), "Colar do braço do Hall\n(prensado no eixo)", "#2c7a3a"),
     ("R", (MAGA_X, 0, MAGA_Z), "Ímã A 5×2 mm (radial)\nna biruta → gira com ela", "#e03131"),
@@ -108,7 +108,7 @@ for i, (tt, c, pins, sub) in enumerate(rows):
 a3.text(0, 35, "O A3144 (4,5–24 V) é garantido a 5 V; a 3,3 V está fora da especificação (teste se usar)."+"\n"+"O pull-up em 3,3 V mantém o sinal seguro para o ESP32.", fontsize=9.6, color="#222", va="top", linespacing=1.4)
 a3.text(0, 29, "Lista de compras / impressão", fontsize=15, weight="bold")
 a3.text(0, 27,
-        "Comprar: 2× rolamento 627ZZ (7×22×7) · 1× GY-273 (QMC5883L) ·\n"
+        "Comprar: 2× rolamento 608ZZ (8×22×7) · 1× GY-273 (QMC5883L) ·\n"
         "1× A3144 (TO-92UA) · ímã 5×2 mm (A) · ímã 4×1 mm (B) · resistor 10 kΩ ·\n"
         "fio 28 AWG ~0,5 m · epóxi · 3 parafusos M4 (fixação da base).\n"
         "Imprimir (PETG/ASA ao ar livre): 01 base · 02 eixo (em pé) · 03 biruta ·\n"

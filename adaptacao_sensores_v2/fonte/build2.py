@@ -1,4 +1,4 @@
-"""v2 — adaptacao fiel ao mecanismo original (.3mf do autor): eixo fixo + 2 rolamentos 627ZZ.
+"""v2 — adaptacao fiel ao mecanismo original (.3mf do autor): eixo fixo + 2 rolamentos 608ZZ.
 Coordenadas do conjunto montado: Z vertical, eixo do conjunto em (0,0).
 """
 import os, pickle
@@ -12,11 +12,13 @@ W3MF = os.path.join(SCR, "Windicator_V2.0_Compact.3mf")
 # ---------------- alturas (mm) da pilha original ----------------
 Z_NORTH = 20.1          # aro N apoia no topo do tubo
 Z_VANE = 29.0           # base do anel da biruta (labio z29-30)
-Z_BRG_V = 30.0          # rolamento 627 da biruta: z30-37
+Z_BRG_V = 30.0          # rolamento 608ZZ da biruta: z30-37
 Z_WASH = 37.0           # arruela espacadora: 37-38.9
 Z_BRG_R = 38.9          # rolamento do rotor: 38.9-45.9
 Z_ROTOR = 38.4          # base do cubo do rotor (bolso 8 mm, teto 1 mm)
-BRG_OD, BRG_ID, BRG_W = 22.0, 7.0, 7.0
+BRG_OD, BRG_ID, BRG_W = 22.0, 8.0, 7.0       # 608ZZ: 8 x 22 x 7 mm
+SEAT_D = 7.9            # eixo sob os rolamentos: 0,1 mm abaixo do furo de 8 mm (o original tem 8,25)
+SEAT_Z1 = 46.0          # topo do trecho de apoio dos rolamentos (z30 a 46)
 SHAFT_Z0, SHAFT_TOP = 5.0, 53.4   # eixo aparado em z5 e prolongado ate 53,4
 ARM_Z0, ARM_Z1 = 48.4, 52.0
 COLLAR_TOP = 56.4
@@ -95,6 +97,8 @@ base = diff(base, pocket, slot, hole)
 # ---- eixo (shaft): aparado em z5, prolongado, oco, com furo lateral ----
 shaft0 = zero_z(G["7"])
 shaft = diff(shaft0, box(-20, 20, -20, 20, -1, SHAFT_Z0))
+# o trecho de apoio dos rolamentos (original Ø8,25) vira Ø7,9 para o 608ZZ (furo de 8 mm)
+shaft = diff(shaft, diff(cyl(5.0, SEAT_Z1 - Z_BRG_V + 0.2, Z_BRG_V, 128), cyl(SEAT_D / 2, SEAT_Z1 - Z_BRG_V + 1.0, Z_BRG_V - 0.5, 128)))
 ext = cyl(3.5, SHAFT_TOP - 46.0 + 0.5, 45.5, 64)
 shaft = union(shaft, ext)
 bore = cyl(1.6, 70, -5, 48)

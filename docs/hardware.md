@@ -27,7 +27,7 @@ Tudo o que é preciso para montar uma estação: lista de materiais, ligações,
 | 1 | Painel solar de 5 a 6 V, 1 a 2 W | Opcional, mas recomendado. |
 | 1 | Carregador de bateria com proteção | Compatível com a química escolhida. |
 | 1 | Regulador de 3,3 V | Pico ≥ 500 mA e corrente quiescente baixa. |
-| — | Rolamentos 627ZZ ×2, parafusos M4 ×3, epóxi, fita Kapton | Para a parte mecânica do anemômetro e da biruta. |
+| — | Rolamentos 608ZZ ×2 (8×22×7 mm), parafusos M4 ×3, epóxi, fita Kapton | Para a parte mecânica do anemômetro e da biruta. |
 | — | Abrigo de radiação (tipo Stevenson) | Para o BME280. Pode ser impresso ou comprado. |
 | — | Caixa estanque, prensa-cabos, sílica gel | Para a eletrônica. |
 
@@ -153,7 +153,7 @@ A estação conta **uma basculada por pulso**. O volume por basculada vem do fun
 
 ## Montagem mecânica
 
-A parte do vento usa o **Windicator V2.0 Compact** adaptado, com um ímã na biruta (lido pelo QMC5883L) e um ímã no rotor (lido pelo Hall). Todo o projeto de CAD, a montagem e a calibração estão em [adaptacao_sensores_v2/README.md](../adaptacao_sensores_v2/README.md). Veja também [THIRD_PARTY.md](../THIRD_PARTY.md) sobre a licença das peças.
+A parte do vento usa o **Windicator V2.0 Compact** adaptado, com um ímã na biruta (lido pelo QMC5883L) e um ímã no rotor (lido pelo Hall). Todo o projeto de CAD, a montagem e a calibração estão em [adaptacao_sensores_v2/README.md](../adaptacao_sensores_v2/README.md), e o passo a passo em [Montagem 3D](README.md#montagem-3d). Veja também [THIRD_PARTY.md](../THIRD_PARTY.md) sobre a licença das peças.
 
 ## Instalação
 

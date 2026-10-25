@@ -23,6 +23,11 @@ Adaptação do **Windicator V2.0 "Compact"** (biruta + anemômetro de copos impr
 | `01_montagem_completa.png` | Vista completa: perspectiva + elevação com cotas |
 | `02_vista_explodida.png` | Vista explodida numerada (14 itens) com legenda |
 | `03_detalhes_cortes.png` | Corte vertical pelo eixo, princípio de cada medição, ligação ao ESP32, lista de compras |
+| `04_cotas_montagem_corte.png` | **Cotas:** vista frontal e corte A–A da montagem completa |
+| `05_cotas_explodida_corte.png` | **Cotas:** vista explodida em corte, com altura e largura de cada peça |
+| `06_cotas_eixo_arruela_indicador.png` | **Cotas:** eixo (com o apoio Ø7,9 do 608ZZ), arruela e indicador N |
+| `07_cotas_base.png` | **Cotas:** base, vistas superior e inferior e dois cortes |
+| `08_cotas_biruta_rotor_braco.png` | **Cotas:** biruta, rotor de copos e braço do Hall |
 | `01_base_com_bolso_GY273.stl` | **Modificada** — base com bolso para o GY-273 e canal de cabos |
 | `02_eixo_oco_prolongado.stl` | **Modificada** — eixo aparado, oco, prolongado, com furo lateral (imprimir **em pé**) |
 | `03_biruta_com_furo_do_ima.stl` | **Modificada** — biruta (*Tail boom*) com túnel do ímã A |
@@ -37,6 +42,10 @@ Adaptação do **Windicator V2.0 "Compact"** (biruta + anemômetro de copos impr
 Peças originais **não usadas**: *Base for vertical surfaces* (suporte de parede). Pode ser usada como
 alternativa de fixação, mas não tem o bolso do sensor.
 
+Guias de montagem em português: [peças e materiais](../docs/montagem-3d-pecas-e-materiais.md) ·
+[impressão](../docs/montagem-3d-impressao.md) · [montagem mecânica](../docs/montagem-3d-passo-a-passo.md) ·
+[sensores e fiação](../docs/montagem-3d-sensores-e-fiacao.md) · [testes e manutenção](../docs/montagem-3d-testes-e-manutencao.md).
+
 ---
 
 ## 2. Origem e mecanismo original
@@ -44,9 +53,10 @@ alternativa de fixação, mas não tem o bolso do sensor.
 O `.3mf` do autor contém 7 objetos (mesmas malhas do STL) e **fotos do modelo montado**, que mostram o
 mecanismo real:
 
-- **Eixo fixo** (*Shaft*, Ø13,6 embaixo / Ø7 em cima, 46 mm) preso no tubo da base (furo Ø13,5).
-- **Dois rolamentos** (inferidos como **627ZZ, 7×22×7 mm** pelas medidas dos alojamentos): um no anel da
-  biruta, outro no cubo do rotor. Entre eles, a **arruela espaçadora** (Ø11,1 × 1,9 mm).
+- **Eixo fixo** (*Shaft*, Ø13,6 embaixo / Ø8,25 em cima, 46 mm) preso no tubo da base (furo Ø13,5).
+- **Dois rolamentos 608ZZ (8×22×7 mm)**: um no anel da biruta, outro no cubo do rotor. (A versão anterior
+  desta adaptação supunha 627ZZ, de 7 mm de furo; o eixo original, de Ø8,25 em cima, e a arruela, de furo Ø8,2,
+  já eram de 8 mm. O 608ZZ tem o mesmo diâmetro externo e a mesma largura, então os alojamentos não mudam.) Entre eles, a **arruela espaçadora** (Ø11,1 × 1,9 mm).
 - Biruta e rotor ficam **empilhados** no eixo (anel da biruta z 29–38, cubo do rotor z 38,4–47,4). A aleta
   da biruta fica fora do círculo varrido pelos copos (raio > 91 mm), então não há colisão.
 - O **indicador N** é um aro (ID 13,6) que se apoia no topo do tubo e aponta o norte.
@@ -59,7 +69,7 @@ z 47,4  ── topo do cubo do rotor         (teto de 1 mm; bolso de 8 mm)
 z 45,9  ── topo do rolamento nº2 (z 38,9–45,9)
 z 38,9  ── arruela termina (z 37–38,9)
 z 37    ── rolamento nº1 (z 30–37) / anel da biruta z 29–38 (lábio de 1 mm em z 29–30)
-z 30    ── ressalto do eixo (Ø13,6 → Ø7)
+z 30    ── ressalto do eixo (Ø13,6 → Ø8,25 no original; Ø7,9 aqui)
 z 20,1  ── topo do tubo; indicador N (z 20,1–23,1)
 z 5     ── placa da base (Ø50)
 z 0
@@ -72,7 +82,7 @@ z 0
 | Peça | Mudança | Por quê |
 |---|---|---|
 | **Base** | Furo fechado abaixo de z=5 (piso do furo); bolso 19,4 × 14,8 × 3,4 mm sob a placa; canal 6 × 3,4 mm até a borda (−Y); passa-fios Ø3,6 do bolso ao furo | Aloja o GY-273 no eixo; cabos saem pela lateral; fios do Hall chegam por dentro do eixo |
-| **Eixo** | Aparado em z=5 (assenta no piso do furo); prolongado até z=53,4; furo axial Ø3,2; furo lateral Ø3,0 em z=51,2 | Passar os fios do A3144 por dentro; prender o braço do Hall |
+| **Eixo** | Aparado em z=5 (assenta no piso do furo); **apoio dos rolamentos (z 30 a 46) reduzido de Ø8,25 para Ø7,9 mm (608ZZ)**; prolongado até z=53,4 (Ø7); furo axial Ø3,2; furo lateral Ø3,0 em z=51,2 | Passar os fios do A3144 por dentro; prender o braço do Hall |
 | **Biruta** | Túnel Ø5,3 horizontal (lado oposto à aleta, z local 4,5, de r=12,7 até a borda) | Aloja o ímã A (5×2 mm); lábio e bolso do rolamento mantidos |
 | **Rotor** | Furo Ø7,5 no teto; bolso Ø4,3 × 1,2 mm no topo do cubo em r = 15 mm | O eixo passa pelo teto; aloja o ímã B (4×1 mm) |
 | **Braço do Hall** (nova) | Colar Ø12 prensado no topo do eixo; barra de 19,5 mm a 1 mm acima do cubo; bolso aberto no topo p/ o A3144; canal e janela até o furo lateral do eixo | Mantém o A3144 fixo (não gira) sobre o ímã B |
@@ -87,7 +97,7 @@ Premissa de projeto: os fios do A3144 descem **por dentro do eixo**, pois o roto
 
 | Qtde | Item | Obs. |
 |---|---|---|
-| 2 | Rolamento **627ZZ** (7×22×7 mm) | confirmar com a lista do autor |
+| 2 | Rolamento **608ZZ** (8×22×7 mm) | o comum de patins e *spinners*; prefira blindagem metálica (ZZ) ou 2RS |
 | 1 | **GY-273** (QMC5883L) | |
 | 1 | **A3144** (TO-92UA) | |
 | 1 | Ímã neodímio **5×2 mm** (ímã A, biruta) | radial |
@@ -180,8 +190,8 @@ Premissa de projeto: os fios do A3144 descem **por dentro do eixo**, pois o roto
 
 ## 8. Riscos e validações pendentes
 
-1. **Rolamento:** 627ZZ é inferido pelas dimensões — conferir com o autor.
-2. **Tolerâncias de impressão:** furos Ø23,4/Ø22 (rolamentos), Ø13,5 (eixo), Ø3 (fios) dependem da
+1. **Rolamento:** o 608ZZ é a escolha deste projeto (eixo Ø7,9 para o furo de 8 mm). O encaixe depende da impressora: imprima só o eixo e prove um rolamento antes de imprimir o resto (veja [o guia de impressão](../docs/montagem-3d-impressao.md)).
+2. **Tolerâncias de impressão:** furos Ø23,4/Ø22 (rolamentos), eixo Ø7,9 (apoio do rolamento), Ø13,5 (furo da base), Ø3 (fios) dependem da
    impressora; ajuste na primeira peça.
 3. **Sinal do GY-273:** campo estimado ≈ 0,5 G; depende da posição real do chip na placa (assumi ao centro)
    e da blindagem dos rolamentos.
@@ -201,14 +211,18 @@ Pasta `fonte/` (Python 3.12). Dependências: `numpy trimesh manifold3d pymeshfix
 | `build2.py` | Lê o `.3mf` do autor, aplica as modificações e grava os STL (e `parts2.pkl`, temporário) |
 | `scene2.py` | Monta a cena (peças, ímãs, sensores, fios), explosão e cortes; renderização com PyVista |
 | `f1.py`, `f2.py`, `f3.py` | Geram `01_…png`, `02_…png`, `03_…png` |
+| `cotas_lib.py`, `g1.py` … `g5.py` | Geram as cinco imagens com cotas (`04_…` a `08_…`) direto das malhas, em corte e silhueta (matplotlib e shapely) |
+| `make_placa.py` | Monta `Windicator_sensores_placa.3mf` a partir dos STL |
 
 ```bash
 cd fonte
 python build2.py     # gera os STL na pasta acima
+python make_placa.py # monta a placa .3mf
 python f1.py && python f2.py && python f3.py
+python g1.py && python g2.py && python g3.py && python g4.py && python g5.py   # imagens com cotas
 ```
 
-Parâmetros principais (início de `build2.py`): alturas da pilha (`Z_*`), tamanhos dos ímãs (`MAGA_*`,
+Parâmetros principais (início de `build2.py`): alturas da pilha (`Z_*`), rolamento (`BRG_*`) e apoio do eixo (`SEAT_*`), tamanhos dos ímãs (`MAGA_*`,
 `MAGB_*`), raio do sensor Hall (`XSENS`), bolso do GY-273 (`POCKET_*`), extensão do eixo (`SHAFT_*`).
 Cada peça é gerada por operações booleanas (manifold3d); as peças originais vêm do `.3mf`.
 
